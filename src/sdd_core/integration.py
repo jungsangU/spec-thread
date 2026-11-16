@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 import yaml
 
-from .baseline import BaselineLoader, mapping, project_path, validate
+from .baseline import BaselineLoader, mapping, project_path, source_paths, validate
 from .checks import run_checks
 from .work_items import check_findings
 
@@ -55,6 +55,8 @@ def records(root, tree, path, key, identity):
             identifier = row[identity]
             if identifier in result:
                 raise ValueError(f"중복 레코드: {identifier}")
+            if path == BASELINE + "source-map.yaml":
+                row = {**row, "sources": [{"path": name} for name in source_paths(row["sources"])]}
             result[identifier] = row
         return result
     except (yaml.YAMLError, KeyError, TypeError) as error:
@@ -64,8 +66,12 @@ def records(root, tree, path, key, identity):
 def merge_records(base, ours, theirs, location):
     result = []
     for identifier in dict.fromkeys([*ours, *theirs, *base]):
+        previous = base.get(identifier)
+        if location == BASELINE + "source-map.yaml" and previous is None:
+            if identifier in ours and identifier in theirs:
+                previous = {"feature_id": identifier, "sources": []}
         value = merge_value(
-            base.get(identifier), ours.get(identifier), theirs.get(identifier),
+            previous, ours.get(identifier), theirs.get(identifier),
             f"{location}/{identifier}",
         )
         if value is not None:
@@ -87,7 +93,7 @@ def merge_value(base, ours, theirs, location):
         return result
     for field, keys in (
         ("dependencies", ("feature_id", "type")),
-        ("sources", ("path", "symbol")),
+        ("sources", ("path",)),
     ):
         if location.endswith("/" + field) and all(
             isinstance(value, list) for value in (base, ours, theirs)

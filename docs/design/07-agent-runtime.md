@@ -1,21 +1,15 @@
-# 07 Agent Runtime
+# 07 에이전트와 Core의 역할
 
-**설계 방향 · D-001, D-006** Claude Code와 Codex가 동일 Artifact Protocol과 Harness 개발 흐름을 사용한다.
+| 작업 | Codex | Claude Code |
+| --- | --- | --- |
+| 설치 위치 | `.agents/skills/<이름>/SKILL.md` | `.claude/skills/<이름>/SKILL.md` |
+| 초기화 | `$sdd-init` | `/sdd-init` |
+| 개발 | `$sdd-develop` | `/sdd-develop` |
+| 외부 변경 정합화 | `$sdd-sync` | `/sdd-sync` |
+| 명시적 커밋 | `$sdd-commit` | `/sdd-commit` |
 
-**제안 · O-006** 공통 입출력 계약을 에이전트 어댑터가 구현한다. 에이전트는 Spec, 기준 revision, 작업 범위를 받아 후보 변경과 근거를 반환한다. Harness가 계약, 승인, 작업 범위와 검증 결과를 확인한다.
+공식 GitHub Spec Kit는 독립 설치한다. 문서 재현 기준은 v1.4.0이다. `sdd-core install-skills codex|claude`는 공통 절차를 각 폴더에 설치하고 같은 위치에 내용이 다른 스킬과 충돌하면 오류를 보고한다. 기존 공식 설치를 교체할 필요가 없다.
 
-~~~mermaid
-sequenceDiagram
-  participant H as Harness
-  participant A as Agent Adapter
-  participant G as 대상 Git
-  H->>G: 기준 revision과 입력 확인
-  H->>A: 공통 계약과 작업 범위 전달
-  A-->>H: 후보 변경과 근거 반환
-  H->>H: 범위와 승인 및 검증 결과 확인
-  opt 커밋 조건 충족
-    H->>G: 코드와 관련 Artifact 커밋
-  end
-~~~
+에이전트가 Discovery에서 공식 `specify`와 `clarify`를 사용해 분석하고 근거를 제출한다. Core의 `discovery-gate`는 입력 형식과 필수 점검을 검사해 판정하며, 신규 Feature에는 `--issue-id`로 READY에서만 UUID를 발급한다. 에이전트는 공식 스킬과 템플릿을 사용하고, 대상 Feature의 경로를 확인하며, 문서 작성·코드 구현·의미 분석·사용자 안내를 수행한다. 얇은 공통 CLI가 구조·상태·검증 명령·트리 동일성을 점검한다. 이 구조는 에이전트가 달라도 한 가지 완료 규칙을 사용할 수 있게 한다.
 
-승인 및 검증 결과의 쓰기 권한, 실행 격리, 재시도, 동시 작업 충돌은 미결정이다.
+프로젝트별 에이전트 선택과 Worktree 생성·분배·중단·재개는 사용자 책임이다. 중앙 세션 관리자, 잠금, 대기열, SQLite, 실시간 감시는 설계 범위 밖이다. Codex에서 초기화와 개발을 실행 확인했다. Claude Code는 스킬 설치 형태를 확인했으며 동일한 종단간 실행 검증이 남아 있다.

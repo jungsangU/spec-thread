@@ -29,3 +29,7 @@ sdd-core install-skills codex
 `sdd-core preview PLAN.json`의 기준과 트리 ID를 검토한 뒤 계획에 `reviewed_base`와 `reviewed_tree`를 기록합니다. `sdd-core commit PLAN.json`은 동일 트리에서 전체 검증 명령을 실행하고 Git 기준이 일치할 때 단일 커밋을 반영합니다. 계획의 검증 명령은 사용자와 프로젝트가 신뢰하는 명령을 사용합니다.
 
 공식 스킬의 실제 호출과 전체 흐름은 Codex 및 Claude Code에서 각각 실행 검증이 필요합니다. Sync 승인과 초기화 완료 확인은 현재 스킬 절차에 있으며 Core가 독립적으로 강제하는 단계는 아닙니다.
+
+## Discovery와 설계 가이드
+
+`sdd-init`은 공식 Spec Kit의 명세 작성·명확화를 재사용하고 `sdd-core discovery-gate`로 Feature 확정 조건을 검사합니다. 최신 절차는 [설계 문서와 HTML 가이드](docs/design/README.md)에서 확인할 수 있습니다. 이미 설치된 Harness 스킬이 달라 충돌하면 사용자 수정이 있는지 확인하고, 교체할 Harness 스킬을 별도 위치에 백업한 뒤 다시 설치합니다.

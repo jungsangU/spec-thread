@@ -10,6 +10,7 @@ from uuid import UUID
 
 from .baseline import project_path, scaffold, validate
 from .checks import run_checks
+from .discovery import assess_discovery
 from .integration import integrate
 from .work_items import check_findings, read_plan, update
 
@@ -42,6 +43,9 @@ def main(argv=None):
     commands.add_parser("uuid")
     commands.add_parser("validate")
     commands.add_parser("scaffold")
+    discovery = commands.add_parser("discovery-gate")
+    discovery.add_argument("plan", type=Path)
+    discovery.add_argument("--issue-id", action="store_true")
     hash_command = commands.add_parser("fingerprint")
     hash_command.add_argument("paths", nargs="+")
     start = commands.add_parser("start")
@@ -65,6 +69,13 @@ def main(argv=None):
             print(uuid7())
         elif args.command == "scaffold":
             scaffold(root)
+        elif args.command == "discovery-gate":
+            result = assess_discovery(read_plan(args.plan))
+            if args.issue_id and result["verdict"] == "READY":
+                result["feature_id"] = str(uuid7())
+            print(json.dumps(result, ensure_ascii=False))
+            if args.issue_id and "feature_id" not in result:
+                return 2
         elif args.command == "validate":
             validate(root)
             print("Baseline 검증 통과")

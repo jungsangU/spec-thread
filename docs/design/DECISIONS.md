@@ -1,29 +1,17 @@
-# 결정 기록
+# 설계 결정 기록
 
-| ID | 상태 | 결정 | 논의 근거 | 상세 |
-| --- | --- | --- | --- | --- |
-| D-001 | 확정 | Greenfield와 Brownfield에 동일 Artifact Protocol 적용 | 입력이 달라도 후속 개발 규칙과 산출물 해석을 공유 | [모델](01-artifact-model.md) |
-| D-002 | 확정 | C 방식. Artifact 파일, Claim, Evidence, Source Symbol 연결 | 대형 문서의 재검토 범위와 사실별 파일의 파편화를 줄임 | [모델](01-artifact-model.md) |
-| D-003 | 확정 | 대상 Git의 `.sdd/`에 Markdown + YAML Frontmatter 중심으로 저장 | 사람이 읽고 Git에서 검토하며 도구가 메타데이터를 파싱할 수 있음 | [모델](01-artifact-model.md) |
-| D-004 | 확정 | Spec은 의도, Git Source는 구현 사실, Verification은 실행 근거 | 기존 구현이나 추론이 승인된 의도로 취급되는 오류를 방지 | [권위](02-source-of-truth.md) |
-| D-005 | 확정 | Claim별 R0~R3 승인과 Intent·Implementation·Verification 분리 | 전수 승인 비용과 전면 자동 승인에 따른 정책 오인을 줄임 | [상태](04-artifact-lifecycle.md) |
-| D-006 | 확정 | Harness Only. Spec → Claim → Code → Verification 후 코드와 관련 Artifact 동시 커밋 | 의도·구현·검증의 일치 시점을 한 revision으로 추적 | [Git](08-git-integration.md) |
-| D-007 | 확정 | 예외적인 외부 변경은 사용자 요청과 승인에 따른 수동 Reconciliation | 예외 복구 기능을 제공하면서 정상 흐름에 상시 감시를 추가하는 부담을 줄임 | [Git](08-git-integration.md) |
-| D-008 | 확정 | 코드에 맞춰 승인된 Spec을 자동 변경하지 않음 | 코드 변경만으로 업무 정책이 바뀌는 것을 방지 | [권위](02-source-of-truth.md) |
-| D-009 | 확정 | Harness 설계는 `docs/design/`에 문서, 결정, 근거, Mermaid와 백로그를 누적 | 단계별로 설계 변경과 판단 근거를 추적 | [목차](README.md) |
+2026-11-16 기준. 구현 상태와 검증 근거는 [통합 설계서](SpecThread-통합-상세-설계서.md)와 [미결정 백로그](OPEN-ISSUES.md)에 연결한다.
 
-~~~mermaid
-flowchart LR
-  A["초기안: 외부 커밋 자동 보정"] --> B["외부 변경을 예외로 한정"]
-  B --> C["D-006 정상 개발에서 동시 커밋"]
-  B --> D["D-007 수동 Reconciliation"]
-  D --> E["D-008 승인된 Spec 보호"]
-~~~
-
-## 변경 이력
-
-| 버전 | 날짜 | 변경 |
+| ID | 결정 | 결정 이유 |
 | --- | --- | --- |
-| v0.1 | 2026-11-11 | D-001~D-009 최초 기록. 외부 변경 자동 보정 초기안을 수동 복구 정책으로 대체. 대상 Git revision을 비교 기준으로 유지. |
-
-출처는 SDD 산출물 관리 표준 및 최초 로컬 산출물 요청이다. 결정 ID는 이번 작업에서 부여했다. 이후 결정이 바뀌면 새 ID와 대체 관계를 기록한다.
+| ST-01 | 공식 Spec Kit 독립 설치, 공식 기능 우선 및 원형 유지 | 명세·계획·태스크와 공식 도구 업데이트를 재사용한다 |
+| ST-02 | Greenfield·Brownfield 공통 Feature 모델과 Baseline 6개 파일 | 입력 근거가 달라도 같은 개발 과정에서 산출물을 읽을 수 있다 |
+| ST-03 | 의도·구현·실행 증거의 권위 분리 | 구현 편차가 사용자 승인 없이 제품 정책으로 굳는 일을 막는다 |
+| ST-04 | 확정 Feature와 Work Item의 UUID v7, Feature와 파일 경로를 연결하는 Source Map | 참조를 이름·번호와 분리하고 병렬 변경 및 유지 비용을 줄인다 |
+| ST-05 | Codex·Claude Code를 같은 정책으로 지원하고 스킬과 공통 CLI로 제공 | 의미 분석은 에이전트가 맡고 상태·구조·Git 검사 결과는 공유한다 |
+| ST-06 | 핵심 UNKNOWN과 CONFLICT 차단, 비핵심 UNKNOWN은 근거 기록 | 확인 비용을 영향에 비례시키면서 중요 계약을 보호한다 |
+| ST-07 | Fingerprint와 증거를 완료 이력에 보존 | 무엇을 검사했는지 구분하고 기존 이력을 유지한다 |
+| ST-08 | 외부 변경은 승인형 수동 Sync | 사용자의 작업과 승인된 의도를 보호한다 |
+| ST-09 | 사용자 Worktree 운영, 개발과 명시적 Git 커밋 분리 | 세션 관리 복잡도를 줄이고 선택 변경을 하나의 검증된 트리로 반영한다 |
+| ST-10 | 최초 Baseline과 Git 통합의 구체적 계약은 별도 확정 | 전체 분석 완료, 최초 Git 기준 성립, 일반 Work Item 완료를 구분해야 한다 |
+| ST-11 | 공식 명세 생성·명확화를 재사용하는 Greenfield/Brownfield Discovery와 READY / CONDITIONAL / BLOCKED Gate | 업무 흐름과 현행 근거를 검토하고 경계와 요구사항을 검증한 기능만 확정한다 |

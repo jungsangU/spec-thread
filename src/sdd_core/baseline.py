@@ -76,6 +76,14 @@ def require_reference(identifier, allowed, field):
         raise ValueError(f"{field}: 참조 대상이 없습니다: {identifier}")
 
 
+def source_paths(sources):
+    """Read both current path records and legacy records with extra metadata."""
+    return list(dict.fromkeys(
+        nonempty(mapping(source, "source").get("path"), "source.path")
+        for source in sequence(sources, "sources")
+    ))
+
+
 def scaffold(root):
     folder = project_path(root, ".specify/baseline")
     if not (root / ".specify").is_dir():
@@ -127,14 +135,16 @@ def validate(root):
             require_reference(dependency.get("feature_id"), feature_ids, "dependency.feature_id")
             nonempty(dependency.get("type"), "dependency.type")
 
+    mapped_features = set()
     for source_map in sources:
-        require_reference(source_map.get("feature_id"), feature_ids, "mapping.feature_id")
-        for source in sequence(source_map.get("sources"), "sources"):
-            source = mapping(source, "source")
-            path = project_path(root, source.get("path"))
-            if not path.is_file():
-                raise ValueError(f"소스 또는 계약 파일이 없습니다: {source['path']}")
-            nonempty(source.get("symbol"), "symbol")
+        identifier = source_map.get("feature_id")
+        require_reference(identifier, feature_ids, "mapping.feature_id")
+        if identifier in mapped_features:
+            raise ValueError(f"중복 Source Map Feature: {identifier}")
+        mapped_features.add(identifier)
+        for path in source_paths(source_map.get("sources")):
+            if not project_path(root, path).is_file():
+                raise ValueError(f"소스 또는 계약 파일이 없습니다: {path}")
 
     for item in work_items:
         validate_work_item(root, item, feature_ids, work_ids)
