@@ -1,6 +1,5 @@
 import argparse
 import hashlib
-from importlib.resources import files
 import json
 import secrets
 import sys
@@ -8,10 +7,11 @@ import time
 from pathlib import Path
 from uuid import UUID
 
-from .baseline import project_path, scaffold, validate
+from . import __version__
+from .baseline import project_path, read_records, scaffold, validate
 from .checks import run_checks
 from .discovery import assess_discovery
-from .integration import integrate
+from .version_sync import apply_sync, digest, install_skills, json_bytes, plan_sync, require_project
 from .work_items import check_findings, read_plan, update
 
 
@@ -36,9 +36,17 @@ def fingerprint(root, paths):
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
+def work_scope(root, identifier):
+    for record in read_records(root, "work-items.yaml", "work_items"):
+        if record["id"] == identifier:
+            return record["declared_features"] + record["actual_features"]
+    raise ValueError(f"Work Item을 찾을 수 없습니다: {identifier}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sdd-core")
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("uuid")
     commands.add_parser("validate")
@@ -56,8 +64,12 @@ def main(argv=None):
     finish = commands.add_parser("complete")
     finish.add_argument("id")
     finish.add_argument("plan", type=Path)
-    for command in ("preview", "commit"):
-        commands.add_parser(command).add_argument("plan", type=Path)
+    version_check = commands.add_parser("version-check")
+    version_check.add_argument("--agent", choices=["codex", "claude"])
+    version_check.add_argument("features", nargs="*")
+    sync = commands.add_parser("version-sync")
+    sync.add_argument("plan", type=Path)
+    sync.add_argument("--confirm", metavar="APPROVAL_HASH")
     install = commands.add_parser("install-skills")
     install.add_argument("agent", choices=["codex", "claude"])
     args = parser.parse_args(argv)
@@ -68,8 +80,11 @@ def main(argv=None):
         if args.command == "uuid":
             print(uuid7())
         elif args.command == "scaffold":
+            require_project(root)
             scaffold(root)
         elif args.command == "discovery-gate":
+            if args.issue_id:
+                require_project(root)
             result = assess_discovery(read_plan(args.plan))
             if args.issue_id and result["verdict"] == "READY":
                 result["feature_id"] = str(uuid7())
@@ -82,13 +97,22 @@ def main(argv=None):
         elif args.command == "fingerprint":
             print(fingerprint(root, args.paths))
         elif args.command == "start":
+            require_project(root, scope=args.features)
             identifier = str(uuid7())
             update(root, identifier, "pending", args.features)
             print(identifier)
         elif args.command == "transition":
+            if args.status == "in_progress":
+                require_project(root, scope=work_scope(root, args.id))
+            else:
+                require_project(root, allow_quality_block=True)
             update(root, args.id, args.status)
         elif args.command == "complete":
             plan = read_plan(args.plan)
+            actual = plan["actual_features"]
+            if not isinstance(actual, list) or any(not isinstance(item, str) for item in actual):
+                raise ValueError("actual_features에는 Feature UUID 목록이 필요합니다")
+            require_project(root, scope=work_scope(root, args.id) + actual)
             check_findings(plan.get("findings"))
             paths = plan["paths"]
             if not isinstance(paths, list) or not paths:
@@ -107,21 +131,22 @@ def main(argv=None):
                 },
             })
         elif args.command == "install-skills":
-            folder = ".agents" if args.agent == "codex" else ".claude"
-            for skill in files("sdd_core").joinpath("skills").iterdir():
-                target = project_path(root, f"{folder}/skills/{skill.name.removesuffix('.md')}/SKILL.md")
-                target.parent.mkdir(parents=True, exist_ok=True)
-                contents = skill.read_bytes()
-                try:
-                    with target.open("xb") as stream:
-                        stream.write(contents)
-                except FileExistsError:
-                    if target.read_bytes() != contents:
-                        raise ValueError(f"기존 Skill과 충돌합니다: {target}") from None
-        elif args.command == "preview":
-            print(json.dumps(integrate(root, read_plan(args.plan), preview=True), ensure_ascii=False))
-        elif args.command == "commit":
-            print(integrate(root, read_plan(args.plan)))
+            install_skills(root, args.agent)
+        elif args.command == "version-check":
+            require_project(root, args.agent, args.features)
+            print(f"Core·Project·Skill {__version__} 일치")
+        elif args.command == "version-sync":
+            plan, outputs, features = plan_sync(root, read_plan(args.plan))
+            approval = digest(json_bytes(plan))
+            if args.confirm is None:
+                print(json_bytes({**plan, "approval_hash": approval}).decode(), end="")
+            else:
+                if args.confirm != approval:
+                    raise ValueError("승인한 버전 동기화 입력이 달라졌습니다. 새 계획을 검토하세요.")
+                result = apply_sync(root, plan, outputs, features)
+                print(json_bytes(result).decode(), end="")
+                if result["quality"] == "blocked":
+                    return 2
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
         print(error, file=sys.stderr)
         return 1

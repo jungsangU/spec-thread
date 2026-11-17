@@ -1,6 +1,6 @@
 # SpecThread 통합 상세 설계서
 
-2026-11-16 갱신 · MVP 설계 기준 · 재현 대상 GitHub Spec Kit **v1.4.0** (`0019fa1`)
+설계 1.0 · 2026-11-17 · MVP 설계 기준 · 재현 대상 GitHub Spec Kit **v1.4.0** (`0019fa1`)
 
 이 문서는 SDD 산출물 관리 표준 대화의 합의를 구현 가능한 단위로 정리한다. **확정**은 합의한 정책, **보류**는 MVP 이후 확장 후보, **미결정**은 구현 계약의 선택이 남은 항목, **PoC 확인**은 실제 설치·실행으로 확인해야 할 항목이다. 이 문서의 공식 기능 대조는 v1.4.0에 고정했다. [v1.4.0 릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
 
@@ -9,7 +9,7 @@
 Greenfield(그린필드)와 Brownfield(브라운필드)에 동일한 산출물 규격과 개발 절차를 적용한다. 신규 프로젝트에서는 요구사항·도메인 자료에서 시작하고, 기존 프로젝트에서는 소스·설정·계약·문서·실행 근거에서 시작한다. Greenfield의 아키텍처는 계획으로, Brownfield의 관찰 결과는 현재 구현 사실로 표시한다. 구현이 없는 Feature(피처)에는 가상의 소스 참조를 생성하지 않는다.
 
 - **의도**는 승인된 공식 `spec.md`와 프로젝트 헌법이 정한다. `plan.md`와 `tasks.md`는 이를 구현할 기술 계획과 작업을 담는다.
-- **현재 구현**의 근거는 실제 코드·계약이다. 로컬 개발 중에는 현재 작업 공간, 커밋 시에는 통합으로 고정한 Git 트리를 사용한다.
+- **현재 구현**의 근거는 실제 코드·계약이다. 로컬 개발과 사용자 Git 반영 전 검토에는 검사 대상 작업 공간의 파일을 사용한다.
 - **검증**은 해당 입력으로 얻은 점검 결과와 증거를 제공한다. 승인된 의도와 관찰된 구현이 어긋나면 차이를 보고하고 승인된 해결 방향을 적용한다.
 - **Baseline(베이스라인)**은 프로젝트 전체 구조·관계·추적·작업 이력이다. Source Map(소스 맵)은 파생 인덱스이며 실제 소스와 공식 산출물에서 복구한다. 과거 검증 이력과 현재 Feature 구조를 함께 추적하되 각자의 원본을 유지한다.
 
@@ -17,40 +17,9 @@ Greenfield(그린필드)와 Brownfield(브라운필드)에 동일한 산출물 �
 
 ## 2. 구성 및 실행 책임
 
-~~~mermaid
-flowchart LR
-  U["사용자"] --> X["Codex"]
-  U --> Y["Claude Code"]
-  X --> A["Codex용 Harness Skill"]
-  Y --> B["Claude Code용 Harness Skill"]
-  A --> K["공식 Spec Kit 스킬·스크립트"]
-  B --> K
-  A --> C["Shared SDD Core CLI"]
-  B --> C
-  K --> S["공식 명세와 개발 산출물"]
-  A --> D["Discovery · 업무 흐름 또는 현행 동작 검증"]
-  B --> D
-  S --> D
-  D -->|READY · Feature 확정| C
-  C --> L["대상 프로젝트 .specify/baseline/"]
-  A --> P["로컬 코드·계약·기존 검증 도구"]
-  B --> P
-  U --> G["명시적 Harness Git Commit"]
-  G --> C
-  G --> T["임시 통합 공간 → 대상 Git의 단일 커밋"]
-~~~
+[전체 아키텍처](architecture.md)는 두 Git 저장소, Core, Skill과 사용자 책임의 원본이다. 양쪽 에이전트가 같은 스키마·상태·완료 조건을 사용하며 한 프로젝트는 한 종류의 에이전트를 선택한다.
 
-| 구성 | 책임 |
-| --- | --- |
-| Codex / Claude Code | 둘 다 MVP 정식 지원. 저장소 해석, 의미 분석, 명세·설계의 작성 및 수정, 구현, 검사 실행과 증거 수집 |
-| Harness Skill(스킬) | 초기화·개발·Sync와 명시적 커밋의 실행 절차, 공식 스킬 호출, 사용자 확인 및 보고. 두 환경의 연결 방식만 개별 구현 |
-| Shared SDD Core CLI | UUID v7 발급·검사, YAML 구조와 참조 무결성, 상태와 필수 검증 게이트, 파일 Fingerprint(핑거프린트), Git 통합 과정의 결정론적 검증 |
-| 공식 Spec Kit | 독립 설치·업데이트. 공식 명령과 템플릿을 재사용하고 공식 관리 파일 및 생성 규칙의 원형 유지 |
-| 사용자 | 프로젝트별 실행 환경 선택, 세션·Worktree(워크트리) 생성·실행·중단·재개·분배·정리, Git 기준 관리, 승인 및 커밋 대상 선택 |
-
-CLI는 에이전트의 의미 판단, 근거 참조 및 검사 결과를 입력받아 누락·불일치·차단 조건을 점검한다. 명령 종료 성공만으로 의미 검증 통과를 인정할 수 없으므로 결과 계약은 PoC에서 점검한다. 두 환경에는 같은 스키마·상태·완료 조건을 적용한다. 한 프로젝트 안에서 두 환경을 동시에 혼용하거나 작업을 인계하는 기능은 MVP 범위 밖이다.
-
-현재 스킬 이름은 `sdd-init`, `sdd-develop`, `sdd-sync`, `sdd-commit`이다. Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`처럼 각 환경의 호출 표기를 사용한다.
+논의상 `/sdd.init`, `/sdd.develop`, `/sdd.sync`는 각각 초기화, 개발, 외부 변경 정합화다. 배포 스킬 이름은 `sdd-init`, `sdd-develop`, `sdd-sync`이며 Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`과 같은 형식으로 호출한다. 명령의 성공 종료는 의미 분석의 통과 근거가 아니다. 스킬이 의미 근거를 수집하고 Core가 입력·상태·구조를 검사한다.
 
 ## 3. 공식 Spec Kit 기능 대조
 
@@ -63,9 +32,9 @@ CLI는 에이전트의 의미 판단, 근거 참조 및 검사 결과를 입력�
 | 작성·구현 | `constitution`, `specify`, `clarify`, `plan`, `checklist`, `tasks`, `analyze`, `implement`, `converge`를 단계와 전제에 맞춰 쓴다. `tasks.md`는 Feature 내부 작업·순서·완료 체크를 관리한다. | 승인된 Feature의 기존 산출물을 재사용한다. Harness UUID 기반 Work Item은 사용자 요청의 변경·검증 이력을 여러 Feature에 걸쳐 연결한다. [공식 흐름](https://github.github.com/spec-kit/quickstart) |
 | 산출물 품질 | `specify`는 요구사항 품질 체크를 포함한다. `checklist`는 요구사항 품질을 점검한다. `analyze`는 완성된 `tasks.md`와 `spec.md`, `plan.md`가 필요한 읽기 전용 산출물 분석이다. | 태스크 없는 초기화에는 적용 가능한 명세 품질 체크와 Harness 검증을 조합한다. 분석 결과와 프로젝트 테스트 결과는 각각 확인한다. [명세 템플릿](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/templates/commands/specify.md) · [analyze 템플릿](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/templates/commands/analyze.md) |
 | 구현 수렴 | `converge`는 `tasks`와 현재 태스크에 대한 `implement` 이후 코드와 산출물을 대조한다. 조치할 격차가 있으면 `tasks.md`에 추가하고, 수렴하면 파일을 유지한다. | 검증 공간에서 새로운 작업이 필요한 결과는 실패로 보고한다. 수렴 명령의 쓰기 동작을 고려하여 검증 전후 파일 상태를 확인한다. [converge 템플릿](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/templates/commands/converge.md) |
-| Git | Git 작업은 기본 미설치인 번들 `git` 확장에서 제공한다. Feature 브랜치 및 단계별 선택적 커밋 훅이 있다. | 자동 커밋 금지 및 사용자 브랜치 책임과 충돌하는 훅을 활성화하지 않는 구성을 확인한다. Harness의 선택적 Worktree 통합과 검증된 트리 반영은 별도 책임이다. [Core CLI](https://github.github.com/spec-kit/overview/core.html) · [v1.4.0 Git 확장 매니페스트](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/extensions/git/extension.yml) |
+| Git | Git 작업은 기본 미설치인 번들 `git` 확장에서 제공한다. Feature 브랜치 및 단계별 선택적 커밋 훅이 있다. | 자동 커밋 금지 및 사용자 브랜치 책임과 충돌하는 훅을 활성화하지 않는 구성을 확인한다. 프로젝트 Git 반영은 사용자가 담당한다. [Core CLI](https://github.github.com/spec-kit/overview/core.html) · [v1.4.0 Git 확장 매니페스트](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/extensions/git/extension.yml) |
 | 자동 실행 | 공식 YAML Workflow와 검토 게이트가 있다. 공식 어댑터의 비대화형 실행은 `codex exec` 및 `claude -p`를 사용한다. 번들 `speckit` 흐름에는 태스크와 구현 단계도 있다. | 공식 호출 경로의 재사용 후보. 초기화에는 필요한 단계만 실행하며 자체 세션 오케스트레이터는 MVP에서 제외한다. 양쪽 스킬에서의 위임과 실제 환경 변수 전파·결과 판독은 PoC로 확인한다. [Workflows](https://github.github.com/spec-kit/workflows/overview.html) · [단계 정의](https://github.github.com/spec-kit/workflows/steps.html) |
-| 저장·추적 | 공식 흐름은 Feature 산출물, 태스크 체크, 체크리스트 및 명령 결과를 제공한다. 공식 문서와 확인한 태그 소스에서는 프로젝트 전체 Feature UUID 그래프, Work Item별 검증 Fingerprint 및 선택된 Worktree의 통합 검증을 제공하는 코어 계약을 확인하지 못했다. | Baseline과 통합 검증은 Harness에서 확장한다. 새 요구가 생기면 공식 기능을 먼저 확인한다. [공식 흐름](https://github.github.com/spec-kit/quickstart) · [공식 확장 CLI](https://github.github.com/spec-kit/extensions/cli.html) |
+| 저장·추적 | 공식 흐름은 Feature 산출물, 태스크 체크, 체크리스트 및 명령 결과를 제공한다. 공식 문서와 확인한 태그 소스에서는 프로젝트 전체 Feature UUID 그래프와 Work Item별 검증 Fingerprint을 제공하는 코어 계약을 확인하지 못했다. | Baseline과 프로젝트 검증 연결은 Harness에서 확장한다. 새 요구가 생기면 공식 기능을 먼저 확인한다. [공식 흐름](https://github.github.com/spec-kit/quickstart) · [공식 확장 CLI](https://github.github.com/spec-kit/extensions/cli.html) |
 
 공식 기능 확인 → 기존 명령·산출물·워크플로우 재사용 검토 → 부족한 부분 식별 → 최소 확장 → 원형과의 중복·충돌 검토 순으로 적용한다. 공식 `checklist`가 생성하는 사용자 정의 체크리스트는 검토자가 체크 상태를 관리한다. `specify`와 `clarify`가 관리하는 기본 요구사항 체크리스트와 실행 테스트 결과를 구분한다. [v1.4.0 checklist 템플릿](https://raw.githubusercontent.com/github/spec-kit/v1.4.0/templates/commands/checklist.md)
 
@@ -131,6 +100,8 @@ work_items:
 
 ## 5. 명령별 실행
 
+명령 진입 시 [Core·Project·Skill 버전 동기화](version-sync.md) 계약을 적용한다. 아래 명령의 실패·중단 처리는 버전 동기화 실패와 별개의 정책이다.
+
 ### `sdd-init` — 최초 분석 및 미완료 초기화 재개
 
 1. 공식 설치 상태, constitution, 프로젝트 범위와 기존 공식 산출물을 확인한다.
@@ -181,13 +152,13 @@ flowchart TD
 2. 사용자 요청에 Work Item UUID 하나를 부여하고 선언 Feature를 기록한다. Feature별로 공식 컨텍스트를 선택하여 확정된 신규 명세 또는 기존 명세를 사용한다. 필요한 개정, 계획·태스크·분석·구현·수렴을 수행한다.
 3. 개발 중 요구사항이나 범위가 변하면 동일한 작업의 영향받은 공식 단계로 돌아간다. 계약 변화와 실제 의존성을 분석하고 안전한 범위 확장은 사유를 기록한 뒤 진행한다.
 4. 범위 확정, 관련 공식 단계 완료, 주요 코드·계약 변경 및 최종 검증 같은 단계 경계에서 Baseline과 Source Map을 갱신한다. 구조 갱신이 실패하면 현재 코드와 공식 산출물을 보존하고 완료를 보류한다.
-5. 모든 관련 Feature의 필수 로컬 검증과 Baseline 갱신에 성공하면 최종 결과·증거·Fingerprint를 기록하고 `completed`로 전환한다. Git 커밋은 별도 명시 요청에서 수행한다.
+5. 모든 관련 Feature의 필수 로컬 검증과 Baseline 갱신에 성공하면 최종 결과·증거·Fingerprint를 기록하고 `completed`로 전환한다. Git 반영은 사용자가 수행한다.
 
 ### `sdd-sync` — 예외적인 외부 변경 정합화
 
-1. 사용자가 지정한 외부 변경과 비교 근거를 확인한다. 실제 코드, 계약 및 공식 산출물에서 차이를 확인하고 영향 Feature·의존관계를 추적한다.
-2. 승인된 의도와 구현의 차이, 필요한 공식 산출물의 검증·개정, Baseline 변경안을 제시한다. 코드 또는 계약의 관찰 결과를 사용자 의도로 승격하지 않는다.
-3. 승인한 범위만 반영한다. 변경 영향, 증거 및 Baseline 무결성을 재검증한다. 거절·차단·실패 시 차이와 남은 조치를 보고하고 사용자의 기존 파일을 보존한다. 외부 변경 자체를 자동으로 되돌리거나 덮어쓰지 않는다.
+1. **Inspect.** 사용자가 지정한 외부 변경과 비교 근거를 읽기 전용으로 확인한다. 실제 코드, 계약 및 공식 산출물에서 차이를 확인하고 영향 Feature·의존관계를 추적한다.
+2. **Plan → Approve.** 승인된 의도와 구현의 차이, 필요한 공식 산출물의 검증·개정, Baseline 변경안을 제시한다. 사용자가 적용 범위를 승인하기 전까지 변경하지 않는다. 코드 또는 계약의 관찰 결과를 사용자 의도로 승격하지 않는다.
+3. **Apply → Verify.** 승인한 범위만 반영한다. 변경 영향, 증거 및 Baseline 무결성을 재검증한다. 거절·차단·실패 시 차이와 남은 조치를 보고하고 사용자의 기존 파일을 보존한다. 외부 변경 자체를 자동으로 되돌리거나 덮어쓰지 않는다.
 4. 기준 revision 선택, 계획 승인과 적용 사이 입력 변경 처리, Sync에 의한 Work Item 이력의 구체적 기록 방식은 미결정이다.
 
 ~~~mermaid
@@ -198,7 +169,7 @@ flowchart TD
   F --> L{"로컬 필수 검증 / Baseline 기록"}
   L -->|실패| F
   L -->|통과| C["completed"]
-  C --> G["사용자의 별도 Harness Git Commit"]
+  C --> G["사용자가 대상 Git에 반영"]
   E["사용자가 지정한 외부 변경"] --> Y["sdd-sync · inspect 및 plan"]
   Y --> A{"사용자 승인"}
   A -->|거절| X["기존 파일 보존 · 종료"]
@@ -224,7 +195,7 @@ stateDiagram-v2
 
 `in_progress`는 마지막 저장 상태다. 실제 실행 중인 프로세스를 나타내지 않는다. `failed`의 상세 판정 및 재처리 규칙은 미결정이며 도식의 종료는 해당 실행의 종료를 뜻한다. 완료 작업은 다시 열지 않는다. 후속 변경은 새 UUID의 Work Item으로 기록하고 필요하면 이전 작업을 참조한다. 초기 분석의 의미상 상태는 `not_started → partial → complete`로 추적하며 저장 위치와 필수 여부는 §11에서 추적한다. Discovery Gate는 Feature 확정 판정으로 초기 분석 전체 상태와 별도로 관리한다.
 
-재개 시 실제 파일과 작업 범위를 대조한다. 일치한 경우 재개하고 독립 변경은 보존한다. 같은 영역의 충돌과 출처가 불명확한 변경은 사용자 판단을 받는다. 누락된 공식 산출물은 해당 공식 절차를 통해 복구한다. SQLite, 락, FIFO 대기열, 중앙 ID 발급기, Worktree 등록부, 세션 감시, 체크포인트 관리자, 자동 복구·실시간 동기화는 MVP에서 제외한다.
+사용자가 개발을 다시 시작하면 실제 파일과 작업 범위를 대조한다. 일치한 경우 재개하고 독립 변경은 보존한다. 같은 영역의 충돌과 출처가 불명확한 변경은 사용자 판단을 받는다. 누락된 공식 산출물은 해당 공식 절차를 통해 복구한다. SQLite, 락, FIFO 대기열, 중앙 ID 발급기, Worktree 등록부, 세션 감시, 체크포인트 관리자, 자동 복구·실시간 동기화는 MVP에서 제외한다.
 
 ## 7. 영향 분석과 위험도 게이트
 
@@ -235,7 +206,7 @@ stateDiagram-v2
 
 Discovery Gate는 Feature 확정을 판정한다. 다음 위험도 결과는 분석·개발·통합에서 발견한 변경과 충돌의 처리를 결정하며 Discovery 판정에 필요한 근거로도 참조할 수 있다.
 
-| 판정 | 개발·초기화 완료 | 통합 커밋 |
+| 판정 | 개발·초기화 완료 | 사용자 Git 반영 전 검토 |
 | --- | --- | --- |
 | `SAFE` | 근거 기록 후 진행. 개발 범위 자동 확장 가능 | 필수 통합 검증을 통과하면 허용 |
 | 비핵심 `UNKNOWN` | 추가 분석 후 경고·근거 기록으로 허용 가능 | 통합 재검증 후 허용 가능 |
@@ -244,51 +215,28 @@ Discovery Gate는 Feature 확정을 판정한다. 다음 위험도 결과는 분
 
 ## 8. 검증과 Fingerprint
 
+| 판정 | 시점 | 실패 및 제한 |
+| --- | --- | --- |
+| Discovery Gate | 초기화 또는 신규 Feature 확정 전 | READY에서만 확정. CONDITIONAL은 해당 범위의 판단 보완, BLOCKED는 해당 범위 확정 중단 |
+| 개발 Gate | 구현 완료 전 | 필수 실행 검사, 핵심 UNKNOWN·CONFLICT, 구조·증거 실패 시 Work Item 완료 보류 |
+| 버전 동기화 필수 Gate | 승인된 메타데이터 변환 이후 | 세 버전 또는 데이터 무결성 실패 시 동기화 종료. 사용자 원복 후 처음부터 재시도 |
+| 버전 동기화 품질 Gate | 필수 Gate 통과 뒤 | 기존 품질 문제의 영향 Feature 제한. 범위를 판별할 수 없는 전역 위험은 전체 작업 차단 |
+| 제품 Git CI | 제품 PR 병합 전 | 코드·문서 필수 검사의 실패는 병합 차단. AI 의미 분석은 경고 |
+
 | 검증 층 | 범위 |
 | --- | --- |
 | Discovery Gate | 분리·통합 전후 요구사항·시나리오·예외·계약 보존, Brownfield 현행 근거와 명세의 일치, 핵심 충돌 해결 |
 | 공식 Spec Kit | 단계에 맞는 명세 품질, 산출물 간 정합성, 구현과 의도 간 격차 |
 | 대상 프로젝트 | 이미 존재하는 테스트·빌드·정적 분석 등 필수 명령과 결과 |
-| Harness | Baseline 구조·참조, Feature 관계·Source Map·영향 판정, 결과의 파일 동일성 및 통합 검증 |
+| Harness | Baseline 구조·참조, Feature 관계·Source Map·영향 판정과 검증 입력의 파일 동일성 |
 
-개발 중에는 영향 분석에 따라 변경 파일, 영향받은 계약과 Feature 관련 소스 및 공식 산출물을 검증 입력으로 선정한다. 검증 통과 시 내용에 기반한 Fingerprint를 기록한다. 영향받은 검증은 재실행하고 동일 입력으로 확인 가능한 통과 결과만 재사용한다. 입력 재구성이 모호하면 해당 결과를 재사용할 수 있는 근거를 추가 확보한다. 완료 시 Work Item의 필수 검증을 모두 만족해야 한다. 커밋에서는 선택된 변경을 통합한 결과에 대해 **최종 통합 검증 세트 전체를 재실행**한다.
+개발 중에는 영향 분석에 따라 변경 파일, 영향받은 계약과 Feature 관련 소스 및 공식 산출물을 검증 입력으로 선정한다. 검증 통과 시 내용에 기반한 Fingerprint를 기록한다. 영향받은 검증은 재실행하고 동일 입력으로 확인 가능한 통과 결과만 재사용한다. 입력 재구성이 모호하면 해당 결과를 재사용할 수 있는 근거를 추가 확보한다. 완료 시 Work Item의 필수 검증을 모두 만족해야 한다. 사용자 Git 통합으로 검증 입력이 달라지면 기존 필수 검사와 영향 검증을 다시 실행한다.
 
 검증 환경은 변하지 않는다는 운영 전제를 사용자가 보장한다. 런타임 버전 및 설치 환경 수집·감지·환경 Fingerprint는 제외한다. Fingerprint는 검증한 파일의 유효성 확인용이며 브랜치 감시나 Git 기준 확인에 쓰지 않는다. 완료 Work Item의 과거 Fingerprint와 증거를 이후 검증으로 덮어쓰지 않는다. 테스트 결과를 증거로 참조할 때 공식 태스크 체크와 실행 근거를 구분한다. 현재 해시 직렬화는 §12에 설명한다. 파일 집합 재구성, 삭제·이름 변경, 검증 항목별 결과 재사용은 미결정이다.
 
-## 9. 명시적 Harness Git Commit
+## 9. 세션과 Git 운영
 
-### 실행 계약
-
-- 사용자가 전체 작업을 완료 또는 안전하게 중단하고 기준 브랜치와 동시 작업을 확인한 뒤 명시적으로 요청한다. 입력은 선택된 Worktree와 대응 Work Item, 대상 Git 기준 및 포함할 변경 범위다. 현재 CLI의 JSON 입력과 제약은 §12에 설명한다.
-- Harness는 선택된 Work Item의 저장 상태가 `completed`인지 검증한다. 선택하지 않은 Worktree의 변경은 포함 대상에서 제외한다. 선택 작업이 미선택 변경에 의존하면 통합 검증을 차단한다.
-- 대상은 관리 중인 애플리케이션 Git이다. 작업 공간과 Git 커밋 생명주기는 분리한다. 명시적 요청 없이 프로젝트 커밋을 만들지 않는다.
-
-### 트랜잭션 흐름
-
-~~~mermaid
-sequenceDiagram
-  actor U as 사용자
-  participant H as Harness
-  participant T as 임시 통합 공간
-  participant G as 대상 Git
-  U->>H: 안전 상태 확인 후 선택 작업 커밋 요청
-  H->>H: 선택 Work Item completed 검사
-  H->>T: 대상 기준과 선택 변경을 고정해 통합
-  T->>T: 3-way 통합 / Baseline 의미 검증
-  T->>T: 최종 검증 세트 전체 실행
-  alt 충돌 또는 검증 실패
-    T-->>U: 원인·작업·Feature 보고
-  else 통과
-    T->>G: 검증한 트리의 단일 커밋을 기대 기준으로 반영
-    G-->>U: 커밋 결과 또는 Git 기준 불일치
-  end
-~~~
-
-1. 대상 기준의 코드와 Baseline을 출발점으로 선택 변경만 별도 임시 공간에 조립한다. 공통 조상과 각 변경을 대조하는 3-way 통합을 사용한다. 선택 변경의 추출 방식과 적용 순서, staged·unstaged·untracked 범위는 PoC에서 확정한다.
-2. 코드·공식 산출물과 Baseline을 같은 후보 트리로 묶는다. 구조화 파일은 Feature 및 Work Item UUID, 의존 간선, 구현·계약 파일 경로 단위로 대조한다. 독립 변경은 함께 유지하고 동일 의미에 대한 상충·삭제 대 수정·경로 충돌은 명시적으로 보고한다. 수정 시각으로 우선순위를 정하지 않는다. Markdown은 텍스트 병합 후 구조·의미를 확인한다.
-3. 후보 트리를 고정해 공식 검사, 프로젝트 테스트·빌드·정적 분석, 교차 Feature·Baseline 검증을 전체 실행한다. 검증이 소비한 입력과 최종 커밋의 트리가 일치해야 한다. 검사에서 파일을 쓰거나 추가 구현 소견이 생겼으면 그 결과를 그대로 게시하지 않는다.
-4. 통과하면 코드, 공식 산출물, Baseline을 포함한 **단일 커밋**을 생성하고 검증된 트리를 기대 기준에서 그대로 반영한다. Git 기준 불일치, 충돌 또는 커밋 실패 시 보고하고 중단한다. 기준 브랜치 상시 감시와 자동 재통합·재검증·강제 반영은 제외한다. Git이 기대한 기준에서만 반영되도록 하는 보호와 현재 체크아웃·인덱스 일관성의 구현은 PoC 대상이다.
-5. 실패 시 관련 Work Item·Feature·근거를 보고한다. 사용자가 원본 Worktree를 선택하여 수정하고 로컬 검증을 진행한다. 완료된 Work Item 자체는 불변이며 후속 수정은 새 Work Item 정책을 따른다. 다음 명시 요청에서 임시 공간을 다시 구성하고 최종 검증 세트 전체를 재실행한다. 성공·실패 모두 원본 Worktree를 자동 삭제하거나 수정하지 않는다.
+[두 Git 저장소의 운영](08-git-integration.md)을 따른다. 작업 분배와 Git 변경은 사용자가 수행한다. Harness는 코드·공식 산출물·Baseline의 일관성과 검증 결과를 제공한다. 사용자가 통합한 내용에 추가 변경이 있으면 기존 검사를 다시 실행한다. Worktree는 사용자가 선택하는 작업 공간이다.
 
 ## 10. PoC, 검증 시나리오, MVP 인수 기준
 
@@ -296,34 +244,34 @@ PoC에서는 공식 태그, 설치된 프로젝트 파일, 에이전트 종류·
 
 | ID | 실행 시나리오 | 통과 기대 결과 |
 | --- | --- | --- |
-| P01 | 독립된 테스트 프로젝트 두 개에 공식 v1.4.0을 Codex와 Claude Code로 각각 설치. Harness 연결 후 호출·쓰기·출력 비교 | 각 환경에서 초기화·개발·Sync와 명시적 커밋 진입, 동일 Core 스키마와 차단 판정. 공식 관리 파일 임의 패치 없이 연결 |
+| P01 | 독립된 테스트 프로젝트 두 개에 공식 v1.4.0을 Codex와 Claude Code로 각각 설치하고 Harness 연결 | 초기화·개발·Sync의 동일 Core 입력과 판정. 공식 관리 파일 임의 패치 없이 연결 |
 | P02 | Greenfield 초기 명세로 업무 흐름 분석, 잠정 Feature 분리·통합과 반복 상세화. 하나는 소스 미구현 | READY 이후에만 UUID 발급, 분리·통합 시 누락·의미 변형·충돌 검출. 동일 6개 파일과 Feature별 spec·plan, 허위 파일 참조와 신규 tasks 없음 |
 | P03 | Brownfield에 숨은 의존성·기존 산출물·모호한 Feature 혼재. 중단 후 재실행 | 현행 기능 발견 시 추가하고 임의 신규 기능은 생성하지 않음. 정상 파일 보존, 근거 있는 항목부터 분석. 조건부·차단 범위의 Gate 재평가 후에만 확정 |
 | P04 | 한 Work Item에서 기존 Feature 수정과 새 Feature 추가. 다른 Feature의 명세와 컨텍스트도 존재 | 기존 UUID·경로·보존 대상 내용 유지, 신규만 UUID 생성. 공식 단계 반복에서 대상별 출력 확인. `specify` 초기 쓰기 및 feature.json 부수 효과 확인 |
-| P05 | API 변경이 A→B→C로 전달되는 경우와 중간 계약이 유지되는 경우. 비핵심·핵심 UNKNOWN과 충돌 입력 | 근거 따라 전파·정지. 비핵심은 기록·재검증 후 허용 가능. 핵심 UNKNOWN과 CONFLICT는 완료 및 커밋 차단 |
-| P06 | 검증한 코드·계약 변경, 파일 삭제·이름 변경, 무관한 수정, 검증 실패 후 재실행 | 영향받은 개발 검사만 무효화, 필수 로컬 검사 누락 차단. 완료 이력은 유지. 통합에서는 최종 검증 세트 전체 실행 |
+| P05 | API 변경이 A→B→C로 전달되는 경우와 중간 계약이 유지되는 경우. 비핵심·핵심 UNKNOWN과 충돌 입력 | 근거 따라 전파·정지. 비핵심은 기록·재검증 후 허용 가능. 핵심 UNKNOWN과 CONFLICT는 완료와 사용자 반영 전 검토에서 차단 소견으로 보고 |
+| P06 | 검증한 코드·계약 변경, 파일 삭제·이름 변경, 무관한 수정, 검증 실패 후 재실행 | 영향받은 개발 검사만 무효화, 필수 로컬 검사 누락 차단. 완료 이력은 유지. 사용자 통합으로 입력이 달라지면 필요한 검사 재실행 |
 | P07 | 중단 후 독립 변경·충돌·누락 파일과 재개. 외부 코드 변경에 대한 Sync 승인·거절 | 독립 변경 보존, 충돌 보고, 공식 절차로 누락 복구. Sync는 승인 범위만 반영하고 승인된 의도를 임의 개정하지 않음 |
-| P08 | W1과 W3 선택, W2 제외. 분리된 YAML 변경과 동일 API 충돌, W2에 대한 숨은 의존성 각각 시험 | 무충돌 시 의미 단위 통합과 단일 커밋. 충돌 또는 미선택 의존성은 차단. 세 원본의 상태 유지 |
-| P09 | 후보 트리 검증 중 도구가 산출물 변경, 검증 뒤 대상 ref 변경, 대상 브랜치가 체크아웃된 상태를 각각 재현 | 검증되지 않은 트리와 달라진 기대 기준을 반영하지 않음. 실패 시 대상과 원본의 일관성 확인. 검증 트리 ID와 최종 커밋 트리 ID 비교 |
-| P10 | `git` 확장 훅 유무, 기존 Worktree의 로컬 변경·인덱스·기존 커밋 혼합, 실패 후 후속 Work Item으로 수정 | 암묵적 브랜치 이동·커밋 없이 선택된 변경만 사용. 명시적으로 재요청한 통합에서 전체 검증 정책 유지 |
+| P08 | 사용자가 작업 공간과 변경 범위를 선택해 합친 뒤 기존 검사 실행 | 관련 Feature·직접 및 간접 의존성 검증. Harness가 Git을 변경하지 않음 |
+| P09 | 검증 이후 입력 파일 변경과 사용자 통합 중 계약 충돌 | 기존 Fingerprint를 현재 결과로 제시하지 않고 충돌 근거와 재검증 범위를 표시 |
+| P10 | 공식 Git 훅이 설치된 대상과 미설치 대상 비교 | Harness 흐름에서 암묵적 브랜치 이동·커밋 없음. Git 작업은 사용자 수행 |
 | P11 | UUID 중복, 존재하지 않는 Feature, 잘못된 경로·상태·증거, 다른 UUID로 등록된 동일 Feature | 구조 오류와 의미 충돌 각각 식별. 차단 사유에 근거와 관련 ID 표시. 잘못된 기록으로 completed 전환 금지 |
-| P12 | 초기 분석 통과 후 별도 Git 반영을 시도하는 신규 저장소와 기존 저장소 | 자동 커밋 없이 초기화 결과를 보존. 최초 커밋에서 사용할 선택 단위 및 개발 진입 계약을 검증 |
+| P12 | 초기 분석 성공 이후 개발 진입과 사용자 Git 반영 구분 | 검증된 초기 자료가 보존되며 Git 작업은 사용자 수행 |
 
-진행 순서는 공식 호환성 확인, 공통 스키마·게이트, 초기화·개발·Sync, 임시 통합과 단일 커밋을 단계별로 검증하는 것이다. MVP 인수에는 두 환경에서 동일 샘플을 각각 끝까지 실행한 증거가 필요하다. 비교 기준은 의미상 대응하는 Feature·참조, 동일 상태 전이 및 게이트 결과이며 독립 발급 UUID와 서술 문장의 바이트 동일성을 요구하지 않는다.
+진행 순서는 공식 호환성 확인, 공통 스키마·게이트, 초기화·개발·Sync, 로컬 검증과 버전 동기화를 단계별로 검증하는 것이다. MVP 인수에는 두 환경에서 동일 샘플을 각각 끝까지 실행한 증거가 필요하다. 비교 기준은 의미상 대응하는 Feature·참조, 동일 상태 전이 및 게이트 결과이며 독립 발급 UUID와 서술 문장의 바이트 동일성을 요구하지 않는다.
 
 ## 11. 확정 정책과 구현 전 확인 사항
 
 | 구분 | 기록 |
 | --- | --- |
-| **확정** | Spec Kit 독립 설치·원형 유지·공식 기능 우선. Codex / Claude Code 동등 지원. 공통 Core CLI 및 Baseline 6개 파일. MVP에 초기화·개발·Sync, 검증 게이트와 명시적 Harness Git Commit 포함 |
+| **확정** | Spec Kit 독립 설치·원형 유지·공식 기능 우선. Codex / Claude Code 동등 지원. 공통 Core CLI 및 Baseline 6개 파일. 초기화·개발·Sync, 영향과 검증 Gate 및 로컬 버전 동기화 |
 | **확정** | 초기화는 프로젝트 전체 분석과 Discovery Gate에 따른 Feature 확정. 개발은 Work Item 완료까지. Sync는 사용자 승인형 외부 변경 정합화. 완료 Work Item은 보존하고 새 변경을 새 UUID로 추적 |
-| **확정** | 로컬 개발과 커밋 분리. 사용자 소유의 병렬 작업 및 기준 관리. 선택 완료 작업만 임시 통합, 통합 검증 전체 실행, 검증된 트리 반영 |
+| **확정** | 작업 분배·세션·Commit·Push·Merge·Rollback은 사용자 책임이다. Git 변경을 별도 엔진의 필수 조건으로 두지 않는다. |
 | **보류** | 선택적 전용 검증 프레임워크. 기존 실행 도구와 판정 정책은 논리적으로 분리해 둔다. 한 프로젝트에서의 두 에이전트 혼용, 설치 래퍼 및 세부 패키징은 별도 검토 대상 |
-| **미결정 · 초기화 이정표** | 초기화 검증과 최초 Git 반영은 별도 이정표다. 자동 커밋은 금지하고 일반 통합은 `completed` Work Item을 선택한다. 최초 Baseline 커밋에 일반 Work Item을 요구할지와 그 생성 방식, 개발 진입 시 초기 Git 기준 확인 방법은 미결정이다. |
-| **미결정 · 스키마 간극** | 초기 분석·변경 범위·영향·판단 근거·차단 소견을 기록한다. `initial_analysis.status`, `analysis_status`, `scope_changes`, `changed_features`, `affected_features`, `assessment`, `evidence`, `decisions`, `assessed_features`, `blocking_findings`의 저장 위치·명칭·필수 여부와 `changed_features` 및 `actual_features`의 중복 처리는 스키마 확정 시 결정한다. 별도 `committed` Worktree 상태 기록은 보류한다. |
+| **미결정 · 초기화 완료 증표** | 작업 공간의 초기 분석 완료를 이후 명령에서 확인할 지속 표현을 정한다. Git 반영은 사용자 이정표다. |
+| **미결정 · 스키마 간극** | 초기 분석·변경 범위·영향·판단 근거·차단 소견을 기록한다. `initial_analysis.status`, `analysis_status`, `scope_changes`, `changed_features`, `affected_features`, `assessment`, `evidence`, `decisions`, `assessed_features`, `blocking_findings`의 저장 위치·명칭·필수 여부와 `changed_features` 및 `actual_features`의 중복 처리는 스키마 확정 시 결정한다. |
 | **PoC 확인 · 공식 검증** | 태스크 생성 전의 공식 명세 품질 체크와 계획 검토에 대한 실제 검증 범위. 분석 결과 파싱과 게이트 매핑. 기존 명세 개정 및 활성 Feature 경로 전달. 공식 Git 훅 및 작업 공간 파일 변경 여부. |
 | **미결정 · Fingerprint와 결과 계약** | 파일 목록 및 검사별 범위를 복원할 방법, 형식·결과 코드·근거 참조의 보존 및 변경 후 유효성, 프로젝트별 필수 검사 선언 위치. |
-| **미결정 · Git과 실패 처리** | 변경 스냅샷 범위·조상·병합 순서, 경로 충돌과 완료 이력 충돌 처리, 최종 대상 ref를 엄격한 기준으로 반영하는 구현 및 체크아웃된 브랜치 처리, 검증 직후 수정 검출, 임시 리소스 정리, Sync 승인 입력 바인딩. 일반 Git 작업 및 Worktree 정리의 구체적 명령은 사용자 책임 계약에 맞춰 결정한다. |
+| **미결정 · 외부 변경 Sync** | 공식 워크플로우를 보존하며 외부 변경 Sync 승인 입력을 더 강하게 바인딩하는 방법을 검토한다. |
 | **미결정 · 유지보수** | 선택 언어·도입 프로젝트, 스키마 버전·마이그레이션, 폐기 Feature의 참조 보존, Core 배포 방식. |
 
 PoC에서 설계와 공식 동작이 다르면 재현 조건과 영향받는 결정을 명시하고 기존 합의를 변경할지 따로 검토한다. [검증 및 미결정 백로그](OPEN-ISSUES.md)
@@ -331,9 +279,9 @@ PoC에서 설계와 공식 동작이 다르면 재현 조건과 영향받는 결
 
 ## 12. 현행 구현과 확인 범위
 
-- 설치된 프로젝트 스킬은 `sdd-init`, `sdd-develop`, `sdd-sync`, `sdd-commit`이다. 프로젝트 스킬이 공식 스킬 활용과 의미 판단을 안내하며 Core는 구조·상태·검증·Git을 점검한다. 초기화 완료 확인, Sync 승인은 스킬 수준이다.
-- `sdd-core discovery-gate PLAN.json`은 에이전트가 제출한 범위, 경계, 요구사항 보존, 명세 품질과 경로별 근거를 바탕으로 판정한다. 신규 Feature는 `--issue-id`를 사용한 READY 판정에서만 ID를 받는다. 확정 자료와 사용자 판단은 기존 Markdown에 기록한다. Source Map 검증은 과거 파일의 추가 메타데이터를 읽을 수 있고, 변경된 Source Map을 통합할 때는 구현·계약 파일 경로로 정규화한다.
+- 현행 주요 스킬은 `sdd-init`, `sdd-develop`, `sdd-sync`다. 프로젝트 스킬이 공식 스킬 활용과 의미 판단을 안내하며 Core는 구조·상태·검증·Git을 점검한다. 초기화 완료 확인, Sync 승인은 스킬 수준이다.
+- `sdd-core discovery-gate PLAN.json`은 에이전트가 제출한 범위, 경계, 요구사항 보존, 명세 품질과 경로별 근거를 바탕으로 판정한다. 신규 Feature는 `--issue-id`를 사용한 READY 판정에서만 ID를 받는다. 확정 자료와 사용자 판단은 기존 Markdown에 기록한다. Source Map 검증은 과거 파일의 추가 메타데이터를 읽을 수 있고, 구버전 Source Map은 승인된 버전 동기화에서 구현·계약 파일 경로로 정규화한다.
 - `sdd-core complete ID PLAN.json`은 `actual_features`, `paths`, `findings`, `evidence`, `checks`를 입력받는다. 경로를 중복 제거하고 정렬한 뒤 경로·파일 SHA-256 쌍의 압축 JSON을 다시 SHA-256으로 해시한다. 제공된 검증을 실행한 뒤 입력을 다시 해시하고 일치할 때 결과를 저장한다. 검사별 재사용과 유효성 추적은 구현되지 않았다.
-- `preview`와 `commit`은 `target`, `message`, `safe_worktrees`, `sources[]`를 읽는다. 각 소스는 `worktree`, `work_items`, `paths`를 포함한다. 커밋에는 `reviewed_base`, `reviewed_tree`, `findings`, `checks`가 추가로 필요하다. 같은 저장소의 현재 Worktree 파일을 사용하며, 기존 커밋이 있고 대상 로컬 브랜치가 체크아웃되지 않아야 한다. 통합은 선택 순서대로 진행한다.
-- Codex 데모에서 Greenfield 초기화와 Work Item 개발·브라우저 검증·완료를 확인했다. 최신 Discovery 절차의 공식 스킬 호출과 종단간 실행 검증은 남아 있다. Claude Code는 스킬 설치 형태를 확인했다. Git 통합은 별도 임시 저장소에서 검증했다. 실제 Sync, 최초 Baseline 커밋, Claude Code 종단간 검증은 남아 있다.
+- Core 0.2.0은 `version-check`와 `version-sync`를 제공한다. 기존 Git 쓰기 명령과 통합 Skill을 제거했다. [버전 동기화 실행 계약](version-sync.md)에 표식, 입력, 승인과 실패 처리를 명시한다.
+- Codex 데모에서 Greenfield 초기화와 Work Item 개발·브라우저 검증·완료를 확인했다. 최신 Discovery 절차의 공식 스킬 호출과 종단간 실행 검증은 남아 있다. Claude Code는 스킬 설치 형태를 확인했다. 실제 Sync와 Claude Code 종단간 검증은 남아 있다.
 - 자세한 구현 경계와 검증 계획은 [설계와 실행 가이드](SpecThread-설계와-실행-가이드.md), [검증 및 미결정 백로그](OPEN-ISSUES.md)를 참고한다.

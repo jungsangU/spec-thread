@@ -60,7 +60,7 @@ specify init sdd-codex-demo --integration codex
 specify init sdd-claude-demo --integration claude
 ```
 
-생성된 폴더로 이동합니다. 향후 Harness 커밋을 검증할 샘플이라면 사용자가 해당 폴더를 Git 저장소로 준비합니다. Spec Kit의 Git 초기화·브랜치 기능은 선택적 `git` 확장에 있습니다. Harness 호환성 테스트용 기본 예제에서는 이 확장을 설치하지 않습니다. [공식 Core 명령](https://github.github.com/spec-kit/overview/core.html)
+생성된 폴더로 이동합니다. 프로젝트 Git 이력을 운영할 샘플이라면 사용자가 해당 폴더를 Git 저장소로 준비합니다. Spec Kit의 Git 초기화·브랜치 기능은 선택적 `git` 확장에 있습니다. Harness 호환성 테스트용 기본 예제에서는 이 확장을 설치하지 않습니다. [공식 Core 명령](https://github.github.com/spec-kit/overview/core.html)
 
 ### 기존 프로젝트에 Spec Kit 처음 설치
 
@@ -100,4 +100,11 @@ specify integration install claude
 
 [Harness README](../README.md)의 로컬 설치 절차에 따라 Core CLI와 프로젝트용 스킬을 설치합니다. 대상 프로젝트 루트에서 `sdd-core install-skills codex` 또는 `sdd-core install-skills claude`를 실행한 뒤 새 세션을 시작합니다.
 
-Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`으로 초기 분석을 실행합니다. 공식 `specify init`만 마친 시점에는 Harness Baseline이 생성되기 전입니다. 초기 분석을 마치면 Feature별 공식 spec·plan과 `.specify/baseline/`의 6개 파일, 초기 검증 결과를 확인합니다. 개발·외부 변경 정합화·명시적 커밋의 호출 방식과 현재 Git 지원 범위는 README에 정리했습니다.
+Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`으로 초기 분석을 실행합니다. 공식 `specify init`만 마친 시점에는 Harness Baseline이 생성되기 전입니다. 초기 분석을 마치면 Feature별 공식 spec·plan과 `.specify/baseline/`의 6개 파일, 초기 검증 결과를 확인합니다. 개발과 외부 변경 정합화 호출은 README에 정리했습니다. Git 반영은 사용자가 수행합니다.
+
+
+## Core 취득과 교체
+
+제품 저장소는 사용자가 Git clone/pull 또는 GitHub ZIP 다운로드로 취득합니다. 설치할 Core 배포본과 Codex 또는 Claude Code 중 프로젝트에 사용할 한 종류를 선택합니다. 공식 Spec Kit는 공식 경로에서 별도로 관리합니다. 설계 버전 1.0은 Core에 설치할 패키지 버전을 지정하지 않습니다.
+
+Core 교체 이후의 비교·승인·검증과 실패 처리 계약은 [버전 동기화 설계](design/version-sync.md)를 따릅니다. Core 0.2.0의 `version-check`로 일치 상태를 확인하고, 불일치는 `version-sync`의 미리보기와 사용자 승인으로 처리합니다.

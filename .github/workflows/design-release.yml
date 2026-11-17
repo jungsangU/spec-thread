@@ -1,0 +1,30 @@
+name: Publish design release
+
+on:
+  push:
+    tags:
+      - "design-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/design-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Extract notes for the pushed design tag
+        env:
+          DESIGN_TAG: ${{ github.ref_name }}
+        run: python3 scripts/design-release-notes.py "$DESIGN_TAG" > "$RUNNER_TEMP/design-notes.md"
+      - name: Publish the design release
+        env:
+          DESIGN_TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$DESIGN_TAG" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --latest=false --title "SpecThread Design ${DESIGN_TAG#design-v}" \
+            --notes-file "$RUNNER_TEMP/design-notes.md"

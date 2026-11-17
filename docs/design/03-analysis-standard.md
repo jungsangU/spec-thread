@@ -48,6 +48,10 @@ flowchart TD
   P -->|통과| I["프로젝트 초기 분석 완료"]
 ~~~
 
+### 현재 Core 제출 계약
+
+`sdd-core discovery-gate PLAN.json`은 `mode`(`greenfield` 또는 `brownfield`), `candidate`(잠정명 또는 초안 경로), `checks`를 받는다. 두 경로 모두 `scope`, `boundaries`, `requirements`, `spec_quality`를 제출하고, Greenfield는 `workflow`, Brownfield는 `current_behavior`를 추가한다. 각 점검에는 `status`(`verified`, `condition`, `blocked`)와 구체적인 `evidence`를 기록한다. 미해결 항목에는 `next_step`을 추가한다. 비핵심이라는 근거와 `critical: false`가 있는 `condition`만 조건부로 처리한다. Core의 출력은 후보, 판정, 미해결 항목이다. 이미 확정한 Feature는 기존 ID를 유지한다. 신규 후보에는 `--issue-id`로 READY가 확인될 때만 UUID가 반환된다.
+
 ## 초기화 완료와 재개
 
 Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.md`, `data-model.md`, `contracts/`, `quickstart.md` 등)를 작성하고 Baseline 여섯 파일을 검증한다. `scaffold`는 누락 파일의 틀을 만들고 기존 파일을 보존한다. 범위 내 Feature가 모두 확정되고 전체 조사와 의미 검토, 필요한 산출물 및 참조 검증을 마쳤으며 차단 소견이 없을 때 초기 분석을 완료한다. 새 `tasks.md`는 개발 때 만들고 기존 태스크는 보존한다. 초기화에는 적용 가능한 공식 명세 품질 검사, spec·plan 정합성과 Core 구조 검사를 조합한다. 태스크를 요구하는 `analyze`와 구현 이후의 `converge`는 각 전제가 갖춰진 단계에서 실행한다.

@@ -3,6 +3,9 @@ name: sdd-init
 description: Discover and verify the full project scope and initialize the SpecThread Baseline.
 ---
 
+Before creating any artifacts, run `sdd-core version-check --agent AGENT`. Set AGENT to the current agent kind (`codex` or `claude`).
+If the gate blocks, stop the requested operation and report why. Core replacement is a user action. If asked to help synchronize versions, prepare the documented `sdd-core version-sync PLAN.json` preview with known existing verification commands and concrete input paths. Present the preview and wait for explicit approval before passing its hash to `--confirm`. Check the approved scope again before continuing. Git and rollback belong to the user.
+
 Run only on explicit user request from the target project root. Verify the official Spec Kit integration, read the constitution and inspect existing official artifacts. Confirm scope or mode only if ambiguous. Run `sdd-core scaffold` to create missing Baseline files without replacing existing files. Use the [Discovery gate procedure](#discovery-gate) below.
 
 ## Discovery

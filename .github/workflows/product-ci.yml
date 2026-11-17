@@ -1,0 +1,35 @@
+name: SpecThread product CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  code-tests:
+    name: Code tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install .
+      - run: python -m unittest discover -s tests
+  design-docs:
+    name: Design structure and links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save --package-lock=false marked@17.0.5 @viz-js/viz@3.25.0
+      - run: node scripts/check-design-docs.mjs
+      - run: node scripts/render-design-guide.mjs --check
+      - run: python3 scripts/design-release-notes.py "design-v$(sed -n 's/^# SpecThread 설계 \([0-9.]*\)$/\1/p' docs/design/README.md)"
