@@ -27,4 +27,6 @@ sdd-core install-skills codex
 
 ## Discovery와 설계 가이드
 
+AI와 설계 작업을 시작할 때는 [AGENTS.md](AGENTS.md)를 먼저 읽고, [설계 목차](docs/design/README.md)에서 관련 명세와 결정 기록을 확인합니다.
+
 `sdd-init`은 공식 Spec Kit의 명세 작성·명확화를 재사용하고 `sdd-core discovery-gate`로 Feature 확정 조건을 검사합니다. 최신 절차는 [설계 문서와 HTML 가이드](docs/design/README.md)에서 확인할 수 있습니다. 기존 설치 버전과 스킬이 다르면 동기화 미리보기로 적용 대상과 품질 검사를 검토합니다.
