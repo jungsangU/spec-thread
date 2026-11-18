@@ -3,6 +3,7 @@
 2026-11-17 확정 설계. 초기 설계 0.1에서 발전한 첫 정식 기준이며 Core 배포 패키지 버전과 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
 
 - [설계 철학과 실행 가이드 Markdown](SpecThread-설계와-실행-가이드.md) · [HTML](SpecThread-설계와-실행-가이드.html)
+- [전체 기능 목록표 HTML](SpecThread-전체-기능목록.html) · 대기능·소기능·상세 설명·소유·상태별 탐색
 - [전체 아키텍처](architecture.md) · [설치와 사용자 책임](../SpecThread-설치-매뉴얼.md) · [Core 버전 동기화](version-sync.md)
 - [통합 상세 설계서](SpecThread-통합-상세-설계서.md)
 - [결정 기록](DECISIONS.md) · [검증 및 미결정 백로그](OPEN-ISSUES.md)
