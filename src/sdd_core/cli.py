@@ -9,10 +9,14 @@ from uuid import UUID
 
 from . import __version__
 from .baseline import project_path, read_records, scaffold, validate
-from .checks import run_checks
+from .analysis import develop_check, record_analysis, register_feature
+from .evidence import content_hash, verify_evidence
+from .gates import (execute_gate, gate_status, prepare_gate_plan, register_gates,
+                    require_gates, work_item)
+from .lifecycle import prepare_retirement, retire
 from .discovery import assess_discovery
 from .version_sync import apply_sync, digest, install_skills, json_bytes, plan_sync, require_project
-from .work_items import check_findings, read_plan, update
+from .work_items import check_findings, expand_scope, read_plan, update
 
 
 def uuid7():
@@ -57,7 +61,8 @@ def main(argv=None):
     hash_command = commands.add_parser("fingerprint")
     hash_command.add_argument("paths", nargs="+")
     start = commands.add_parser("start")
-    start.add_argument("features", nargs="*")
+    start.add_argument("features", nargs="+")
+    start.add_argument("--related", action="append", default=[])
     transition = commands.add_parser("transition")
     transition.add_argument("id")
     transition.add_argument("status", choices=["in_progress", "suspended", "failed"])
@@ -70,6 +75,28 @@ def main(argv=None):
     sync = commands.add_parser("version-sync")
     sync.add_argument("plan", type=Path)
     sync.add_argument("--confirm", metavar="APPROVAL_HASH")
+    for name in ("analysis-record", "feature-register"):
+        commands.add_parser(name).add_argument("plan", type=Path)
+    development = commands.add_parser("develop-check")
+    development.add_argument("features", nargs="+")
+    retirement = commands.add_parser("feature-retire")
+    retirement.add_argument("id")
+    retirement.add_argument("plan", type=Path)
+    retirement.add_argument("--confirm")
+    scope = commands.add_parser("scope-expand")
+    scope.add_argument("id")
+    scope.add_argument("plan", type=Path)
+    gates = commands.add_parser("gates")
+    gates.add_argument("id")
+    gates.add_argument("plan", type=Path)
+    gates.add_argument("--confirm")
+    gate_run = commands.add_parser("gate-run")
+    gate_run.add_argument("id")
+    gate_run.add_argument("gate")
+    gate_run.add_argument("--review", type=Path)
+    stages = commands.add_parser("stage-check")
+    stages.add_argument("id")
+    stages.add_argument("stage", choices=["develop", "verify", "complete"])
     install = commands.add_parser("install-skills")
     install.add_argument("agent", choices=["codex", "claude"])
     args = parser.parse_args(argv)
@@ -99,7 +126,8 @@ def main(argv=None):
         elif args.command == "start":
             require_project(root, scope=args.features)
             identifier = str(uuid7())
-            update(root, identifier, "pending", args.features)
+            develop_check(root, args.features)
+            update(root, identifier, "pending", args.features, related=args.related)
             print(identifier)
         elif args.command == "transition":
             if args.status == "in_progress":
@@ -113,23 +141,79 @@ def main(argv=None):
             if not isinstance(actual, list) or any(not isinstance(item, str) for item in actual):
                 raise ValueError("actual_features에는 Feature UUID 목록이 필요합니다")
             require_project(root, scope=work_scope(root, args.id) + actual)
+            develop_check(root, work_scope(root, args.id) + actual)
             check_findings(plan.get("findings"))
-            paths = plan["paths"]
-            if not isinstance(paths, list) or not paths:
-                raise ValueError("Fingerprint 검증 경로가 필요합니다")
-            before = fingerprint(root, paths)
-            run_checks(root, plan.get("checks"))
-            if before != fingerprint(root, paths):
-                raise ValueError("검증 도중 입력 파일이 변경됐습니다")
+            if not plan["findings"]:
+                raise ValueError("완료 영향 판정 근거가 필요합니다")
+            _, item = work_item(root, args.id, editable=True)
+            if set(actual) - set(item["declared_features"]):
+                raise ValueError("실제 변경 범위를 선언 범위에 반영하고 Gate 집합을 재검토하세요")
+            statuses = require_gates(root, item, "complete")
+            evidence = verify_evidence(root, [row["ref"] for row in plan["evidence"]])
+            inputs = {}
+            for status in statuses:
+                runs = item["gate_results"][status["id"]]
+                inputs.update(runs[-1]["inputs"])
+            if not inputs:
+                raise ValueError("Gate 검증 입력 기록이 필요합니다")
             update(root, args.id, "completed", {
-                "actual_features": plan["actual_features"],
-                "findings": plan["findings"],
+                "actual_features": actual, "findings": plan["findings"],
                 "validation": {
-                    "status": "passed",
-                    "fingerprint": before,
-                    "evidence": plan["evidence"],
+                    "status": "passed", "fingerprint": content_hash(inputs),
+                    "evidence": [{"ref": ref} for ref in evidence],
+                    "gate_status": statuses,
                 },
             })
+        elif args.command == "analysis-record":
+            require_project(root, allow_quality_block=True)
+            record_analysis(root, read_plan(args.plan))
+        elif args.command == "feature-register":
+            require_project(root)
+            print(register_feature(root, read_plan(args.plan), str(uuid7())))
+        elif args.command == "develop-check":
+            require_project(root, scope=args.features)
+            develop_check(root, args.features)
+            print("대상 Feature 개발 진입 Gate 통과")
+        elif args.command == "scope-expand":
+            plan = read_plan(args.plan)
+            features = plan.get("features")
+            if not isinstance(features, list) or any(not isinstance(value, str) for value in features):
+                raise ValueError("범위 확장에는 Feature UUID 목록이 필요합니다")
+            require_project(root, scope=work_scope(root, args.id) + features)
+            expand_scope(root, args.id, features, plan.get("reason"))
+        elif args.command == "gates":
+            require_project(root, scope=work_scope(root, args.id))
+            preview = prepare_gate_plan(root, args.id, read_plan(args.plan))
+            approval = content_hash(preview)
+            if args.confirm is None:
+                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
+            elif args.confirm != approval:
+                raise ValueError("승인한 Gate 정의/입력이 변경됐습니다")
+            else:
+                register_gates(root, args.id, preview)
+        elif args.command == "gate-run":
+            require_project(root, scope=work_scope(root, args.id))
+            develop_check(root, work_scope(root, args.id))
+            result = execute_gate(root, args.id, args.gate,
+                                  read_plan(args.review) if args.review else None)
+            print(json_bytes(result).decode(), end="")
+            if result["status"] != "PASS":
+                return 2
+        elif args.command == "stage-check":
+            require_project(root, scope=work_scope(root, args.id))
+            develop_check(root, work_scope(root, args.id))
+            _, item = work_item(root, args.id)
+            print(json_bytes(require_gates(root, item, args.stage)).decode(), end="")
+        elif args.command == "feature-retire":
+            require_project(root, allow_quality_block=True)
+            preview, updated, writes = prepare_retirement(root, args.id, read_plan(args.plan))
+            approval = content_hash(preview)
+            if args.confirm is None:
+                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
+            elif args.confirm != approval:
+                raise ValueError("승인한 아카이브 입력이 변경됐습니다")
+            else:
+                retire(root, preview, updated, writes)
         elif args.command == "install-skills":
             install_skills(root, args.agent)
         elif args.command == "version-check":

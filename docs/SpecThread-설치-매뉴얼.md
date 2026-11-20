@@ -107,4 +107,6 @@ Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`으로 초기 분석
 
 제품 저장소는 사용자가 Git clone/pull 또는 GitHub ZIP 다운로드로 취득합니다. 설치할 Core 배포본과 Codex 또는 Claude Code 중 프로젝트에 사용할 한 종류를 선택합니다. 공식 Spec Kit는 공식 경로에서 별도로 관리합니다. 설계 버전 1.0은 Core에 설치할 패키지 버전을 지정하지 않습니다.
 
-Core 교체 이후의 비교·승인·검증과 실패 처리 계약은 [버전 동기화 설계](design/version-sync.md)를 따릅니다. Core 0.2.0의 `version-check`로 일치 상태를 확인하고, 불일치는 `version-sync`의 미리보기와 사용자 승인으로 처리합니다.
+Core 교체 이후의 비교·승인·검증과 실패 처리 계약은 [버전 동기화 설계](design/version-sync.md)를 따릅니다. Core 0.3.0의 `version-check`로 일치 상태를 확인하고, 불일치는 `version-sync`의 미리보기와 사용자 승인으로 처리합니다.
+
+0.3.0으로 동기화한 기존 프로젝트는 `schema_version: 1`로 변환되며 과거 분석 상태를 추정하지 않습니다. 설치 후 `analysis-record`와 `develop-check`로 대상 분석을 확인하고, 개발·검증 전에 필수 Gate를 등록합니다. 정확한 계획 필드는 [초기 분석](design/03-analysis-standard.md)과 [검증 계약](design/06-verification.md)을 따릅니다.

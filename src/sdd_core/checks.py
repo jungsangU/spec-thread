@@ -1,6 +1,12 @@
 import subprocess
 
 
+class CheckFailure(ValueError):
+    def __init__(self, result):
+        self.result = result
+        super().__init__(f"검증 실패 ({result['exit_code']}): {result['command'][0]}")
+
+
 def check_commands(checks):
     if not isinstance(checks, list) or not checks:
         raise ValueError("실행할 필수 검증 명령이 필요합니다")
@@ -13,7 +19,12 @@ def check_commands(checks):
 
 def run_checks(root, checks):
     check_commands(checks)
+    results = []
     for command in checks:
-        result = subprocess.run(command, cwd=root)
-        if result.returncode:
-            raise ValueError(f"검증 실패 ({result.returncode}): {command[0]}")
+        process = subprocess.run(command, cwd=root, capture_output=True, text=True, errors="replace")
+        result = {"command": command, "exit_code": process.returncode,
+                  "stdout": process.stdout, "stderr": process.stderr}
+        results.append(result)
+        if process.returncode:
+            raise CheckFailure(result)
+    return results

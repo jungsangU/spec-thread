@@ -20,21 +20,27 @@ ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync")
 RETIRED = "sdd-commit"
 LEGACY_HASHES = {
     "sdd-init": {
+        "f53a9d176581852c9c518dbe01b95c60684ee7eda030dad2e011225168691031",
         "66311a9176a00971f44b74ed7c196a4a209a8ac51ddde7d7230b180f6cfa7f2d",
         "c04b4c41ef5b1796178ddd7626b6837eed784091168b6e781eb869072bc029bc",
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "dcfd91eba334c1f1872e82e45143d80c78694c70d9277ffca0c3e785eb3e55e9",
         "377b6f6defc8e9c0fa8c47df90a38c43cb94a9910e0f50f60efe850d1f4889a0",
         "73f439156645c2ee0b36f703b58256653e00634f6a7e145dc13d3fee4fa7b3bc",
     },
     "sdd-sync": {
+        "4f1aa59fb18144fccf7112001b8e0e5bc90104363d4759b307ebdd0be6eef3d4",
         "b418997815ac92a3cccfdad473e6ae7249e4793a23636fc14437c2cd2a7595af",
         "e8527ad808b217bb2e7bf9687b3e4a0cd5541bab1600db6421b5a73a3d97d916",
     },
     RETIRED: {"a0845458f6d89eca648c37974745de424f707e86684d3b102ac4e345410d6b92"},
 }
-MIGRATIONS = {"0.1.0": ("0.2.0", "path-only-source-map")}
+MIGRATIONS = {
+    "0.1.0": ("0.2.0", "path-only-source-map"),
+    "0.2.0": ("0.3.0", "feature-lifecycle-and-gates"),
+}
 
 
 def digest(data):
@@ -176,6 +182,11 @@ def require_project(root, agent=None, scope=None, *, allow_quality_block=False):
         identifiers = {record["id"] for record in read_records(root, "features.yaml", "features")}
         if set(scope) - identifiers:
             raise ValueError("작업 범위에 등록되지 않은 Feature가 있습니다")
+        states = {row["id"]: row.get("status") for row in read_records(root, "features.yaml", "features")}
+        if any(states[name] != "active" for name in scope):
+            raise ValueError("작업 범위에 폐기된 Feature가 있습니다")
+    if project_path(root, BASELINE + "features.yaml").is_file():
+        validate(root)
     return project
 
 
@@ -226,7 +237,7 @@ def snapshot(root, paths):
 
 
 def plan_sync(root, config):
-    validate(root)
+    validate(root, legacy=True)
     project = read_marker(root, PROJECT)
     agent = installed_agent(root, config.get("agent"), project)
     from_version = config.get("from_version")
@@ -275,17 +286,37 @@ def plan_sync(root, config):
                     document, allow_unicode=True, sort_keys=False,
                 ).encode("utf-8")
 
+    if any(step["migration"] == "feature-lifecycle-and-gates" for step in steps):
+        source_name = BASELINE + "features.yaml"
+        document = yaml.load(read_file(root, source_name), Loader=BaselineLoader)
+        version = document.get("schema_version")
+        if version is not None and (type(version) is not int or version != 1):
+            raise ValueError("미지원 Baseline 스키마입니다")
+        if version is None:
+            document["schema_version"] = 1
+            document["analysis"] = {"status": "not_started", "unanalysed": []}
+            document.setdefault("path_redirects", {})
+            for feature in document["features"]:
+                feature.setdefault("status", "active")
+            outputs[source_name] = yaml.safe_dump(
+                document, allow_unicode=True, sort_keys=False,
+            ).encode("utf-8")
+    if read_file(root, BASELINE + "features.yaml") is not None and not steps:
+        validate(root)
+
     for name in (*outputs, PROJECT):
         managed_path(root, name)
 
-    features = read_records(root, "features.yaml", "features")
+    all_features = read_records(root, "features.yaml", "features")
+    features = [feature for feature in all_features if feature.get("status", "active") == "active"]
     checks = quality_plan(config, {feature["id"] for feature in features})
     validation_paths = {
         PROJECT, skill_marker(agent), *(skill_path(agent, name) for name in (*ACTIVE, RETIRED)),
         *(BASELINE + name for name in ("project.md", "architecture.md", "decisions.md",
                                         "features.yaml", "source-map.yaml", "work-items.yaml")),
-        *(f"{feature['spec_path']}/{name}" for feature in features for name in ("spec.md", "plan.md")),
+        *(f"{feature['spec_path']}/{name}" for feature in all_features for name in ("spec.md", "plan.md")),
         *(name for row in read_records(root, "source-map.yaml", "mappings")
+          if row["feature_id"] in {feature["id"] for feature in features}
           for name in source_paths(row["sources"])),
     }
     for check in checks:

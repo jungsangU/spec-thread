@@ -1,6 +1,6 @@
 # SpecThread 통합 상세 설계서
 
-설계 1.0 · 2026-11-17 · MVP 설계 기준 · 재현 대상 GitHub Spec Kit **v1.4.0** (`0019fa1`)
+설계 1.0 · 2026-11-21 · MVP 설계 기준 · 재현 대상 GitHub Spec Kit **v1.4.0** (`0019fa1`)
 
 이 문서는 SDD 산출물 관리 표준 대화의 합의를 구현 가능한 단위로 정리한다. **확정**은 합의한 정책, **보류**는 MVP 이후 확장 후보, **미결정**은 구현 계약의 선택이 남은 항목, **PoC 확인**은 실제 설치·실행으로 확인해야 할 항목이다. 이 문서의 공식 기능 대조는 v1.4.0에 고정했다. [v1.4.0 릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
 
@@ -51,19 +51,26 @@ Greenfield(그린필드)와 Brownfield(브라운필드)에 동일한 산출물 �
 | `source-map.yaml` | `mappings[]`에 `feature_id`, `sources[]`. 각 항목의 프로젝트 상대 `path`로 주요 구현·계약 파일을 참조 |
 | `work-items.yaml` | `work_items[]`에 `id`, `status`, `declared_features`, `actual_features`, 최종 `validation` 요약. 예시의 검증 필드는 `status`, `fingerprint`, `evidence[].ref` |
 
-Markdown에는 서술 규칙만 적용한다. 아래 YAML은 합의된 최소 예시를 엮은 것이다. 64자리 해시는 형식 예시다.
+Markdown에는 서술 규칙만 적용한다. 아래 YAML은 합의된 최소 예시를 엮은 것이다. 64자리 해시는 형식 예시다. 아래 예시는 레코드 구조를 설명하며 실제 개발에는 analysis-record와 필수 Gate 정의·결과가 추가로 필요하다.
 
 ```yaml
 # features.yaml
+schema_version: 1
+analysis:
+  status: not_started
+  unanalysed: []
+path_redirects: {}
 features:
   - id: "019a1234-5678-7abc-8def-123456789abc"
     name: document-parsing
+    status: active
     spec_path: specs/001-document-parsing
     dependencies:
       - feature_id: "019a1234-5678-7abc-8def-123456789abd"
         type: api
   - id: "019a1234-5678-7abc-8def-123456789abd"
     name: document-storage
+    status: active
     spec_path: specs/002-document-storage
     dependencies: []
 ```
@@ -93,8 +100,8 @@ work_items:
 ```
 
 - 신규 Feature는 확정 시, Work Item(워크 아이템)은 생성 시 UUID v7을 독립 발급한다. 잠정 Feature는 확정 Feature 레코드와 의존관계에 등록하지 않는다. ID는 불변·재사용 금지다. 공식 디렉터리 번호, 슬러그, 브랜치명과 별개다. 이름 변경만으로 경로를 자동 변경하지 않는다. 중복 UUID와 서로 다른 UUID의 동일 Feature/경로 등록은 각각 식별해 후자는 의미 검토에 보낸다.
-- Work Item 하나에 여러 Feature가 연결될 수 있다. 선언 범위는 시작 시 예상, 실제 범위는 변경이 확인된 Feature다. 영향받은 Feature와 검증 대상 Feature에는 관찰이나 재검증만 필요한 항목도 포함할 수 있다. 범위 변경 이유를 남긴다. `related_work_items`는 필요할 때만 명시하는 선택적 UUID 참조다.
-- 의존 유형 초기 예시는 `api`, `data`, `event`, `runtime`이다. 여러 의존과 실제 순환을 허용한다. 역방향 관계는 계산한다. 순환은 기본 경고이며 중대한 설계 충돌·장애 위험이 확인되면 차단한다. Feature 분할·병합 시 기존 ID를 새 개념에 재사용하거나 의존관계를 일괄 승계하지 않는다. 이전 참조의 보존 표현은 미결정이다.
+- Work Item 하나에 여러 Feature가 연결될 수 있다. 선언 범위는 시작 시 예상, 실제 범위는 변경이 확인된 Feature다. 영향받은 Feature와 검증 대상 Feature에는 관찰이나 재검증만 필요한 항목도 포함할 수 있다. 범위 변경 이유를 남긴다. `related_work_items`는 관련 작업 UUID 참조다. 실패 재시도 시 새 Work Item이 이전 실패 UUID를 참조한다.
+- 의존 유형 초기 예시는 `api`, `data`, `event`, `runtime`이다. 여러 의존과 실제 순환을 허용한다. 역방향 관계는 계산한다. 순환은 기본 경고이며 중대한 설계 충돌·장애 위험이 확인되면 차단한다. Feature 분할·병합 시 기존 ID를 새 개념에 재사용하거나 의존관계를 일괄 승계하지 않는다. 활성·폐기 Feature는 모두 영구 보존하고 폐기 이유·후속 UUID·결정 근거를 추적한다. 폐기 공식 산출물은 `docs/sdd/archive/`에 보존하고 관련 경로·링크·증거 참조를 검증한다. UUID는 유지하고 위치 정보 `spec_path`를 갱신한다. 상세 계약은 [Feature 생명주기](01-artifact-model.md)를 따른다.
 - Core는 UUID 형식·중복, 참조 존재, 공식 산출물 경로, 상태 값, 증거와 Fingerprint의 형식·참조 일관성을 검사한다. 파일 매핑의 의미와 계약의 실제 동작은 에이전트가 근거로 판단한다.
 - 검증 요약과 증거 참조를 Work Item별로 누적 보존한다. 태스크 내용·상세 로그·중간 분석 그래프를 Baseline에 복사하지 않는다. 최종 영향 판정과 근거, 사용자 결정, 차단 소견을 남기는 정책은 확정이다. 필드명 및 필수 여부가 마지막 최소 예시에 반영되지 않은 항목은 §11에 정리했다.
 
@@ -136,6 +143,9 @@ flowchart TD
   X --> V
   V --> D
   C --> P["공식 계획·필요 설계 자료 · Baseline 검증"]
+  P --> ENTRY{"대상 개발 진입 조건 충족?"}
+  ENTRY -->|예| DEV["partial에서도 대상 Feature 개발"]
+  ENTRY -->|아니오| HOLD["대상 개발 보류"]
   P -->|실패| J["정상 결과 보존 · 실패 범위 재검증"]
   J -->|경계나 요구사항 변경 시| V
   J -->|계획 또는 구조만 보완| P
@@ -148,11 +158,11 @@ flowchart TD
 
 ### `sdd-develop` — 사용자 요청부터 Work Item 완료까지
 
-1. 프로젝트 전체 초기화가 끝났는지 확인한다. 기존 Feature는 Baseline, 공식 산출물, 소스로 매칭한다. 확실한 기존 Feature를 우선 재사용하고, 모호할 때만 확인한다. 새로운 Feature에는 명세와 경계를 확정한 뒤 UUID를 발급한다. 잠정 Feature는 선언·실제 변경 목록에 등록하지 않는다.
-2. 사용자 요청에 Work Item UUID 하나를 부여하고 선언 Feature를 기록한다. Feature별로 공식 컨텍스트를 선택하여 확정된 신규 명세 또는 기존 명세를 사용한다. 필요한 개정, 계획·태스크·분석·구현·수렴을 수행한다.
+1. 프로젝트 분석 상태와 대상 Feature의 개발 진입 조건을 확인한다. `not_started`는 차단한다. `partial`은 대상 활성 Feature가 READY이고 미분석 영역과의 핵심 의존성 위험 없음이 검증될 때 허용한다. `complete`에서도 대상 조건을 평가한다. 기존 Feature는 Baseline, 공식 산출물, 소스로 매칭한다. 확실한 기존 Feature를 우선 재사용하고, 모호할 때만 확인한다. 새로운 Feature에는 명세와 경계를 확정한 뒤 UUID를 발급한다. 잠정 Feature는 선언·실제 변경 목록에 등록하지 않는다.
+2. 사용자 요청에 Work Item UUID 하나를 부여하고 선언 Feature를 기록한다. 개발·검증 진입 전에 Skill이 적용 필수 Gate 집합과 적용 근거를 확정한다. Feature별로 공식 컨텍스트를 선택하여 확정된 신규 명세 또는 기존 명세를 사용한다. 필요한 개정, 계획·태스크·분석·구현·수렴을 수행한다.
 3. 개발 중 요구사항이나 범위가 변하면 동일한 작업의 영향받은 공식 단계로 돌아간다. 계약 변화와 실제 의존성을 분석하고 안전한 범위 확장은 사유를 기록한 뒤 진행한다.
 4. 범위 확정, 관련 공식 단계 완료, 주요 코드·계약 변경 및 최종 검증 같은 단계 경계에서 Baseline과 Source Map을 갱신한다. 구조 갱신이 실패하면 현재 코드와 공식 산출물을 보존하고 완료를 보류한다.
-5. 모든 관련 Feature의 필수 로컬 검증과 Baseline 갱신에 성공하면 최종 결과·증거·Fingerprint를 기록하고 `completed`로 전환한다. Git 반영은 사용자가 수행한다.
+5. 모든 관련 Feature의 적용 필수 Gate가 유효한 PASS이고 Baseline 갱신에 성공하면 최종 결과·증거·Fingerprint를 기록하고 `completed`로 전환한다. Git 반영은 사용자가 수행한다.
 
 ### `sdd-sync` — 예외적인 외부 변경 정합화
 
@@ -165,6 +175,7 @@ flowchart TD
 flowchart TD
   I["sdd-init · 경로별 Discovery와 Gate"] --> R["Feature 확정 · 공식 설계와 Baseline 검증 완료"]
   R --> D["sdd-develop · Work Item"]
+  P["partial · 대상 READY · 핵심 의존성 위험 없음 검증"] --> D
   D --> F["공식 Feature 단계 · 구현 · 영향 분석"]
   F --> L{"로컬 필수 검증 / Baseline 기록"}
   L -->|실패| F
@@ -187,13 +198,13 @@ stateDiagram-v2
   in_progress --> in_progress: 복구 가능한 검증 실패 / 수정과 재검증
   in_progress --> suspended: 사용자 중단 또는 판단 대기
   suspended --> in_progress: 현재 산출물 확인 후 사용자 주도 재개
-  in_progress --> completed: 필수 로컬 검증 통과 및 기록 성공
+  in_progress --> completed: 모든 적용 필수 Gate의 유효한 PASS 및 기록 성공
   in_progress --> failed: 작업 실패로 종료
   completed --> [*]
   failed --> [*]
 ~~~
 
-`in_progress`는 마지막 저장 상태다. 실제 실행 중인 프로세스를 나타내지 않는다. `failed`의 상세 판정 및 재처리 규칙은 미결정이며 도식의 종료는 해당 실행의 종료를 뜻한다. 완료 작업은 다시 열지 않는다. 후속 변경은 새 UUID의 Work Item으로 기록하고 필요하면 이전 작업을 참조한다. 초기 분석의 의미상 상태는 `not_started → partial → complete`로 추적하며 저장 위치와 필수 여부는 §11에서 추적한다. Discovery Gate는 Feature 확정 판정으로 초기 분석 전체 상태와 별도로 관리한다.
+`in_progress`는 마지막 저장 상태다. 실제 실행 중인 프로세스를 나타내지 않는다. `failed`는 최종 종료 상태이며 동일 작업을 재개하지 않는다. 재시도는 새 UUIDv7 Work Item으로 생성하고 이전 실패 작업을 참조한다. 수정 가능한 테스트·빌드·검증 오류는 `in_progress`에서 수정·재검증하고 의도적 보류는 `suspended`로 처리한다. 완료 작업은 다시 열지 않는다. 후속 변경은 새 UUID의 Work Item으로 기록하고 필요하면 이전 작업을 참조한다. 초기 분석의 의미상 상태는 `not_started → partial → complete`로 추적하며 기존 Baseline 기록과 연결해 판정하며 Feature별 개발 가능 여부를 중복 저장하지 않는다. Discovery Gate는 Feature 확정 판정으로 초기 분석 전체 상태와 별도로 관리한다.
 
 사용자가 개발을 다시 시작하면 실제 파일과 작업 범위를 대조한다. 일치한 경우 재개하고 독립 변경은 보존한다. 같은 영역의 충돌과 출처가 불명확한 변경은 사용자 판단을 받는다. 누락된 공식 산출물은 해당 공식 절차를 통해 복구한다. SQLite, 락, FIFO 대기열, 중앙 ID 발급기, Worktree 등록부, 세션 감시, 체크포인트 관리자, 자동 복구·실시간 동기화는 MVP에서 제외한다.
 
@@ -202,7 +213,7 @@ stateDiagram-v2
 1. 변경 코드와 계약을 확인해 직접 변경 Feature를 정한다. 파일 위치나 변경량만으로 중요도를 정하지 않고 공개 계약·데이터·보안·의존 관계에 미치는 영향을 확인한다. Source Map과 Feature 그래프로 후보를 좁히고 실제 코드·계약·공식 산출물로 확인한다.
 2. 직접 의존 Feature에 계약 영향이 확인되면 다음 의존 단계까지 전파한다. 영향이 없다는 근거를 확인한 경로에서는 전파를 멈춘다. 순환에서는 이미 확인한 관계를 반복 처리하지 않는다. 영향이 확인된 Feature만 수정 대상으로 확장한다.
 3. 근거가 부족하면 관련 구현 파일, 호출부, 데이터 계약, 테스트를 추가 조사한다. 여전히 판단이 불가능할 때 `UNKNOWN`으로 남긴다. `SAFE`에도 판단 근거를 남긴다.
-4. Source Map 경로의 이동·삭제·불일치는 실제 코드와 공식 산출물에서 재분석하여 교정한다. 해결되지 않은 핵심 참조는 게이트에 반영한다.
+4. 폐기 Feature 매핑은 현재 영향도·활성 품질 범위에서 제외하고 역사적 근거로 보존한다. Source Map 경로의 이동·삭제·불일치는 실제 코드와 공식 산출물에서 재분석하여 교정한다. 해결되지 않은 핵심 참조는 게이트에 반영한다.
 
 Discovery Gate는 Feature 확정을 판정한다. 다음 위험도 결과는 분석·개발·통합에서 발견한 변경과 충돌의 처리를 결정하며 Discovery 판정에 필요한 근거로도 참조할 수 있다.
 
@@ -214,6 +225,8 @@ Discovery Gate는 Feature 확정을 판정한다. 다음 위험도 결과는 분
 | `CONFLICT` | 상충하는 계약·산출물·구현 근거를 제시하고 사용자와 해결 후 재검증 | 해결 전 차단 |
 
 ## 8. 검증과 Fingerprint
+
+[필수 Gate 정의와 실행 계약](06-verification.md)을 적용한다. Skill이 Gate ID·대상·명령 또는 방법·필수 여부·증거 요구사항과 적용 근거·변경 이력을 확정한다. Core는 필수 집합과 실행 결과의 대응·구조·증거·완료 조건을 검사한다. 필수 Gate의 FAIL·NOT_RUN·UNKNOWN·STALE, 증거 부족, 필수 목록의 임의 누락·축소는 해당 후속 단계와 완료를 차단한다. PASS 이후 관련 코드·산출물·Gate 정의가 바뀌면 유효성을 재평가하고 무효 결과를 재검증한다.
 
 | 판정 | 시점 | 실패 및 제한 |
 | --- | --- | --- |
@@ -232,7 +245,7 @@ Discovery Gate는 Feature 확정을 판정한다. 다음 위험도 결과는 분
 
 개발 중에는 영향 분석에 따라 변경 파일, 영향받은 계약과 Feature 관련 소스 및 공식 산출물을 검증 입력으로 선정한다. 검증 통과 시 내용에 기반한 Fingerprint를 기록한다. 영향받은 검증은 재실행하고 동일 입력으로 확인 가능한 통과 결과만 재사용한다. 입력 재구성이 모호하면 해당 결과를 재사용할 수 있는 근거를 추가 확보한다. 완료 시 Work Item의 필수 검증을 모두 만족해야 한다. 사용자 Git 통합으로 검증 입력이 달라지면 기존 필수 검사와 영향 검증을 다시 실행한다.
 
-검증 환경은 변하지 않는다는 운영 전제를 사용자가 보장한다. 런타임 버전 및 설치 환경 수집·감지·환경 Fingerprint는 제외한다. Fingerprint는 검증한 파일의 유효성 확인용이며 브랜치 감시나 Git 기준 확인에 쓰지 않는다. 완료 Work Item의 과거 Fingerprint와 증거를 이후 검증으로 덮어쓰지 않는다. 테스트 결과를 증거로 참조할 때 공식 태스크 체크와 실행 근거를 구분한다. 현재 해시 직렬화는 §12에 설명한다. 파일 집합 재구성, 삭제·이름 변경, 검증 항목별 결과 재사용은 미결정이다.
+검증 환경은 변하지 않는다는 운영 전제를 사용자가 보장한다. 런타임 버전 및 설치 환경 수집·감지·환경 Fingerprint는 제외한다. Fingerprint는 검증한 파일의 유효성 확인용이며 브랜치 감시나 Git 기준 확인에 쓰지 않는다. 완료 Work Item의 과거 Fingerprint와 증거를 이후 검증으로 덮어쓰지 않는다. 테스트 결과를 증거로 참조할 때 공식 태스크 체크와 실행 근거를 구분한다. 현재 해시 직렬화는 §12에 설명한다. 파일 집합 재구성, 삭제·이름 변경·검증 항목별 유효성 추적은 ST-O6의 구현 계약에서 구체화한다.
 
 ## 9. 세션과 Git 운영
 
@@ -267,21 +280,22 @@ PoC에서는 공식 태그, 설치된 프로젝트 파일, 에이전트 종류·
 | **확정** | 초기화는 프로젝트 전체 분석과 Discovery Gate에 따른 Feature 확정. 개발은 Work Item 완료까지. Sync는 사용자 승인형 외부 변경 정합화. 완료 Work Item은 보존하고 새 변경을 새 UUID로 추적 |
 | **확정** | 작업 분배·세션·Commit·Push·Merge·Rollback은 사용자 책임이다. Git 변경을 별도 엔진의 필수 조건으로 두지 않는다. |
 | **보류** | 선택적 전용 검증 프레임워크. 기존 실행 도구와 판정 정책은 논리적으로 분리해 둔다. 한 프로젝트에서의 두 에이전트 혼용, 설치 래퍼 및 세부 패키징은 별도 검토 대상 |
-| **미결정 · 초기화 완료 증표** | 작업 공간의 초기 분석 완료를 이후 명령에서 확인할 지속 표현을 정한다. Git 반영은 사용자 이정표다. |
-| **미결정 · 스키마 간극** | 초기 분석·변경 범위·영향·판단 근거·차단 소견을 기록한다. `initial_analysis.status`, `analysis_status`, `scope_changes`, `changed_features`, `affected_features`, `assessment`, `evidence`, `decisions`, `assessed_features`, `blocking_findings`의 저장 위치·명칭·필수 여부와 `changed_features` 및 `actual_features`의 중복 처리는 스키마 확정 시 결정한다. |
+| **확정 · ST-O3** | 초기 분석 상태와 대상별 진입 판정을 구분한다. partial은 대상 READY와 핵심 의존성 위험 없음이 검증될 때 개발 가능하다. 전체 완료가 대상별 검증을 대체하지 않는다. |
+| **확정 · ST-O5** | 활성·폐기 Feature 영구 보존, 아카이브와 과거 UUID 참조 유지, 활성 의존 재평가 및 경로 무결성 검증. schema_version은 구조 식별이며 기존 Core 누적 마이그레이션을 사용한다. 직렬화 필드는 구현 계약으로 구체화한다. |
 | **PoC 확인 · 공식 검증** | 태스크 생성 전의 공식 명세 품질 체크와 계획 검토에 대한 실제 검증 범위. 분석 결과 파싱과 게이트 매핑. 기존 명세 개정 및 활성 Feature 경로 전달. 공식 Git 훅 및 작업 공간 파일 변경 여부. |
-| **미결정 · Fingerprint와 결과 계약** | 파일 목록 및 검사별 범위를 복원할 방법, 형식·결과 코드·근거 참조의 보존 및 변경 후 유효성, 프로젝트별 필수 검사 선언 위치. |
+| **구현 계약 · Gate와 Fingerprint** | 파일 목록 및 검사별 범위를 복원할 방법, 형식·결과 코드·근거 참조의 보존 및 변경 후 유효성, 프로젝트별 필수 검사 선언 위치. |
 | **미결정 · 외부 변경 Sync** | 공식 워크플로우를 보존하며 외부 변경 Sync 승인 입력을 더 강하게 바인딩하는 방법을 검토한다. |
-| **미결정 · 유지보수** | 선택 언어·도입 프로젝트, 스키마 버전·마이그레이션, 폐기 Feature의 참조 보존, Core 배포 방식. |
+| **미결정 · 유지보수** | 선택 언어·도입 프로젝트와 Core 배포 방식. Baseline 직렬화와 변환은 확정된 기존 마이그레이션 정책에 따라 구현 계약에서 구체화한다. |
 
 PoC에서 설계와 공식 동작이 다르면 재현 조건과 영향받는 결정을 명시하고 기존 합의를 변경할지 따로 검토한다. [검증 및 미결정 백로그](OPEN-ISSUES.md)
 
 
 ## 12. 현행 구현과 확인 범위
 
-- 현행 주요 스킬은 `sdd-init`, `sdd-develop`, `sdd-sync`다. 프로젝트 스킬이 공식 스킬 활용과 의미 판단을 안내하며 Core는 구조·상태·검증·Git을 점검한다. 초기화 완료 확인, Sync 승인은 스킬 수준이다.
+- 현행 주요 스킬은 `sdd-init`, `sdd-develop`, `sdd-sync`다. 프로젝트 스킬이 공식 스킬 활용과 의미 판단을 안내하며 Core는 구조·상태·검증과 로컬 버전 정합성을 점검한다. 초기화 완료 확인, Sync 승인은 스킬 수준이다.
 - `sdd-core discovery-gate PLAN.json`은 에이전트가 제출한 범위, 경계, 요구사항 보존, 명세 품질과 경로별 근거를 바탕으로 판정한다. 신규 Feature는 `--issue-id`를 사용한 READY 판정에서만 ID를 받는다. 확정 자료와 사용자 판단은 기존 Markdown에 기록한다. Source Map 검증은 과거 파일의 추가 메타데이터를 읽을 수 있고, 구버전 Source Map은 승인된 버전 동기화에서 구현·계약 파일 경로로 정규화한다.
-- `sdd-core complete ID PLAN.json`은 `actual_features`, `paths`, `findings`, `evidence`, `checks`를 입력받는다. 경로를 중복 제거하고 정렬한 뒤 경로·파일 SHA-256 쌍의 압축 JSON을 다시 SHA-256으로 해시한다. 제공된 검증을 실행한 뒤 입력을 다시 해시하고 일치할 때 결과를 저장한다. 검사별 재사용과 유효성 추적은 구현되지 않았다.
-- Core 0.2.0은 `version-check`와 `version-sync`를 제공한다. 기존 Git 쓰기 명령과 통합 Skill을 제거했다. [버전 동기화 실행 계약](version-sync.md)에 표식, 입력, 승인과 실패 처리를 명시한다.
+- `sdd-core complete ID PLAN.json`은 actual_features/findings/evidence를 받아 등록된 Gate 집합의 모든 필수 결과와 현재 입력·증거를 확인한다. 검사는 gate-run으로 수행하고 정의·실행 이력은 Work Item에 보존한다. 상세 필드와 단계별 차단은 [검증 명세](06-verification.md)를 따른다.
+- Core 0.3.0은 `version-check`와 `version-sync`를 제공한다. 기존 Git 쓰기 명령과 통합 Skill을 제거했다. [버전 동기화 실행 계약](version-sync.md)에 표식, 입력, 승인과 실패 처리를 명시한다.
 - Codex 데모에서 Greenfield 초기화와 Work Item 개발·브라우저 검증·완료를 확인했다. 최신 Discovery 절차의 공식 스킬 호출과 종단간 실행 검증은 남아 있다. Claude Code는 스킬 설치 형태를 확인했다. 실제 Sync와 Claude Code 종단간 검증은 남아 있다.
+- Core 0.3.0은 ST-O3·ST-O5·ST-O16과 필수 Gate의 CLI 경로를 제공한다. schema_version 1, 분석·Discovery 입력 해시, 활성·폐기 및 아카이브 승인, 실패 참조 생성, Gate 정의·결과·증거·유효성 검사를 구현했다. 양쪽 에이전트의 공식 호출과 실제 프로젝트 종단간 PoC는 별도 확인한다.
 - 자세한 구현 경계와 검증 계획은 [설계와 실행 가이드](SpecThread-설계와-실행-가이드.md), [검증 및 미결정 백로그](OPEN-ISSUES.md)를 참고한다.

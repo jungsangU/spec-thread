@@ -100,8 +100,10 @@ class VersionSyncTest(unittest.TestCase):
         self.assertEqual(code, 0, error)
         self.assertEqual(json.loads(result)["restricted_features"], [A, B])
         self.assertEqual(self.cli("start", B)[0], 1)
-        self.assertEqual(self.cli("start", C)[0], 0)
-        self.assertEqual(self.cli("start")[0], 1)
+        self.assertEqual(self.cli("version-check", C)[0], 0)
+        # Migration does not invent Discovery/analysis evidence.
+        self.assertEqual(self.cli("start", C)[0], 1)
+        self.assertEqual(self.cli("version-check")[0], 1)
 
     def test_global_quality_failure_blocks_project(self):
         filename = self.fixture([([], "raise SystemExit(1)")])
@@ -124,3 +126,32 @@ class VersionSyncTest(unittest.TestCase):
         self.write("plan.json", json.dumps(config))
         self.assertEqual(self.cli("version-sync", filename)[0], 1)
         self.assertFalse((self.root / skill_path("codex", "sdd-init")).exists())
+
+    def test_v02_to_v03_migration_preserves_completed_history_and_requires_new_analysis(self):
+        from sdd_core.records import read_document
+        filename = self.fixture([([], "pass")])
+        self.write(PROJECT, json.dumps({"agent": "codex", "core_version": "0.2.0",
+                                      "quality": {"global_blocked": False, "restricted_features": []}}))
+        config = json.loads(Path(filename).read_text())
+        config.pop("from_version")
+        self.write("plan.json", json.dumps(config))
+        history_file = self.root / ".specify/baseline/work-items.yaml"
+        history = history_file.read_bytes()
+        approval = self.preview(filename)
+        result = self.cli("version-sync", filename, "--confirm", approval)
+        self.assertEqual(result[0], 0, result[2])
+        document = read_document(self.root, "features.yaml")
+        self.assertEqual(document["schema_version"], 1)
+        self.assertEqual(document["analysis"]["status"], "not_started")
+        self.assertEqual({row["id"] for row in document["features"]}, {A, B, C})
+        self.assertEqual(history_file.read_bytes(), history)
+        self.assertEqual(self.cli("develop-check", A)[0], 1)
+
+    def test_unknown_schema_blocks_sync_even_when_core_path_exists(self):
+        filename = self.fixture([([], "pass")])
+        path = self.root / ".specify/baseline/features.yaml"
+        data = json.loads(path.read_text())
+        data["schema_version"] = 999
+        path.write_text(json.dumps(data))
+        self.assertEqual(self.cli("version-sync", filename)[0], 1)
+        self.assertFalse((self.root / PROJECT).exists())

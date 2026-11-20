@@ -19,11 +19,11 @@ sdd-core install-skills codex
 | 개발 | `$sdd-develop` | `/sdd-develop` |
 | 외부 변경 정합화 | `$sdd-sync` | `/sdd-sync` |
 
-스킬은 공식 작업과 의미 분석을 에이전트에게 맡깁니다. Core는 Baseline과 상태 전이, 파일 Fingerprint, 검증 명령 실행 및 Git 트리 반영을 담당합니다. Core의 통합 검증은 선택한 계획의 명령과 스킬이 수집한 영향 분석 근거를 사용합니다.
+스킬은 공식 작업과 의미 분석을 에이전트에게 맡깁니다. Core는 Baseline과 상태 전이, 파일 Fingerprint와 검증 명령 실행을 담당합니다. 설계 1.0의 최신 확정 계약은 부분 분석 개발 진입, Feature 아카이브, 필수 Gate 집합·증거 검증을 포함하며, 해당 확장의 Core·Skill 실행 계약은 구현됐으며 실제 에이전트 종단간 PoC가 남아 있습니다.
 
 ## Git과 버전 운영
 
-두 Git 저장소의 Commit·Push·Merge·Rollback은 사용자가 수행합니다. Core 0.2.0은 `version-check`로 로컬 설치의 일치를 확인합니다. 기존 설치를 교체한 경우 [버전 동기화](docs/design/version-sync.md) 절차를 사용합니다.
+두 Git 저장소의 Commit·Push·Merge·Rollback은 사용자가 수행합니다. Core 0.3.0은 `version-check`로 로컬 설치의 일치를 확인합니다. 기존 설치를 교체한 경우 [버전 동기화](docs/design/version-sync.md) 절차를 사용합니다.
 
 ## Discovery와 설계 가이드
 

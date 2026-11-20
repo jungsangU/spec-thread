@@ -42,6 +42,9 @@ flowchart TD
   X --> V
   V --> D
   C --> P["공식 계획·필요 설계 자료 · Baseline 검증"]
+  P --> ENTRY{"대상 개발 진입 조건 충족?"}
+  ENTRY -->|예| DEV["partial에서도 대상 Feature 개발"]
+  ENTRY -->|아니오| HOLD["대상 개발 보류"]
   P -->|실패| J["정상 결과 보존 · 실패 범위 재검증"]
   J -->|경계나 요구사항 변경 시| V
   J -->|계획 또는 구조만 보완| P
@@ -52,6 +55,19 @@ flowchart TD
 
 `sdd-core discovery-gate PLAN.json`은 `mode`(`greenfield` 또는 `brownfield`), `candidate`(잠정명 또는 초안 경로), `checks`를 받는다. 두 경로 모두 `scope`, `boundaries`, `requirements`, `spec_quality`를 제출하고, Greenfield는 `workflow`, Brownfield는 `current_behavior`를 추가한다. 각 점검에는 `status`(`verified`, `condition`, `blocked`)와 구체적인 `evidence`를 기록한다. 미해결 항목에는 `next_step`을 추가한다. 비핵심이라는 근거와 `critical: false`가 있는 `condition`만 조건부로 처리한다. Core의 출력은 후보, 판정, 미해결 항목이다. 이미 확정한 Feature는 기존 ID를 유지한다. 신규 후보에는 `--issue-id`로 READY가 확인될 때만 UUID가 반환된다.
 
+## 초기 분석 상태와 개발 진입
+
+프로젝트 분석 상태는 `not_started`, `partial`, `complete`로 구분한다. `complete`는 전체 초기 분석 완료를 의미한다. Feature별 개발 가능 여부는 프로젝트 분석 상태, 대상 Feature의 Discovery 판정과 핵심 의존성 근거로 매번 평가한다. 별도 개발 가능 플래그를 중복 저장하지 않는다.
+
+| 조건 | 개발 진입 |
+| --- | --- |
+| `not_started` | 차단 |
+| `partial` + 대상 `active` Feature의 Discovery `READY` + 미분석 영역과의 핵심 의존성 위험 없음이 검증됨 | 허용 |
+| 대상 Discovery `CONDITIONAL` 또는 `BLOCKED`, 핵심 의존성 `UNKNOWN` 또는 `CONFLICT` | 해당 Feature 차단 |
+| `complete` | 대상 Feature의 활성 상태·Discovery·의존성 및 적용 Gate를 확인한 뒤 허용. 모든 Feature의 개발을 자동 허용하지 않음 |
+
+진입 판정은 기존 Baseline의 분석 기록·Feature·의존관계·Discovery 근거를 활용한다. 개발 범위가 확대되거나 관련 근거가 달라지면 영향 범위를 다시 평가한다. 전체 분석 완료를 선언하는 조건과 부분 분석 상태에서의 개발 진입은 각각 판단한다. Core 0.3.0의 `analysis-record`가 분석과 대상별 근거를 저장하며 `develop-check`가 현재 입력의 유효성과 대상·의존성 READY를 확인한다. start, in_progress 진입, Gate 실행과 완료에서도 이 조건을 검사한다.
+
 ## 초기화 완료와 재개
 
 Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.md`, `data-model.md`, `contracts/`, `quickstart.md` 등)를 작성하고 Baseline 여섯 파일을 검증한다. `scaffold`는 누락 파일의 틀을 만들고 기존 파일을 보존한다. 범위 내 Feature가 모두 확정되고 전체 조사와 의미 검토, 필요한 산출물 및 참조 검증을 마쳤으며 차단 소견이 없을 때 초기 분석을 완료한다. 새 `tasks.md`는 개발 때 만들고 기존 태스크는 보존한다. 초기화에는 적용 가능한 공식 명세 품질 검사, spec·plan 정합성과 Core 구조 검사를 조합한다. 태스크를 요구하는 `analyze`와 구현 이후의 `converge`는 각 전제가 갖춰진 단계에서 실행한다.
@@ -59,3 +75,9 @@ Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.
 실패·중단 시 유효한 기존 산출물, 초안과 Markdown의 판단 근거를 보존한다. 재개하면 현재 파일, 분석 근거, Gate 조건, Baseline을 대조한다. 이미 검증한 범위와 UUID는 유지하고 누락·변경·조건부·차단 범위만 이어서 검증한다. 경계나 요구사항이 바뀌면 영향받은 분리·통합 검증과 Gate를 다시 평가한다. 충돌한 파일은 덮어쓰지 않고 판단을 요청한다. 초기 분석 완료와 최초 Git 반영은 별도 이정표다.
 
 **실행 확인 범위**는 Codex Greenfield 데모와 Baseline 재검증이다. 최신 Discovery Gate, Brownfield 전수 분석, 부분 재개, 두 에이전트의 동등 결과는 추가 검증이 필요하다.
+
+## 분석 기록의 CLI 계약
+
+`analysis-record PLAN.json`은 status, unanalysed(범위 설명 배열), paths(실제 입력 파일), evidence(실제 증거 참조 배열), features(UUID별 분석 객체)를 받는다. 각 Feature 분석은 `discovery`(mode/candidate/checks)와 비어 있지 않은 `dependencies` 영향 판정 배열을 포함한다. 영향 판정은 assessment/evidence 및 필요한 critical을 기록한다. 전체 complete를 기록하려면 모든 활성 Feature의 근거가 준비돼 있어야 한다.
+
+분석이 기록되는 features.yaml 자체를 입력으로 삼지 않고 원본 명세·계약·조사 자료를 지정한다. 입력·증거 해시, 분석 범위와 기능별 구조 해시가 현재 자료와 일치해야 유효하다. 다른 범위는 미분석으로 남겨도 되지만 대상의 핵심 의존 안전성을 근거로 검증해야 한다. 기록 후 `develop-check UUID ...`로 판정하며 실제 개발 가능 플래그는 저장하지 않는다.
