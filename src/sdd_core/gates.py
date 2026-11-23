@@ -18,7 +18,7 @@ def work_item(root, identifier, *, editable=False):
     raise ValueError(f"Work Item이 없습니다: {identifier}")
 
 
-def definitions(root, plan, scope):
+def definitions(root, plan, scope, *, allow_missing_evidence=False):
     gates = sequence(plan.get("gates"), "gates")
     if not gates or not any(mapping(gate, "gate").get("required") is True for gate in gates):
         raise ValueError("적용 필수 Gate가 필요합니다")
@@ -50,7 +50,10 @@ def definitions(root, plan, scope):
                 project_path(root, nonempty(name, "evidence"))
         elif gate.get("kind") == "review":
             nonempty(gate.get("method"), "검토 방법")
-            verify_evidence(root, gate.get("evidence"))
+            if allow_missing_evidence:
+                planned_inputs(root, [ref.partition("#")[0] for ref in sequence(gate.get("evidence"), "evidence")])
+            else:
+                verify_evidence(root, gate.get("evidence"))
         else:
             raise ValueError("Gate kind는 command 또는 review입니다")
     covered = {target for gate in gates if gate["required"] for target in gate["targets"]}
@@ -86,7 +89,7 @@ def register_gates(root, identifier, preview):
     write_document(root, "work-items.yaml", document)
 
 
-def latest_revision(root, item):
+def latest_revision(root, item, *, allow_missing_evidence=False):
     revisions = item.get("gate_revisions", [])
     if not revisions:
         raise ValueError("개발/검증 진입 전에 필수 Gate 집합을 확정하세요")
@@ -99,7 +102,7 @@ def latest_revision(root, item):
     scope = list(dict.fromkeys(item["declared_features"] + item["actual_features"]))
     if set(scope) != set(revision["scope"]):
         raise ValueError("Work Item 범위와 Gate 집합 범위가 다릅니다")
-    definitions(root, revision, scope)
+    definitions(root, revision, scope, allow_missing_evidence=allow_missing_evidence)
     return revision
 
 

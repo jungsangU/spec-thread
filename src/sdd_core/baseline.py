@@ -206,6 +206,14 @@ def validate_work_item(root, item, feature_ids, work_ids):
     for identifier in sequence(item.get("related_work_items", []), "related_work_items"):
         require_reference(identifier, work_ids, "related_work_items")
 
+    if item.get("kind") == "reconciliation":
+        reconciliation = mapping(item.get("reconciliation"), "reconciliation")
+        for name in ("approval_hash", "reason"):
+            nonempty(reconciliation.get(name), name)
+        mapping(reconciliation.get("base"), "base")
+        mapping(reconciliation.get("inputs"), "inputs")
+        mapping(reconciliation.get("changes"), "changes")
+
     result = item.get("validation")
     if result is None and status != "completed":
         return

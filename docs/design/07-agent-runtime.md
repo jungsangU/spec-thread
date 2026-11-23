@@ -1,4 +1,4 @@
-# 07 에이전트와 Core의 역할
+# 07 에이전트 설치와 명령 호출
 
 | 작업 | Codex | Claude Code |
 | --- | --- | --- |
@@ -7,8 +7,36 @@
 | 개발 | `$sdd-develop` | `/sdd-develop` |
 | 외부 변경 정합화 | `$sdd-sync` | `/sdd-sync` |
 
-공식 GitHub Spec Kit는 독립 설치한다. 문서 재현 기준은 v1.4.0이다. `sdd-core install-skills codex|claude`는 공통 절차를 각 폴더에 설치하고 같은 위치에 내용이 다른 스킬과 충돌하면 오류를 보고한다. 기존 공식 설치를 교체할 필요가 없다.
+공식 GitHub Spec Kit의 원형·설치 경로를 유지하며 [통합 설치](installation.md)가 공식 설치·연동 명령을 내부 호출한다. 문서 재현 기준은 v1.4.0이다. `sdd-core install-skills codex|claude`는 공통 절차를 각 폴더에 설치하고 같은 위치에 내용이 다른 스킬과 충돌하면 오류를 보고한다. 기존 공식 설치를 교체할 필요가 없다.
 
-에이전트가 Discovery에서 공식 `specify`와 `clarify`를 사용해 분석하고 근거를 제출한다. Core의 `discovery-gate`는 입력 형식과 필수 점검을 검사해 판정하며, 신규 Feature에는 `--issue-id`로 READY에서만 UUID를 발급한다. Skill이 적용 필수 Gate 집합과 변경 근거를 확정하고 Core가 정의·결과·증거의 대응과 완료 조건을 검사한다. 의미적 검사 충분성은 Skill이 판단한다. 에이전트는 공식 스킬과 템플릿을 사용하고, 대상 Feature의 경로를 확인하며, 문서 작성·코드 구현·의미 분석·사용자 안내를 수행한다. 공통 CLI가 구조·상태·검증 명령과 입력 동일성을 점검한다. 이 구조는 에이전트가 달라도 한 가지 완료 규칙을 사용할 수 있게 한다.
+## 호출과 처리 경계
 
-프로젝트별 에이전트 선택과 Worktree 생성·분배·중단·재개는 사용자 책임이다. 중앙 세션 관리자, 잠금, 대기열, SQLite, 실시간 감시는 설계 범위 밖이다. Codex에서 초기화와 개발을 실행 확인했다. Claude Code는 스킬 설치 형태를 확인했으며 동일한 종단간 실행 검증이 남아 있다.
+논의상 `/sdd.init`, `/sdd.develop`, `/sdd.sync`는 각각 초기화, 개발, 외부 변경 정합화다. 배포 이름과 실제 호출 표기는 위 표를 따른다. 명령의 성공 종료 자체는 의미 분석의 통과 근거가 아니다.
+
+- [아키텍처](architecture.md): 에이전트·Skill·Core·사용자의 책임.
+- [공식 Spec Kit 연동](spec-kit-integration.md): 공식 기능, 활성 Feature 경로와 호출 전제.
+- [초기 분석](03-analysis-standard.md): `discovery-gate`와 근거 제출 계약.
+- [Work Item 개발](04-artifact-lifecycle.md): 네이티브 Skill이 안내하는 실행 순서.
+- [외부 변경 Sync](reconciliation.md): 승인형 수동 작업.
+- [검증 명세](06-verification.md): Gate 정의·결과·증거 검사.
+- [Git·세션 운영](08-git-integration.md): 에이전트 선택·작업 분배·병렬 운영과 제외 범위.
+
+실제 에이전트별 실행 검증 상태는 [백로그](OPEN-ISSUES.md)에서 관리한다.
+
+## 공통 CLI 호출·종료 코드
+
+Core 명령은 `sdd-core [--root PROJECT] COMMAND ...`로 호출한다. --root 기본값은 현재 폴더이며 서브명령 앞에 둔다. JSON 계획 파일은 UTF-8 JSON 객체다. 네이티브 `sdd-sync`는 Skill이며 Core `reconcile`에 승인 계획을 연결한다. 같은 이름의 Core sync 서브명령은 없다. `version-sync`는 별도의 Core 서브명령이다.
+
+| 종료 | 현재 CLI 의미 |
+| --- | --- |
+| 0 | 명령 정상 처리. discovery-gate의 CONDITIONAL/BLOCKED도 --issue-id를 사용하지 않았다면 구조상 정상 처리이므로 JSON verdict를 반드시 읽음 |
+| 1 | 읽기·입력·구조·승인·전이·필수 Gate 차단 등 처리 오류. stderr에 이유를 출력 |
+| 2 | gate-run이 PASS 이외의 결과를 기록함, discovery-gate --issue-id에서 UUID 미발급, version-sync 적용 후 전역 품질 차단. 명령 인자 파서 오류도 2이므로 출력 형식과 오류를 함께 판독 |
+
+uuid/start/feature-register는 UUID 문자열, discovery-gate/gates 미리보기/gate-run/stage-check/feature-retire 미리보기/version-sync는 JSON을 반환한다. analysis-record·transition·complete·Gate 확정·아카이브 적용은 성공 시 별도 JSON을 출력하지 않는다. 성공 여부와 영속 파일을 확인한다. 명령 오류가 항상 전체 파일 원복을 의미하지는 않는다. 부분 적용 가능성이 있는 작업은 각 원본의 실패 처리 계약을 따른다.
+
+Core 0.4.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출력한다. gate-refresh가 실제 검사·검토 대기로 BLOCKED면 2를 반환한다. 상세 입력·출력·실패 처리는 [Sync](reconciliation.md)와 [선택적 재검증](06-verification.md)에 둔다.
+
+일반 사용자 설치·업데이트는 [install/update](installation.md)를 사용한다. install-skills·version-sync는 그 내부 API와 고급 진단용이며 설치 가이드에서 사용자 필수 단계로 나열하지 않는다. 네이티브 Skill의 Core 호출은 프로젝트 runner를 통해 전용 환경으로 연결한다.
+
+세 Skill의 공통 대화·표시 지침은 설치 시 `_conversation.md`에서 합성한다. 공개 명령은 세 개를 유지하며 UI가 지원하는 경우에만 질문 선택 기능을 사용한다. 공통 실행·표시 계약은 [대화형 진행](conversation-flow.md)에 둔다.

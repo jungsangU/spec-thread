@@ -1,6 +1,6 @@
 # 03 초기 분석과 Discovery
 
-`sdd-init`은 공식 설치 상태, constitution, 분석 범위와 기존 산출물을 먼저 확인한다.
+`sdd-init`은 공식 설치 상태, constitution, 분석 범위와 기존 산출물을 먼저 확인한다. 초기 질문은 [대화형 진행](conversation-flow.md)에 따라 지금 필요한 한 항목씩 묻고 기존 답과 자료를 재사용한다. 질문 순서를 이유로 기존 분석·Discovery Gate를 생략하지 않는다.
 
 | 경로 | 분석 순서 | 검증 초점 |
 | --- | --- | --- |
@@ -35,13 +35,13 @@ flowchart TD
   R --> M["분리·통합 시 요구사항 보존 검증"]
   BD --> M
   M --> D{"Discovery Gate"}
-  D -->|READY| C["Feature 확정 · 기존 UUID 유지 · 신규 UUID 발급"]
+  D -->|READY| C["Feature 경계 확정 · 기존 UUID 유지"]
   D -->|CONDITIONAL| Q["비핵심 조건 기록 · 확인 가능한 분석 계속"]
   D -->|BLOCKED| X["차단 근거 보고 · 해당 범위 중단"]
   Q --> V["보완 후 영향 범위 재검증"]
   X --> V
   V --> D
-  C --> P["공식 계획·필요 설계 자료 · Baseline 검증"]
+  C --> P["공식 계획·필요 설계 자료 · 신규 등록(UUID) · Baseline 검증"]
   P --> ENTRY{"대상 개발 진입 조건 충족?"}
   ENTRY -->|예| DEV["partial에서도 대상 Feature 개발"]
   ENTRY -->|아니오| HOLD["대상 개발 보류"]
@@ -66,7 +66,7 @@ flowchart TD
 | 대상 Discovery `CONDITIONAL` 또는 `BLOCKED`, 핵심 의존성 `UNKNOWN` 또는 `CONFLICT` | 해당 Feature 차단 |
 | `complete` | 대상 Feature의 활성 상태·Discovery·의존성 및 적용 Gate를 확인한 뒤 허용. 모든 Feature의 개발을 자동 허용하지 않음 |
 
-진입 판정은 기존 Baseline의 분석 기록·Feature·의존관계·Discovery 근거를 활용한다. 개발 범위가 확대되거나 관련 근거가 달라지면 영향 범위를 다시 평가한다. 전체 분석 완료를 선언하는 조건과 부분 분석 상태에서의 개발 진입은 각각 판단한다. Core 0.3.0의 `analysis-record`가 분석과 대상별 근거를 저장하며 `develop-check`가 현재 입력의 유효성과 대상·의존성 READY를 확인한다. start, in_progress 진입, Gate 실행과 완료에서도 이 조건을 검사한다.
+진입 판정은 기존 Baseline의 분석 기록·Feature·의존관계·Discovery 근거를 활용한다. 개발 범위가 확대되거나 관련 근거가 달라지면 영향 범위를 다시 평가한다. 전체 분석 완료를 선언하는 조건과 부분 분석 상태에서의 개발 진입은 각각 판단한다. Core 0.4.0의 `analysis-record`가 분석과 대상별 근거를 저장하며 `develop-check`가 현재 입력의 유효성과 대상·의존성 READY를 확인한다. start, in_progress 진입, Gate 실행과 완료에서도 이 조건을 검사한다.
 
 ## 초기화 완료와 재개
 
@@ -74,10 +74,70 @@ Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.
 
 실패·중단 시 유효한 기존 산출물, 초안과 Markdown의 판단 근거를 보존한다. 재개하면 현재 파일, 분석 근거, Gate 조건, Baseline을 대조한다. 이미 검증한 범위와 UUID는 유지하고 누락·변경·조건부·차단 범위만 이어서 검증한다. 경계나 요구사항이 바뀌면 영향받은 분리·통합 검증과 Gate를 다시 평가한다. 충돌한 파일은 덮어쓰지 않고 판단을 요청한다. 초기 분석 완료와 최초 Git 반영은 별도 이정표다.
 
-**실행 확인 범위**는 Codex Greenfield 데모와 Baseline 재검증이다. 최신 Discovery Gate, Brownfield 전수 분석, 부분 재개, 두 에이전트의 동등 결과는 추가 검증이 필요하다.
+실행 검증 상태는 [백로그](OPEN-ISSUES.md), 인수 시나리오는 [PoC 기준](acceptance.md)에서 확인한다.
 
 ## 분석 기록의 CLI 계약
 
 `analysis-record PLAN.json`은 status, unanalysed(범위 설명 배열), paths(실제 입력 파일), evidence(실제 증거 참조 배열), features(UUID별 분석 객체)를 받는다. 각 Feature 분석은 `discovery`(mode/candidate/checks)와 비어 있지 않은 `dependencies` 영향 판정 배열을 포함한다. 영향 판정은 assessment/evidence 및 필요한 critical을 기록한다. 전체 complete를 기록하려면 모든 활성 Feature의 근거가 준비돼 있어야 한다.
 
 분석이 기록되는 features.yaml 자체를 입력으로 삼지 않고 원본 명세·계약·조사 자료를 지정한다. 입력·증거 해시, 분석 범위와 기능별 구조 해시가 현재 자료와 일치해야 유효하다. 다른 범위는 미분석으로 남겨도 되지만 대상의 핵심 의존 안전성을 근거로 검증해야 한다. 기록 후 `develop-check UUID ...`로 판정하며 실제 개발 가능 플래그는 저장하지 않는다.
+
+## 관련 명세
+
+공식 호출과 활성 경로는 [Spec Kit 연동](spec-kit-integration.md), 확정 이후 등록·재편은 [Feature 생명주기](feature-lifecycle.md), 개발은 [Work Item 생명주기](04-artifact-lifecycle.md)를 따른다.
+
+## Core 0.4.0 제출 예시와 차단 순서
+
+다음은 필드 형식을 실행 검증하기 위한 예시다. 실제 명세·계획과 판단 근거 파일이 먼저 존재해야 한다. 코드가 없는 Greenfield이므로 소스 매핑은 생략한다. 아래의 `verified`와 `SAFE`는 실제 조사 후 제출하며 이 예시 자체를 의미 검토 증거로 사용할 수 없다.
+
+### Discovery 계획 예시
+
+```json
+{
+  "mode": "greenfield",
+  "candidate": "specs/example",
+  "checks": {
+    "scope": {"status": "verified", "evidence": "basis.md: 범위 확인"},
+    "boundaries": {"status": "verified", "evidence": "basis.md: 경계 확인"},
+    "requirements": {"status": "verified", "evidence": "basis.md: 요구사항 보존 확인"},
+    "spec_quality": {"status": "verified", "evidence": "basis.md: 명세 품질 검토"},
+    "workflow": {"status": "verified", "evidence": "basis.md: 업무 흐름 확인"}
+  }
+}
+```
+
+`discovery-gate`는 candidate/verdict/findings를 반환한다. findings에는 미해결 check/status/evidence/next_step을 담는다. Discovery evidence는 비어 있지 않은 설명 문자열이며 이 명령이 파일 존재나 의미를 증명하지는 않는다. 실제 입력·증거 파일의 존재와 해시는 등록·분석 기록에서 확인한다. `condition`은 명시적인 `critical: false`가 없으면 blocked로 올리고, 전체 판정은 BLOCKED가 CONDITIONAL보다 우선한다. Brownfield에서는 workflow 대신 current_behavior를 필수로 제출한다.
+
+### Feature 등록 계획 예시
+
+```json
+{
+  "feature": {"name": "example", "spec_path": "specs/example", "dependencies": []},
+  "discovery": "<DISCOVERY_PLAN>",
+  "paths": ["specs/example/spec.md", "specs/example/plan.md"],
+  "evidence": ["basis.md"]
+}
+```
+
+`<DISCOVERY_PLAN>` 문자열을 바로 위 Discovery **객체**로 교체해 feature-register에 제출한다. 반환은 등록된 UUID 문자열이다. standalone `discovery-gate --issue-id`의 UUID 반환은 Baseline 등록이 아니다. 정상 등록 흐름에서는 feature-register가 반환한 UUID를 그대로 사용하고 다시 발급하지 않는다. 등록은 spec·plan, READY, 기존 UUID·경로 중복과 현재 참조를 확인한다.
+
+### 분석 기록 계획 예시
+
+```json
+{
+  "status": "partial",
+  "unanalysed": ["독립된 미분석 영역"],
+  "paths": ["specs/example/spec.md", "specs/example/plan.md"],
+  "evidence": ["basis.md"],
+  "features": {
+    "<FEATURE_UUID>": {
+      "discovery": "<DISCOVERY_PLAN>",
+      "dependencies": [{"assessment": "SAFE", "evidence": "미분석 영역과 핵심 의존성 위험 없음 검증"}]
+    }
+  }
+}
+```
+
+`<FEATURE_UUID>`는 등록 반환값, `<DISCOVERY_PLAN>`은 위 객체로 교체한다. dependencies는 실제 Feature 그래프 간선 목록과 다른 **분석 소견 배열**이다. 명시적 의존이 없어도 미분석 경계 안전성에 대한 비어 있지 않은 소견이 필요하다.
+
+개발 진입은 구조 검사 → 프로젝트 status → 프로젝트 inputs/evidence 유효성 → 대상과 의존 Feature 순회 → 각 Feature의 구조·분석·입력·증거 해시 → READY → 의존성 위험 순으로 확인한다. 현재 구현은 대상의 등록된 의존 Feature도 재귀적으로 확인하고 방문 집합으로 순환을 종료한다. complete 분석 기록은 미분석 목록이 비고 모든 활성 Feature가 유효해야 저장한다. 분석 객체가 바뀌면 이전 보고서의 analysis_hash가 맞지 않으므로 필요한 보고서를 같은 제출에서 재확정한다. Core가 그래프 밖의 미발견 의존성을 자동 탐색하는 것은 아니며 그 충분성은 Skill이 판단한다.

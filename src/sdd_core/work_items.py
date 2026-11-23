@@ -69,7 +69,8 @@ def update(root, identifier, status, payload=None, *, related=None):
     if status == "in_progress":
         from .analysis import develop_check
         from .gates import require_gates
-        develop_check(root, current["declared_features"] + current["actual_features"])
+        if current.get("kind") != "reconciliation":
+            develop_check(root, current["declared_features"] + current["actual_features"])
         require_gates(root, current, "develop")
     current["status"] = status
     validate_work_item(root, current, {record["id"] for record in features}, ids | {identifier})

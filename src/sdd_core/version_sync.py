@@ -14,23 +14,32 @@ from .baseline import BaselineLoader, mapping, nonempty, project_path, read_reco
 from .checks import check_commands
 
 PROJECT = ".specify/spec-thread.json"
+RUNNER = ".specify/sdd-core"
 BASELINE = ".specify/baseline/"
 FOLDERS = {"codex": ".agents", "claude": ".claude"}
 ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync")
 RETIRED = "sdd-commit"
 LEGACY_HASHES = {
     "sdd-init": {
+        "b593e7cc40ec14886ca2cce690705e4c888ac729aabc62718efe1136333f034c",
+        "352e1edb4690ddd6d8fb626a6ccf4948aa1cf801edb41bb78e5fdf1051b02e96",
         "f53a9d176581852c9c518dbe01b95c60684ee7eda030dad2e011225168691031",
         "66311a9176a00971f44b74ed7c196a4a209a8ac51ddde7d7230b180f6cfa7f2d",
         "c04b4c41ef5b1796178ddd7626b6837eed784091168b6e781eb869072bc029bc",
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "fabd33d0a39727375f209ed982c56d0fa3b263292dedad11f7f8b002e7e90db0",
+        "cbcf050225624c79756635eb65cff78baec8d72c27e6bfda986acfc33791ba0c",
+        "aa1c89893dfb4b5e24664888a6e262fe30b91fc294ef00f1cfc925e5d071d595",
         "dcfd91eba334c1f1872e82e45143d80c78694c70d9277ffca0c3e785eb3e55e9",
         "377b6f6defc8e9c0fa8c47df90a38c43cb94a9910e0f50f60efe850d1f4889a0",
         "73f439156645c2ee0b36f703b58256653e00634f6a7e145dc13d3fee4fa7b3bc",
     },
     "sdd-sync": {
+        "99a4449d454ebff72bddb0994355846e389f59e2aeef68a31c5ffe21ae829c13",
+        "ccb370626b4ce00b028c37473504807f1af90da6d894b1246b9720685682fd5e",
+        "30750497bdaa1743657d467fb78816dd6d4dffc4882e81476029592238b389ba",
         "4f1aa59fb18144fccf7112001b8e0e5bc90104363d4759b307ebdd0be6eef3d4",
         "b418997815ac92a3cccfdad473e6ae7249e4793a23636fc14437c2cd2a7595af",
         "e8527ad808b217bb2e7bf9687b3e4a0cd5541bab1600db6421b5a73a3d97d916",
@@ -40,6 +49,7 @@ LEGACY_HASHES = {
 MIGRATIONS = {
     "0.1.0": ("0.2.0", "path-only-source-map"),
     "0.2.0": ("0.3.0", "feature-lifecycle-and-gates"),
+    "0.3.0": ("0.4.0", "approved-reconciliation-and-selective-revalidation"),
 }
 
 
@@ -77,6 +87,8 @@ def write_file(root, name, contents):
             stream.write(contents)
             stream.close()
             os.replace(temporary, path)
+            if name == RUNNER:
+                path.chmod(0o755)
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -91,13 +103,38 @@ def skill_marker(agent):
 
 def bundle():
     resource = files("sdd_core").joinpath("skills")
-    return {name: resource.joinpath(f"{name}.md").read_bytes() for name in ACTIVE}
+    conversation = resource.joinpath("_conversation.md").read_bytes()
+    return {name: resource.joinpath(f"{name}.md").read_bytes().rstrip() + b"\n\n" + conversation
+            for name in ACTIVE}
 
 
 def skill_record(agent, skills):
     return {"agent": agent, "core_version": __version__, "skills": {
         name: digest(contents) for name, contents in skills.items()
     }}
+
+
+def runner_bytes():
+    package = str(Path(__file__).resolve().parents[1])
+    text = ("#!/usr/bin/env python3\n# SpecThread managed project runner\n"
+            "import os, sys\n"
+            f"python = {sys.executable!r}\n"
+            f"package = {package!r}\n"
+            "if os.path.abspath(sys.executable) != os.path.abspath(python):\n"
+            "    os.execv(python, [python, __file__, *sys.argv[1:]])\n"
+            "sys.path.insert(0, package)\n"
+            "from sdd_core.cli import main\n"
+            "sys.exit(main())\n")
+    return text.encode('utf-8')
+
+
+def runner_output(root, project):
+    contents = runner_bytes()
+    existing = read_file(root, RUNNER)
+    if existing is not None and existing != contents:
+        if project is None or digest(existing) != project.get('runner_hash'):
+            raise ValueError('프로젝트 Core 실행 파일이 사용자 수정본입니다. 덮어쓰지 않습니다')
+    return contents
 
 
 def require_skills(root, agent):
@@ -139,6 +176,7 @@ def install_skills(root, agent):
     if (project is not None or previous is not None) and previous != skill_record(agent, skills):
         raise ValueError("기존 Skill은 version-sync로 동기화하세요")
     paths = {skill_path(agent, name): contents for name, contents in skills.items()}
+    paths[RUNNER] = runner_output(root, project)
     for name in (*paths, PROJECT, skill_marker(agent)):
         managed_path(root, name)
     for name, contents in paths.items():
@@ -158,17 +196,19 @@ def install_skills(root, agent):
 
 
 def project_record(agent, global_blocked, restricted_features):
-    return {"agent": agent, "core_version": __version__, "quality": {
+    return {"agent": agent, "core_version": __version__, "runner_hash": digest(runner_bytes()), "quality": {
         "global_blocked": global_blocked, "restricted_features": restricted_features,
     }}
 
 
-def require_project(root, agent=None, scope=None, *, allow_quality_block=False):
+def require_project(root, agent=None, scope=None, *, allow_quality_block=False, validate_baseline=True):
     project = read_marker(root, PROJECT)
     if project is None or project.get("core_version") != __version__:
         raise ValueError("Core·Project 버전 불일치 또는 미등록. install-skills/version-sync를 확인하세요.")
     agent = installed_agent(root, agent, project)
     require_skills(root, agent)
+    if read_file(root, RUNNER) != runner_bytes() or project.get("runner_hash") != digest(runner_bytes()):
+        raise ValueError("프로젝트 Core 실행 환경이 바뀌었습니다. update 또는 version-sync를 실행하세요")
     quality = mapping(project.get("quality"), "quality")
     limited = quality.get("restricted_features")
     globally_limited = quality.get("global_blocked")
@@ -185,7 +225,7 @@ def require_project(root, agent=None, scope=None, *, allow_quality_block=False):
         states = {row["id"]: row.get("status") for row in read_records(root, "features.yaml", "features")}
         if any(states[name] != "active" for name in scope):
             raise ValueError("작업 범위에 폐기된 Feature가 있습니다")
-    if project_path(root, BASELINE + "features.yaml").is_file():
+    if validate_baseline and project_path(root, BASELINE + "features.yaml").is_file():
         validate(root)
     return project
 
@@ -260,6 +300,9 @@ def plan_sync(root, config):
         migration_path(nonempty(skill_version, "Skill core_version"))
 
     outputs = {}
+    runner = runner_output(root, project)
+    if read_file(root, RUNNER) != runner:
+        outputs[RUNNER] = runner
     for name in (*ACTIVE, RETIRED):
         path = skill_path(agent, name)
         existing = read_file(root, path)
@@ -311,7 +354,7 @@ def plan_sync(root, config):
     features = [feature for feature in all_features if feature.get("status", "active") == "active"]
     checks = quality_plan(config, {feature["id"] for feature in features})
     validation_paths = {
-        PROJECT, skill_marker(agent), *(skill_path(agent, name) for name in (*ACTIVE, RETIRED)),
+        PROJECT, RUNNER, skill_marker(agent), *(skill_path(agent, name) for name in (*ACTIVE, RETIRED)),
         *(BASELINE + name for name in ("project.md", "architecture.md", "decisions.md",
                                         "features.yaml", "source-map.yaml", "work-items.yaml")),
         *(f"{feature['spec_path']}/{name}" for feature in all_features for name in ("spec.md", "plan.md")),

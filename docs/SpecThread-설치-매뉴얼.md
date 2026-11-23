@@ -1,112 +1,75 @@
-# SpecThread 설치 매뉴얼
+# SpecThread 설치 가이드
 
-2026-11-14 · macOS 터미널 기준 · Spec Kit v1.4.0 고정
+2026-11-23 · 내려받은 SpecThread 배포 폴더 기준 · macOS/Linux · Spec Kit 1.4.0
 
-공식 에이전트와 Spec Kit를 먼저 설치한 뒤, 저장소에 있는 SpecThread 로컬 구현을 설치할 수 있습니다. 외부에 배포된 패키지는 없으며 실제 두 에이전트에서의 전체 실행 검증은 진행 중입니다. [통합 상세 설계서](design/SpecThread-통합-상세-설계서.md)
+**설치는 `install`, 업데이트는 `update` 하나로 처리합니다.** Spec Kit 설치·프로젝트 연동, SpecThread Skill, 버전 동기화와 설치 검사를 내부에서 이어서 실행합니다. JSON 계획이나 승인 해시를 복사할 필요가 없습니다.
 
-## 1. 실행 환경 선택 및 준비
+## 시작 전에
 
-프로젝트에서 사용할 에이전트를 하나 선택합니다. 두 환경을 비교하려면 별도의 테스트 프로젝트에서 각각 설치합니다. 아래 명령은 **Harness 설계 문서 폴더가 아닌 관리하려는 애플리케이션 프로젝트**에 적용합니다.
+- 사용할 Codex 또는 Claude Code를 준비하고 로그인합니다. AI 앱의 설치·로그인은 사용자가 합니다. 터미널용 Codex CLI가 없어도 Codex 프로젝트 Skill을 설치할 수 있습니다.
+- **Python 3.11 이상**이 필요합니다. `python3`가 구버전이면 설치된 `python3.11` 이상을 찾아 실행합니다. 지원되는 Python이 전혀 없으면 먼저 설치해야 합니다.
+- SpecThread를 GitHub ZIP 또는 Git으로 내려받아 압축을 풉니다. `specthread`, `pyproject.toml`, `src/`가 있는 폴더가 **배포 폴더**입니다. Core를 자동으로 새로 다운로드하지 않습니다.
+- 작업할 앱 프로젝트 폴더를 준비합니다. 새 프로젝트라면 빈 폴더를 만들면 됩니다. 배포 폴더와 앱 폴더는 서로 다릅니다.
+- 첫 실행에는 공식 Spec Kit와 Python 의존 패키지를 받기 위한 인터넷 연결이 필요합니다. uv·전역 specify·전역 sdd-core 설치나 가상환경 활성화는 필요하지 않습니다.
 
-Homebrew가 있는 macOS에서는 `brew install uv`로 uv를 설치할 수 있습니다. 이미 설치한 도구는 버전만 확인합니다. Spec Kit는 Python 3.11 이상을 사용합니다. uv로 설치하면 도구의 Python 환경을 관리할 수 있습니다. Git은 아래 GitHub 소스 설치 경로와 향후 Harness 커밋 흐름에 사용합니다. [uv 설치 가이드](https://docs.astral.sh/uv/getting-started/installation/) · [Spec Kit 설치 요구사항](https://github.github.com/spec-kit/installation.html)
+## 신규 설치
 
-```sh
-uv --version
-git --version
-```
-
-### Codex 사용 시
-
-Node.js와 npm이 설치된 터미널에서 실행합니다.
+**내려받은 배포 폴더에서 터미널을 열고** 실행합니다.
 
 ```sh
-npm install -g @openai/codex@latest
-codex --version
+python3 specthread install
 ```
 
-대상 프로젝트에서 `codex`를 실행한 뒤 최초 실행 안내에 따라 로그인합니다. [OpenAI 공식 설치 예시](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) · [Codex CLI 문서](https://learn.chatgpt.com/docs/codex/cli)
+화면 안내에 따라 다음만 입력합니다.
 
-### Claude Code 사용 시
+1. 설치할 **앱 프로젝트 폴더 경로**를 입력합니다. 이미 앱 폴더에서 배포 파일의 절대 경로로 실행했다면 이 질문은 생략됩니다.
+2. Codex 또는 Claude Code를 선택합니다.
+3. 표시된 대상과 설치 내용을 확인하고 동의합니다.
 
-```sh
-brew install --cask claude-code
-claude --version
-```
+이후 전용 환경 준비 → 공식 Spec Kit 연동 → SpecThread Skill·프로젝트 실행 파일 → 버전·구조 검사 순으로 진행합니다. 이미 정상적인 Spec Kit가 있다면 재초기화하지 않고 재사용합니다. 기존 앱 코드와 승인한 헌법·명세를 새 프로젝트 템플릿으로 교체하지 않습니다.
 
-대상 프로젝트에서 `claude`를 실행한 뒤 최초 실행 안내에 따라 인증합니다. Homebrew가 없는 환경의 설치 방법도 공식 문서에서 확인할 수 있습니다. [Claude Code 설치·인증 안내](https://code.claude.com/docs/en/setup)
+마지막에 **“완료했습니다”**가 나오면 사용하는 AI의 새 세션을 **앱 프로젝트 폴더**에서 엽니다. 설치 중인 이전 세션은 새 Skill을 바로 표시하지 않을 수 있습니다.
 
-## 2. 공식 Spec Kit 설치
-
-설계서와 같은 버전인 v1.4.0을 사용합니다. `specify version`에 해당 버전이 표시되는지 확인합니다. [Spec Kit v1.4.0 릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
-
-```sh
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.4.0
-specify version
-```
-
-설치 후 `specify`를 찾지 못하면 `uv tool update-shell`을 실행하고 새 터미널에서 다시 확인합니다. 다른 버전이 나오면 `command -v specify`와 `uv tool list`로 실제 사용 중인 설치본을 확인합니다. 기존 설치가 있으면 처음 설치에 사용한 도구에서 버전을 바꾼 뒤 다시 확인합니다. [uv 도구 사용법](https://docs.astral.sh/uv/guides/tools/) · [Spec Kit 설치 확인](https://github.github.com/spec-kit/installation.html)
-
-## 3. 대상 프로젝트에 공식 연동 설치
-
-### 새 프로젝트
-
-새 프로젝트를 만들 상위 폴더에서 실행합니다. 사용하려는 에이전트에 해당하는 한 줄을 선택합니다.
-
-```sh
-# Codex
-specify init sdd-codex-demo --integration codex
-
-# Claude Code
-specify init sdd-claude-demo --integration claude
-```
-
-생성된 폴더로 이동합니다. 프로젝트 Git 이력을 운영할 샘플이라면 사용자가 해당 폴더를 Git 저장소로 준비합니다. Spec Kit의 Git 초기화·브랜치 기능은 선택적 `git` 확장에 있습니다. Harness 호환성 테스트용 기본 예제에서는 이 확장을 설치하지 않습니다. [공식 Core 명령](https://github.github.com/spec-kit/overview/core.html)
-
-### 기존 프로젝트에 Spec Kit 처음 설치
-
-대상 Git 저장소 루트에서 `git status --short`로 기존 변경을 확인합니다. 진행 중인 작업을 보존하고 초기화 전후를 비교할 수 있는 상태로 준비합니다. 공식 `--force` 옵션은 비어 있지 않은 폴더에 설치할 때 쓰며, 충돌하는 Spec Kit 관리 경로의 파일을 교체할 수 있습니다. 아래에서 한 줄을 실행한 뒤 새 파일을 포함해 차이를 검토합니다. [기존 프로젝트 도입 가이드](https://github.github.com/spec-kit/how-to/existing-projects.html)
-
-```sh
-# Codex
-specify init --here --force --integration codex
-
-# Claude Code
-specify init --here --force --integration claude
-```
-
-### 이미 Spec Kit가 설치된 프로젝트
-
-대상 프로젝트 루트에서 `specify integration list`로 등록 상태를 확인합니다. 필요한 에이전트 연동이 빠져 있을 때 해당 한 줄을 실행합니다. 연동 전환이나 버전 변경이 필요하면 공식 관리 경로를 사용합니다. [Spec Kit 연동 관리](https://github.github.com/spec-kit/integrations/cli.html) · [업그레이드 가이드](https://github.github.com/spec-kit/upgrade.html)
-
-```sh
-specify integration install codex
-specify integration install claude
-```
-
-## 4. 설치 확인
-
-1. 대상 프로젝트에 `.specify/`가 생성됐는지 확인합니다. Codex는 `.agents/skills/speckit-constitution/SKILL.md`, Claude Code는 `.claude/skills/speckit-constitution/SKILL.md`를 확인합니다.
-2. 같은 프로젝트 루트에서 선택한 에이전트의 새 세션을 시작합니다. 설치 직후라면 세션을 다시 열어 Skill 목록이 새로 로드되도록 합니다.
-3. 쓰기를 확인할 테스트 프로젝트에서 에이전트 입력창에 아래 예를 입력합니다. 기존 프로젝트에 헌법이 있다면 먼저 내용을 검토합니다.
-
-| 환경 | 에이전트 입력창에 넣을 예시 |
+| 사용할 AI | AI 입력창에서 프로젝트 분석 시작 |
 | --- | --- |
-| Codex | `$speckit-constitution 공개 API 호환성을 유지하고 기존 검증 절차를 따른다.` |
-| Claude Code | `/speckit-constitution 공개 API 호환성을 유지하고 기존 검증 절차를 따른다.` |
+| Codex | `$sdd-init` |
+| Claude Code | `/sdd-init` |
 
-명령이 인식되고 테스트 프로젝트의 `.specify/memory/constitution.md`에 의도한 내용이 반영되면 공식 연동 확인을 마칩니다. 스킬이 보이지 않으면 프로젝트 루트, 연동 키, 설치된 Skill 경로로 돌아가 확인합니다. Claude Code 자체 상태는 `claude doctor` 또는 세션의 `/doctor`에서 확인할 수 있습니다. [Codex 연동](https://github.github.com/spec-kit/integrations/codex.html) · [Claude Code 연동](https://github.github.com/spec-kit/integrations/claude.html) · [Claude Code 문제 해결](https://code.claude.com/docs/en/troubleshooting)
+init에서는 기존 자료를 먼저 읽고 부족한 내용을 한 질문씩 묻습니다. 분석 후 “다음 기능을 개발할까요?”라는 구체적인 안내가 나오면 “진행해”라고 답해 이어갈 수 있습니다. 매번 명령을 다시 입력할 필요가 없습니다.
 
-## 5. Harness 로컬 설치 및 실행
+설치 완료는 프로젝트 분석 완료가 아닙니다. 분석·기능 확정과 실제 개발은 AI 세션에서 진행합니다.
 
-[Harness README](../README.md)의 로컬 설치 절차에 따라 Core CLI와 프로젝트용 스킬을 설치합니다. 대상 프로젝트 루트에서 `sdd-core install-skills codex` 또는 `sdd-core install-skills claude`를 실행한 뒤 새 세션을 시작합니다.
+## 업데이트
 
-Codex에서는 `$sdd-init`, Claude Code에서는 `/sdd-init`으로 초기 분석을 실행합니다. 공식 `specify init`만 마친 시점에는 Harness Baseline이 생성되기 전입니다. 초기 분석을 마치면 Feature별 공식 spec·plan과 `.specify/baseline/`의 6개 파일, 초기 검증 결과를 확인합니다. 개발과 외부 변경 정합화 호출은 README에 정리했습니다. Git 반영은 사용자가 수행합니다.
+사용할 새 SpecThread 배포본을 직접 내려받아 압축을 풉니다. **그 새 배포 폴더에서 터미널을 열고** 실행합니다.
 
+```sh
+python3 specthread update
+```
 
-## Core 취득과 교체
+1. 기존 앱 프로젝트 폴더를 지정합니다.
+2. 설치된 에이전트는 자동으로 읽습니다. 변경 대상과 검사 내용을 확인하고 동의합니다.
+3. 기존 Feature가 있고 아직 프로젝트 검사 명령을 등록하지 않았다면, 평소 사용하던 테스트·빌드 명령을 한 번 입력합니다. 이후 업데이트에서는 저장한 명령을 사용합니다. 검사 명령이 바뀌었으면 적용 확인 화면에서 `c`를 선택해 바꿉니다. 추가 설치 명령이나 JSON 작성 없이 같은 update 안에서 처리합니다.
 
-제품 저장소는 사용자가 Git clone/pull 또는 GitHub ZIP 다운로드로 취득합니다. 설치할 Core 배포본과 Codex 또는 Claude Code 중 프로젝트에 사용할 한 종류를 선택합니다. 공식 Spec Kit는 공식 경로에서 별도로 관리합니다. 설계 버전 1.0은 Core에 설치할 패키지 버전을 지정하지 않습니다.
+Spec Kit 프로젝트 Skill 갱신, SpecThread Skill·실행 환경 연결, 기존 누적 메타데이터 변환과 필수·품질 검사를 이어서 수행합니다. 앱 코드·테스트, Feature UUID, 기존 명세와 완료 이력을 보존합니다. 프로젝트에 아직 확정 Feature가 없으면 초기 Baseline 구조 검사를 수행하며 앱 테스트까지 통과했다고 표시하지 않습니다.
 
-Core 교체 이후의 비교·승인·검증과 실패 처리 계약은 [버전 동기화 설계](design/version-sync.md)를 따릅니다. Core 0.3.0의 `version-check`로 일치 상태를 확인하고, 불일치는 `version-sync`의 미리보기와 사용자 승인으로 처리합니다.
+**Core 원본은 지금 실행한 로컬 배포본입니다.** GitHub 최신 버전을 검색하거나 자동 다운로드하지 않습니다. Spec Kit CLI는 이 배포본이 검증한 1.4.0을 전용 환경에서 사용하고, 프로젝트 Skill 갱신은 공식 명령에 위임합니다.
 
-0.3.0으로 동기화한 기존 프로젝트는 `schema_version: 1`로 변환되며 과거 분석 상태를 추정하지 않습니다. 설치 후 `analysis-record`와 `develop-check`로 대상 분석을 확인하고, 개발·검증 전에 필수 Gate를 등록합니다. 정확한 계획 필드는 [초기 분석](design/03-analysis-standard.md)과 [검증 계약](design/06-verification.md)을 따릅니다.
+## 중단되었을 때
+
+| 화면의 안내 | 할 일 |
+| --- | --- |
+| Python 3.11 이상 필요 | 지원되는 Python을 설치한 뒤 같은 명령을 실행합니다. |
+| 전용 환경 준비 실패 | 인터넷 연결과 출력한 설치 로그를 확인한 뒤 같은 명령으로 다시 시도합니다. |
+| 이미 설치됨 / 설치 기록 없음 | 안내에 맞게 `update` 또는 `install`을 사용합니다. |
+| 사용자 수정 Skill·실행 파일 발견 | 해당 파일을 임의로 덮어쓰지 않습니다. 원본과 사용자 변경을 확인한 뒤 다시 시도합니다. |
+| 프로젝트 검사 실패 | 성공으로 보고하지 않습니다. 검사 오류를 해결하고, 부분 적용된 자료는 필요하면 사용자가 Git으로 원복한 뒤 업데이트를 처음부터 실행합니다. |
+| 다른 에이전트가 이미 등록됨 | 자동으로 삭제·전환하지 않습니다. 기존 프로젝트의 에이전트를 사용하거나 별도 프로젝트를 준비합니다. |
+
+기존 설치 중 출발 버전 표식이 없는 오래된 Baseline은 확인한 이전 버전을 묻습니다. 모르는 버전을 추측해서 선택하지 않습니다. 자동 Git Commit·Push·원복은 하지 않습니다.
+
+## 필요한 경우에만 쓰는 옵션
+
+일상 사용에는 위 두 명령이면 됩니다. 자동화나 경로를 미리 지정할 때는 같은 명령의 `--project`, `--agent`, `--check`, `--yes` 옵션을 사용할 수 있습니다. `--check`는 기존 프로젝트의 실제 검사 명령을 지정하는 옵션이며 내부 설치 명령이 아닙니다. `--yes`는 표시한 변경에 동의하는 자동화용 옵션입니다.
+
+[설치 실행 계약](design/installation.md) · [Core 버전 정책](design/version-sync.md) · [공식 Spec Kit 설치](https://github.github.com/spec-kit/installation.html) · [공식 프로젝트 연동 업데이트](https://github.github.com/spec-kit/upgrade.html)

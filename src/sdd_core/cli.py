@@ -17,6 +17,7 @@ from .lifecycle import prepare_retirement, retire
 from .discovery import assess_discovery
 from .version_sync import apply_sync, digest, install_skills, json_bytes, plan_sync, require_project
 from .work_items import check_findings, expand_scope, read_plan, update
+from . import reconciliation, revalidation
 
 
 def uuid7():
@@ -99,6 +100,13 @@ def main(argv=None):
     stages.add_argument("stage", choices=["develop", "verify", "complete"])
     install = commands.add_parser("install-skills")
     install.add_argument("agent", choices=["codex", "claude"])
+    reconcile = commands.add_parser("reconcile")
+    reconcile.add_argument("plan", type=Path)
+    reconcile.add_argument("--confirm")
+    refresh = commands.add_parser("gate-refresh")
+    refresh.add_argument("id")
+    refresh.add_argument("--stage", choices=["develop", "verify", "complete"], default="complete")
+    refresh.add_argument("--confirm")
     args = parser.parse_args(argv)
     try:
         root = args.root.resolve(strict=True)
@@ -141,7 +149,9 @@ def main(argv=None):
             if not isinstance(actual, list) or any(not isinstance(item, str) for item in actual):
                 raise ValueError("actual_features에는 Feature UUID 목록이 필요합니다")
             require_project(root, scope=work_scope(root, args.id) + actual)
-            develop_check(root, work_scope(root, args.id) + actual)
+            _, current_item = work_item(root, args.id)
+            if current_item.get("kind") != "reconciliation":
+                develop_check(root, work_scope(root, args.id) + actual)
             check_findings(plan.get("findings"))
             if not plan["findings"]:
                 raise ValueError("완료 영향 판정 근거가 필요합니다")
@@ -193,7 +203,9 @@ def main(argv=None):
                 register_gates(root, args.id, preview)
         elif args.command == "gate-run":
             require_project(root, scope=work_scope(root, args.id))
-            develop_check(root, work_scope(root, args.id))
+            _, current_item = work_item(root, args.id)
+            if current_item.get("kind") != "reconciliation":
+                develop_check(root, work_scope(root, args.id))
             result = execute_gate(root, args.id, args.gate,
                                   read_plan(args.review) if args.review else None)
             print(json_bytes(result).decode(), end="")
@@ -201,7 +213,9 @@ def main(argv=None):
                 return 2
         elif args.command == "stage-check":
             require_project(root, scope=work_scope(root, args.id))
-            develop_check(root, work_scope(root, args.id))
+            _, current_item = work_item(root, args.id)
+            if current_item.get("kind") != "reconciliation":
+                develop_check(root, work_scope(root, args.id))
             _, item = work_item(root, args.id)
             print(json_bytes(require_gates(root, item, args.stage)).decode(), end="")
         elif args.command == "feature-retire":
@@ -214,6 +228,30 @@ def main(argv=None):
                 raise ValueError("승인한 아카이브 입력이 변경됐습니다")
             else:
                 retire(root, preview, updated, writes)
+        elif args.command == "reconcile":
+            config = read_plan(args.plan)
+            require_project(root, scope=config.get("features"), validate_baseline=False)
+            preview = reconciliation.prepare(root, config)
+            approval = content_hash(preview)
+            if args.confirm is None:
+                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
+            elif args.confirm != approval:
+                raise ValueError("승인한 정합화 기준·입력·범위·변경안이 달라졌습니다. 새 승인이 필요합니다")
+            else:
+                print(json_bytes(reconciliation.apply(root, preview, str(uuid7()))).decode(), end="")
+        elif args.command == "gate-refresh":
+            require_project(root, scope=work_scope(root, args.id), validate_baseline=False)
+            preview = revalidation.prepare(root, args.id, args.stage)
+            approval = content_hash(preview)
+            if args.confirm is None:
+                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
+            elif args.confirm != approval:
+                raise ValueError("선택적 재검증 입력·이름 변경 후보가 바뀌었습니다. 새 승인이 필요합니다")
+            else:
+                result = revalidation.refresh(root, args.id, preview)
+                print(json_bytes(result).decode(), end="")
+                if result["status"] != "PASS":
+                    return 2
         elif args.command == "install-skills":
             install_skills(root, args.agent)
         elif args.command == "version-check":

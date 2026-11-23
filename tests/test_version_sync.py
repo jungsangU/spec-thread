@@ -155,3 +155,24 @@ class VersionSyncTest(unittest.TestCase):
         path.write_text(json.dumps(data))
         self.assertEqual(self.cli("version-sync", filename)[0], 1)
         self.assertFalse((self.root / PROJECT).exists())
+
+    def test_v03_to_v04_preserves_baseline_and_history(self):
+        from sdd_core.version_sync import skill_marker
+        install_skills(self.root, 'codex')
+        scaffold(self.root)
+        project = json.loads((self.root / PROJECT).read_text())
+        project['core_version'] = '0.3.0'
+        self.write(PROJECT, json.dumps(project))
+        marker = json.loads((self.root / skill_marker('codex')).read_text())
+        marker['core_version'] = '0.3.0'
+        self.write(skill_marker('codex'), json.dumps(marker))
+        before = {p.name: p.read_bytes() for p in (self.root / '.specify/baseline').iterdir()}
+        self.write('verify.txt', 'unchanged input')
+        filename = str(self.root / 'upgrade.json')
+        self.write('upgrade.json', json.dumps({'agent': 'codex', 'quality': [
+            {'features': [], 'paths': ['verify.txt'], 'command': [sys.executable, '-c', 'pass']}]}))
+        preview = self.preview(filename)
+        result = self.cli('version-sync', filename, '--confirm', preview)
+        self.assertEqual(result[0], 0, result[2])
+        self.assertEqual(before, {p.name: p.read_bytes() for p in (self.root / '.specify/baseline').iterdir()})
+        self.assertEqual(self.cli('version-check')[0], 0)

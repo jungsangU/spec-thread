@@ -7,7 +7,7 @@
 공식 **GitHub Spec Kit**와 함께 사용하는 개발 하네스.<br>
 **Codex · Claude Code**의 개발 흐름에 기능 추적과 검증 기준을 연결합니다.
 
-![Core 0.3.0](https://img.shields.io/badge/Core-0.3.0-b75d43?style=flat-square)
+![Core 0.4.0](https://img.shields.io/badge/Core-0.4.0-b75d43?style=flat-square)
 ![Design 1.0](https://img.shields.io/badge/Design-1.0-7b7265?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3f6b59?style=flat-square)
 ![Spec Kit 1.4.0](https://img.shields.io/badge/Spec_Kit-1.4.0-63598a?style=flat-square)
@@ -51,6 +51,8 @@ flowchart LR
     V --> B["Baseline · 완료 이력"]
 ```
 
+질문은 필요한 내용 하나씩 받고, 단계가 끝나면 구체적인 다음 작업을 제안합니다. 사용자는 “진행해”라고 답해 이어갈 수 있습니다. [대화형 진행](docs/design/conversation-flow.md)의 안내 방식과 기존 Gate를 함께 따릅니다.
+
 ## 세 가지 작업 흐름
 
 | 작업 | Codex | Claude Code | 결과 |
@@ -61,31 +63,21 @@ flowchart LR
 
 한 프로젝트에서 **Codex 또는 Claude Code 한 종류**를 선택합니다. Skill은 의미와 근거를 분석하고, Core는 저장된 계약과 완료 조건을 검사합니다.
 
-## 빠르게 시작하기
+## 설치와 업데이트
 
-**Python 3.11 이상**과 **공식 GitHub Spec Kit v1.4.0으로 초기화한 대상 프로젝트**를 준비합니다. 공식 도구 설치와 에이전트 연동은 [설치 매뉴얼](docs/SpecThread-설치-매뉴얼.md)에 정리되어 있습니다.
-
-SpecThread 소스 폴더를 내려받아 로컬에 설치합니다.
+사용할 배포본을 직접 내려받고, **그 배포 폴더에서** 아래 명령 하나를 실행합니다. 대상 앱 폴더와 에이전트는 화면에서 선택합니다.
 
 ```sh
-git clone https://github.com/jungsangU/spec-thread.git
-python3 -m pip install ./spec-thread
-sdd-core --version
+# 신규 설치
+python3 specthread install
+
+# 내려받은 새 배포본으로 업데이트
+python3 specthread update
 ```
 
-관리할 **애플리케이션 프로젝트 루트**에서 사용할 에이전트에 맞는 한 줄을 실행합니다.
+Python 3.11 이상과 사용할 AI 앱을 준비하면 됩니다. Spec Kit·SpecThread Skill 준비와 버전·구조 검사는 내부에서 처리합니다. 전역 specify/sdd-core 설치, 가상환경 활성화, JSON 계획 작성은 필요하지 않습니다. 기존 앱의 업데이트 검사는 처음 한 번 등록하고 재사용합니다.
 
-```sh
-cd /path/to/target-project
-
-# Codex
-sdd-core install-skills codex
-
-# Claude Code
-sdd-core install-skills claude
-```
-
-선택한 에이전트 세션에서 `$sdd-init` 또는 `/sdd-init`으로 시작합니다. 기존 설치를 업데이트할 때는 [버전 동기화](docs/design/version-sync.md)의 미리보기·승인·검증 절차를 따릅니다.
+[설치 가이드](docs/SpecThread-설치-매뉴얼.md)에서 두 명령의 화면 흐름과 중단 시 처리 방법을 확인하세요. 설치 후 앱 프로젝트의 새 AI 세션에서 Codex는 `$sdd-init`, Claude Code는 `/sdd-init`으로 분석을 시작합니다.
 
 <details>
 <summary><strong>대상 프로젝트에는 무엇이 남나요?</strong></summary>
@@ -107,6 +99,10 @@ target-project/
 
 </details>
 
+## 제품 구현 완료 기준
+
+설계 기반 구현 요청은 [구현 → 테스트 → 설계 대조 → 누락 보완](docs/design/implementation-standard.md)을 반복하고 실제 근거로 완료를 판단합니다. 최근 결과는 [구현 반복 검증](docs/validation/design-1.0-implementation-cycle.md)에 있습니다.
+
 ## 검증과 운영 기준
 
 - 적용 필수 Gate가 모두 **현재 유효한 PASS**일 때 완료합니다.
@@ -122,15 +118,15 @@ target-project/
 | [**제품 소개 · HTML**](docs/design/SpecThread-설계-소개.html) | 사용 장면·관계도·설명 이미지로 보는 제품의 역할과 사용 방법 |
 | [**전체 기능 목록 · HTML**](docs/design/SpecThread-전체-기능목록.html) | 대기능·소기능·설명·적용 방식·소유·상태별 검색과 비교 |
 | [설계와 실행 가이드 · HTML](docs/design/SpecThread-설계와-실행-가이드.html) | 상세 실행 흐름과 사용 예시 |
-| [공식 설계 목차](docs/design/README.md) | 아키텍처·데이터 모델·명령·검증·결정 기록으로 이동 |
+| [공식 설계 목차](docs/design/README.md) | 주제별 원본·문서 책임·읽기 순서와 결정 기록으로 이동 |
 | [구현·PoC 백로그](docs/design/OPEN-ISSUES.md) | 확인된 범위와 남은 실행·운영 검증 확인 |
 
 HTML은 저장소를 내려받아 브라우저에서 열 수 있습니다. 제품 소개는 사용 예시 선택과 관계도, 인쇄·PDF를 지원합니다.
 
 ## 현재 버전과 확인 범위
 
-**Core 0.3.0 · 설계 1.0 · Baseline schema_version 1**
+**Core 0.4.0 · 설계 1.0 · Baseline schema_version 1**
 
-Core CLI 테스트 **37개**와 패키지 업그레이드, 애플리케이션 자료 보존, 문서·HTML 동기화를 검증했습니다. Codex·Claude Code 각각의 공식 스킬 호출을 포함한 실제 프로젝트 종단간 PoC와 GitHub 운영 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
+Core CLI 테스트 **73개**, 문서 예시 계약 **13개**, 실제 0.3.0 설치에서 0.4.0 wheel로 승인 업그레이드한 결과와 자료 보존을 검증했습니다. [두 명령 설치 검증](docs/validation/installation-two-command-review.md)에서는 공식 Spec Kit 1.4.0의 Codex·Claude 설치와 기존 프로젝트 업데이트도 확인했습니다. Codex·Claude Code 각각의 공식 스킬 호출을 포함한 실제 프로젝트 종단간 PoC와 GitHub 운영 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
 
 AI와 설계 작업을 시작할 때는 [AGENTS.md](AGENTS.md)를 먼저 읽고 [설계 목차](docs/design/README.md)의 순서로 현재 명세와 결정을 확인합니다.
