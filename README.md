@@ -130,3 +130,7 @@ HTML은 저장소를 내려받아 브라우저에서 열 수 있습니다. 제�
 Core CLI 테스트 **73개**, 문서 예시 계약 **13개**, 실제 0.3.0 설치에서 0.4.0 wheel로 승인 업그레이드한 결과와 자료 보존을 검증했습니다. [두 명령 설치 검증](docs/validation/installation-two-command-review.md)에서는 공식 Spec Kit 1.4.0의 Codex·Claude 설치와 기존 프로젝트 업데이트도 확인했습니다. Codex·Claude Code 각각의 공식 스킬 호출을 포함한 실제 프로젝트 종단간 PoC와 GitHub 운영 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
 
 AI와 설계 작업을 시작할 때는 [AGENTS.md](AGENTS.md)를 먼저 읽고 [설계 목차](docs/design/README.md)의 순서로 현재 명세와 결정을 확인합니다.
+
+## 선택 기능
+
+[SpecThread Monitor](monitor/README.md)는 지정한 Worktree의 작업, Gate, 산출물과 연결한 에이전트 이벤트를 로컬에서 관측합니다.

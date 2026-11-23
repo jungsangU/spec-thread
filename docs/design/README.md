@@ -24,6 +24,7 @@
 | 로컬 업데이트 | [Core 버전 동기화](version-sync.md) | 취득·버전 일치·누적 메타데이터 변환·승인·필수/품질 Gate·사용자 원복 |
 | Git·협업 | [08 Git·세션 운영](08-git-integration.md) | 대상 Git 반영, 병렬 세션 책임·제외 범위, 제품 브랜치·PR·CI·설계 릴리즈 |
 | 제품 구현 절차 | [구현·설계 대조 반복](implementation-standard.md) | 구현·테스트·원문 재대조·누락 보완의 반복과 완료 증거 |
+| 개발 관측 | [SpecThread Monitor](monitor.md) | 사용자 실행형 읽기 전용 관측, 이벤트·화면 및 입력 한도 |
 | 인수 검증 | [PoC·MVP 인수 기준](acceptance.md) | P01~P12 시나리오, 수집 증거와 통과 기준. 실제 진행 상태는 백로그 |
 
 ## 결정과 진행 상태

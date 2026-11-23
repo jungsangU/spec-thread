@@ -9,6 +9,10 @@
 - 공식 Spec Kit는 Python 전용 환경에 `specify-cli==1.4.0`으로 설치하고 공식 init/integration install/integration upgrade/status를 호출한다. 공식 관리 파일·명세·라이프사이클을 Harness가 새 형식으로 대체하지 않는다. [공식 설치](https://github.github.com/spec-kit/installation.html) · [업데이트](https://github.github.com/spec-kit/upgrade.html)
 - 에이전트 앱의 설치·인증과 Git 운영은 사용자 책임이다. 설치는 `sdd-init`의 도메인 분석을 대신 실행하지 않는다.
 
+## 선택 설치
+
+`python3 specthread install --monitor`는 기존 설치 완료 뒤 별도 환경에 [Monitor](monitor.md)를 추가한다. 이미 등록한 대상에 이 옵션으로 install을 실행하면 Monitor만 설치한다. 프로젝트의 `./monitor`를 실행하며 대상 Core의 Python·버전 기록은 기존 설치 흐름이 소유한다.
+
 ## 입력·출력
 
 적용 확인에서 c를 선택하면 저장한 앱 검사 명령을 변경하고 현재 입력으로 계획을 다시 계산한 뒤 적용 동의를 받는다. 별도 설치 명령을 조합하지 않는다.

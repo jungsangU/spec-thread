@@ -73,3 +73,7 @@ Spec Kit 프로젝트 Skill 갱신, SpecThread Skill·실행 환경 연결, 기�
 일상 사용에는 위 두 명령이면 됩니다. 자동화나 경로를 미리 지정할 때는 같은 명령의 `--project`, `--agent`, `--check`, `--yes` 옵션을 사용할 수 있습니다. `--check`는 기존 프로젝트의 실제 검사 명령을 지정하는 옵션이며 내부 설치 명령이 아닙니다. `--yes`는 표시한 변경에 동의하는 자동화용 옵션입니다.
 
 [설치 실행 계약](design/installation.md) · [Core 버전 정책](design/version-sync.md) · [공식 Spec Kit 설치](https://github.github.com/spec-kit/installation.html) · [공식 프로젝트 연동 업데이트](https://github.github.com/spec-kit/upgrade.html)
+
+## Monitor 선택 설치 및 실행
+
+제품 폴더에서 `python3 specthread install --monitor`를 실행해 대상 프로젝트를 선택한다. 설치한 프로젝트에서 `./monitor`를 실행하면 설정한 에이전트의 새 터미널 세션과 함께 대시보드가 열린다. 화면만 열려면 `./monitor --dashboard-only`를 실행한다. [Monitor 사용법](../monitor/README.md)

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpecThread Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#overview">본문으로 이동</a>
+  <div class="layout">
+    <aside class="rail">
+      <div class="brand"><span class="mark" aria-hidden="true">▰</span><div>SpecThread <strong>Monitor</strong></div></div>
+      <div class="workspace"><span class="workspace-icon" aria-hidden="true">▦</span><div><span class="caption">워크스페이스</span><p id="project-name" class="project">연결 대기</p></div></div>
+      <nav aria-label="모니터 탐색">
+        <a href="#overview"><span aria-hidden="true">◈</span> 대시보드</a>
+        <a href="#sessions"><span aria-hidden="true">◉</span> 세션</a>
+        <a href="#features"><span aria-hidden="true">◇</span> Feature</a>
+        <a href="#work-items"><span aria-hidden="true">▣</span> Work Item · Gate</a>
+        <a href="#artifacts"><span aria-hidden="true">▤</span> 산출물</a>
+        <a href="#changes"><span aria-hidden="true">⑂</span> Git 변경</a>
+        <a href="#pipeline"><span aria-hidden="true">↳</span> SDD Pipeline</a>
+      </nav>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="top">
+        <div><p id="observed" class="muted"></p><h1 id="page-title">프로젝트 대시보드</h1></div>
+        <div class="header-actions">
+          <p id="connection" role="status"></p>
+          <div class="modes" role="group" aria-label="표시 모드"><button id="living-mode" aria-pressed="true">Living</button><button id="focus-mode" aria-pressed="false">Focus</button></div>
+        </div>
+      </header>
+      <div id="overview" data-page>
+        <div id="metrics" class="metrics" aria-label="진행 및 검증 지표"></div>
+        <div class="dashboard">
+          <div class="stack">
+            <section class="panel office" aria-labelledby="office-heading">
+              <div class="panel-heading"><div><h2 id="office-heading">SDD Office</h2><span id="office-signal" class="muted">세션 이벤트 대기</span></div><a class="jump" href="#sessions">세션 보기 ↗</a></div>
+              <canvas id="office" width="360" height="124" aria-hidden="true"></canvas>
+            </section>
+            <section class="panel activity" aria-labelledby="activity-heading">
+              <div class="panel-heading"><h2 id="activity-heading">세션 활동</h2><span id="session-scope" class="muted"></span></div>
+              <div id="session-cards" class="session-cards"></div>
+            </section>
+          </div>
+          <div class="stack">
+            <section class="panel distribution" aria-labelledby="distribution-heading">
+              <div class="panel-heading"><h2 id="distribution-heading">작업 상태</h2><a class="jump" href="#work-items">작업 보기 ↗</a></div>
+              <div id="work-distribution"></div>
+            </section>
+            <section class="panel next" aria-labelledby="next-heading">
+              <div class="panel-heading"><h2 id="next-heading">다음 행동</h2><a class="jump" href="#pipeline">흐름 보기 ↗</a></div>
+              <div id="action-data"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <section class="panel detail-page" id="sessions" data-page hidden aria-label="세션 상세"><div id="session-data"></div></section>
+      <section class="panel detail-page" id="features" data-page hidden aria-label="Feature 상세"><div id="feature-data"></div></section>
+      <section class="panel detail-page" id="work-items" data-page hidden aria-label="Work Item과 Gate 상세"><div id="work-data"></div></section>
+      <section class="panel detail-page" id="artifacts" data-page hidden aria-label="산출물 상세">
+        <div class="explorer">
+          <div><label class="search-label" for="artifact-filter">경로 검색</label><input id="artifact-filter" type="search" placeholder="예: spec.md"><div id="artifact-data"></div></div>
+          <div class="preview" id="artifact-preview"><h2 id="artifact-title">파일 내용</h2><p id="artifact-path" class="muted">왼쪽에서 파일을 선택하세요.</p><pre id="artifact-text" tabindex="0" aria-labelledby="artifact-title" hidden></pre></div>
+        </div>
+      </section>
+      <section class="panel detail-page" id="changes" data-page hidden aria-label="Git 변경 상세">
+        <div id="change-data"></div>
+        <div id="diff-display" hidden><h2 id="diff-title"></h2><pre id="patch" tabindex="0" aria-labelledby="diff-title"></pre></div>
+      </section>
+      <section class="panel detail-page" id="pipeline" data-page hidden aria-label="SDD Pipeline 상세"><div id="pipeline-data"></div><h2>다음 행동</h2><div id="pipeline-actions"></div></section>
+    </main>
+  </div>
+</body>
+</html>

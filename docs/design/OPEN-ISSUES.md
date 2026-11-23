@@ -27,4 +27,10 @@ ST-O3·ST-O5·ST-O16 및 필수 Gate의 정책 결정은 완료됐다. 직렬화
 
 Core 0.4.0의 구현 근거는 analysis/discovery, work_items/gates/evidence, lifecycle, version_sync 모듈과 기존 제품 테스트다. 외부 변경 Sync의 실행부는 sdd-sync Skill이다. Core 자동화가 없다는 이유로 Skill에 구현된 절차를 미구현으로 분류하지 않는다. ST-O4의 강제 바인딩·작업 기록과 ST-O6의 선택적 실행·이관은 사용자 추가 요청으로 Core 0.4.0에 구현했다. 기존 Core·Skill·Work Item·Gate만 확장하며 별도 오케스트레이터·상태 DB는 추가하지 않았다.
 
+## Monitor 실행 확인
+
+| ID | 구분 | 내용 |
+| --- | --- | --- |
+| ST-O17 | 실행 검증 | [Monitor](monitor.md)의 실제 대화형 Codex·Claude Code 개별 이벤트와 파일 귀속, 사용자 운영 환경의 종단간 검증 |
+
 인수 시나리오·수집할 증거와 MVP 통과 기준은 [PoC 명세](acceptance.md)에 둔다. 확정 정책·직렬화·CLI 계약은 [주제별 원본](README.md)을 따른다.

@@ -39,4 +39,6 @@ flowchart LR
 
 Baseline은 전체 Feature, 의존관계, 경로와 Work Item 증거를 연결한다. 승인된 의도는 constitution과 공식 명세에, 실행 사실은 소스·계약·검증 증거에 남긴다. 자세한 스키마는 [산출물 모델](01-artifact-model.md), 권위 및 충돌 정책은 [기준 정보](02-source-of-truth.md), 명령·공식 기능·상태와 검증 계약은 [통합 실행 명세](SpecThread-통합-상세-설계서.md)를 참조한다.
 
+선택 설치 [Monitor](monitor.md)는 사용자 지정 Worktree와 이벤트 입력을 로컬에서 읽는다. Core와 Skill의 실행 경로에서 독립된 관측 모듈이다.
+
 상세 명세의 경계는 [설계 목차](README.md)를 따른다. 공식 기능·호출 전제는 [Spec Kit 연동](spec-kit-integration.md), 네이티브 설치·호출은 [에이전트 런타임](07-agent-runtime.md), 병렬 운영과 명시적 제외 기능은 [Git·세션 운영](08-git-integration.md), 로컬 버전 확인·변환은 [버전 동기화](version-sync.md)에 둔다.
