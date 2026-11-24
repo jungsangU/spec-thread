@@ -2,8 +2,9 @@
 from itertools import islice
 import os
 import re
-import selectors
+from queue import Empty, Queue
 import subprocess
+from threading import Thread
 import time
 from datetime import datetime, timezone
 from urllib.parse import unquote
@@ -39,26 +40,31 @@ def git(root, *args, limit=256 * 1024, configs=()):
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0")
     command = ["git", "--no-optional-locks", "-c", "core.fsmonitor=false",
-               "-c", "core.hooksPath=/dev/null", "-C", str(root)]
+               "-c", f"core.hooksPath={os.devnull}", "-C", str(root)]
     for config in configs:
         command.extend(("-c", config))
     command.extend(args)
     deadline = time.monotonic() + 3
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env) as proc:
+    output = Queue(maxsize=1)
+
+    def read_output(stream):
         try:
-            with selectors.DefaultSelector() as selector:
-                selector.register(proc.stdout, selectors.EVENT_READ)
-                data = bytearray()
-                while True:
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0 or not selector.select(remaining):
-                        raise ValueError("Git 읽기 시간 한도를 초과했습니다")
-                    chunk = os.read(proc.stdout.fileno(), 16384)
-                    if not chunk:
-                        break
-                    data.extend(chunk)
-                    if len(data) > limit:
-                        raise ValueError("Git 출력 크기 한도를 초과했습니다")
+            output.put(stream.read(limit + 1))
+        except OSError as error:
+            output.put(error)
+
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env) as proc:
+        reader = Thread(target=read_output, args=(proc.stdout,), daemon=True)
+        reader.start()
+        try:
+            try:
+                data = output.get(timeout=max(0.01, deadline - time.monotonic()))
+            except Empty as error:
+                raise ValueError("Git 읽기 시간 한도를 초과했습니다") from error
+            if isinstance(data, OSError):
+                raise data
+            if len(data) > limit:
+                raise ValueError("Git 출력 크기 한도를 초과했습니다")
             if proc.wait(timeout=max(0.01, deadline - time.monotonic())):
                 raise ValueError("Git 정보를 읽을 수 없습니다")
             return data.decode("utf-8", errors="replace")

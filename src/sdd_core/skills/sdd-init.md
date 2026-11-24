@@ -5,10 +5,10 @@ description: Discover and verify the full project scope and initialize the SpecT
 
 Follow the shared conversation and presentation protocol included below throughout this skill. Collect only the next missing decision; do not turn the initial request into a bulk questionnaire.
 
-Before creating any artifacts, run `python3 .specify/sdd-core version-check --agent AGENT`. Set AGENT to the current agent kind (`codex` or `claude`).
+Before creating any artifacts, run `python3 .specify/sdd-core preflight init --agent AGENT`. Set AGENT to the current agent kind (`codex` or `claude`).
 If the gate blocks, stop the requested operation and report why. Core replacement is a user action. If asked to help synchronize versions, prepare the documented `python3 .specify/sdd-core version-sync PLAN.json` preview with known existing verification commands and concrete input paths. Present the preview and wait for explicit approval before passing its hash to `--confirm`. Check the approved scope again before continuing. Git and rollback belong to the user.
 
-Run only on explicit user request from the target project root. Verify the official Spec Kit integration, read the constitution and inspect existing official artifacts. Confirm scope or mode only if ambiguous. Run `python3 .specify/sdd-core scaffold` to create missing Baseline files without replacing existing files. Use the [Discovery gate procedure](#discovery-gate) below.
+Run only on explicit user request from the target project root. Verify the official Spec Kit integration, read the constitution and inspect existing official artifacts. Confirm scope or mode only if ambiguous. Use the existing Baseline from installation. Run `python3 .specify/sdd-core scaffold` only if the Baseline does not exist and the installed project passes preflight. Use the [Discovery gate procedure](#discovery-gate) below.
 
 ## Guided intake
 
@@ -18,7 +18,7 @@ Once the minimal purpose and context are sufficient, create the official initial
 
 For Brownfield, inspect current code/specifications/tests first. Explain the observed system briefly and ask only the next material ambiguity about current behavior or intent; do not ask the user to reconstruct all existing features. Preserve uncertainty and all existing Gate rules. Use the official specify/clarify flow once sufficient context exists, gathering remaining answers progressively rather than changing the official document format.
 
-At an analysis milestone, summarize the understood scope and unresolved point concisely. Do not treat a conversational confirmation as Discovery READY. Persist actual evidence with the existing analysis contract. At the end, check the proposed active Feature with develop-check; only if it passes propose one concrete sdd-develop handoff. Partial analysis must satisfy the same target/dependency rules.
+At an analysis milestone, summarize the understood scope and unresolved point concisely. Do not treat a conversational confirmation as Discovery READY. Persist actual evidence with the existing analysis contract. At the end, check the proposed active Feature with `python3 .specify/sdd-core preflight develop --agent AGENT FEATURE_UUID ...`; only if it passes propose one concrete sdd-develop handoff. Partial analysis must satisfy the same target/dependency rules.
 
 ## Discovery
 

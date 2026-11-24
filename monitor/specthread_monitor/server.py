@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 from .events import collect
 from .metrics import dashboard, test_report
 from .observe import diff, project_path, snapshot
+from .project_events import configured_agent, read as read_project_events
 
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -32,6 +33,15 @@ def read_artifact(root, name, artifacts):
     if path != root / name:
         raise ValueError("Artifact must be a regular project file")
     limit = 96 * 1024
+    if os.name == "nt":
+        before = path.stat(follow_symlinks=False)
+        if not stat.S_ISREG(before.st_mode) or before.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+            raise ValueError("Artifact must be a regular file")
+        with path.open("rb") as file:
+            opened = os.fstat(file.fileno())
+            if not os.path.samestat(before, opened) or project_path(root, name) != path:
+                raise ValueError("Artifact path changed")
+            return artifact_text(file.read(limit + 1), limit)
     parts = path.relative_to(root).parts
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     with ExitStack() as handles:
@@ -44,17 +54,48 @@ def read_artifact(root, name, artifacts):
         with os.fdopen(descriptor, "rb") as file:
             if not stat.S_ISREG(os.fstat(file.fileno()).st_mode):
                 raise ValueError("Artifact must be a regular file")
-            text = file.read(limit + 1)
+            return artifact_text(file.read(limit + 1), limit)
+
+
+def artifact_text(text, limit):
     if b"\0" in text:
         raise ValueError("Artifact must be text")
     return {"text": text[:limit].decode("utf-8", errors="replace"), "truncated": len(text) > limit}
 
 
+def session_gates(items, sessions):
+    """Use an exact observed Work Item ID and the latest Core gate results."""
+    by_id = {item["id"]: item for item in items}
+    matched = {}
+    for session in reversed(sessions):
+        link = session.get("gate_work") or {}
+        work_id = link.get("work")
+        phase = link.get("phase")
+        if work_id in matched or session["state"] in ("ended", "quiet"):
+            continue
+        item = by_id.get(work_id)
+        if not item or item["status"] in ("completed", "failed"):
+            continue
+        gates = [
+            {"id": gate["id"], "status": gate["current"]}
+            for gate in item["gates"] if gate["required"] and (
+                (phase and phase in gate["stages"] and gate["current"] != "PASS")
+                or (not phase and gate["current"] in ("FAIL", "UNKNOWN", "STALE"))
+            )
+        ]
+        if not gates and item["gate_issue"]:
+            gates = [{"id": "Gate 검토", "status": "REVIEW"}]
+        if gates:
+            matched[work_id] = {"work": work_id, "agent": session["agent"], "session": session["session"], "gates": gates}
+    return list(matched.values())
+
+
 class MonitorServer(HTTPServer):
-    def __init__(self, root, sources, port):
+    def __init__(self, root, sources, port, idle_seconds=900):
         super().__init__(("127.0.0.1", port), Handler)
-        self.root = root
+        self.root = root.resolve()
         self.sources = sources
+        self.idle_seconds = idle_seconds
         self.token = secrets.token_urlsafe(24)
         self.cached = None
         self.cached_at = float("-inf")
@@ -66,7 +107,12 @@ class MonitorServer(HTTPServer):
     def get_snapshot(self):
         if time.monotonic() - self.cached_at >= 2:
             data = snapshot(self.root)
-            self.cached = {**data, "activity": collect(self.root, self.sources),
+            agent = configured_agent(self.root)
+            activity = collect(self.root, self.sources, read_project_events(self.root),
+                               idle_seconds=self.idle_seconds, project_configured=agent is not None)
+            activity["project_agent"] = agent
+            activity["session_gates"] = session_gates(data["baseline"].get("items", []), activity["sessions"])
+            self.cached = {**data, "activity": activity,
                            "metrics": dashboard(data["baseline"], test_report(self.root))}
             self.cached_at = time.monotonic()
         return self.cached
@@ -139,10 +185,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "알 수 없는 경로"})
 
 
-def serve_dashboard(root, sources, port, *, browser=False):
-    with MonitorServer(root, sources, port) as server:
+def serve_dashboard(root, sources, port, *, browser=False, idle_seconds=900):
+    with MonitorServer(root, sources, port, idle_seconds) as server:
         url = f"http://{server.authority}/#token={server.token}"
         print(url, flush=True)
+        agent = configured_agent(server.root)
+        if agent:
+            print(f'이 창을 켜 두고 같은 프로젝트의 다른 터미널에서 {agent}를 실행하세요.', flush=True)
         if browser:
             try:
                 webbrowser.open(url)
@@ -159,6 +208,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Open a local, read-only SpecThread dashboard")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--port", type=int, default=0)
+    parser.add_argument("--launcher", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--record-event", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--session-idle-seconds", type=int, default=900)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--session", action="store_true")
     modes.add_argument("--dashboard-only", action="store_true")
@@ -168,6 +220,12 @@ def main(argv=None):
     parser.add_argument("--codex-events", action="append", type=Path, default=[])
     parser.add_argument("--claude-events", action="append", type=Path, default=[])
     args = parser.parse_args(argv)
+    if args.record_event:
+        from .session import record_event
+        record_event()
+        return 0
+    if not 10 <= args.session_idle_seconds <= 86400:
+        parser.error("--session-idle-seconds must be between 10 and 86400")
     root = args.root.resolve()
     if not root.is_dir():
         parser.error("--root must be a directory")
@@ -178,8 +236,10 @@ def main(argv=None):
         parser.error("at most 10 event sources are supported")
     if args.session:
         from .session import run_session
-        return run_session(root, args.port, sources, browser=not args.no_browser)
-    return serve_dashboard(root, sources, args.port, browser=args.open_browser)
+        return run_session(root, args.port, sources, browser=not args.no_browser, idle_seconds=args.session_idle_seconds)
+    return serve_dashboard(root, sources, args.port,
+                           browser=args.open_browser or (args.launcher and not args.no_browser),
+                           idle_seconds=args.session_idle_seconds)
 
 if __name__ == "__main__":
     raise SystemExit(main())

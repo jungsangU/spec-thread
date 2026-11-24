@@ -21,6 +21,12 @@ This section is included in each installed sdd-init, sdd-develop and sdd-sync Sk
 - "나중에", "보류" or "그만" stops the offered handoff; preserve the current files and notes. Use suspended only when the existing Work Item transition actually permits it. Never manufacture a new state or reopen failed/completed history.
 - On resume, read the existing artifacts, identify the last actual result and unresolved decision, and recheck the affected Gates before proposing a continuation. The old chat proposal is not a reusable approval token. Git actions remain user-owned and never an automatic next stage.
 
+### Routine commands and host permissions
+
+- Use the agent's project file tools for inspection when available. Run the Core preflight once for its scope; a successful result already includes the phase's checks. Recheck after material input or scope changes and at the documented Gate boundaries.
+- Within the user's accepted scope, run routine file reads, local edits and authorized verification directly through standard project tools. Do not add a separate conversation confirmation, custom shell wrapper or an elevated execution request for ordinary steps. Avoid combining unrelated commands in a shell call.
+- If the host requires permission, use its normal approval prompt for the actual operation. Explain the concrete blocker if denied and preserve it. Read-only inspection cannot replace evidence that requires execution. Keep explicit approval for Gate definitions and refresh plans, scope expansion, retirement, Sync and version synchronization. Do not broaden permissions or reinterpret a host authorization as approval of an SDD decision.
+
 ### Present a calm, consistent interface
 
 Use the user's language. Keep the same information order in Codex and Claude Code, while respecting each host's display and question capabilities. Do not change the user's global theme, output style, terminal settings, agent configuration or unrelated conversations.

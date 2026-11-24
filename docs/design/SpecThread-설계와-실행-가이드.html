@@ -29,7 +29,7 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 @media print { nav { display: none; } .layout { display: block; padding: 0; } main { padding: 0; border: 0; } pre { background: white; color: black; white-space: pre-wrap; } tr, .diagram { break-inside: avoid; } .diagram svg { min-width: 0; } }
 </style>
 </head>
-<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">Monitor 선택 설치 및 실행</a></li></ul></nav><main>
+<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">작업 중 실행 확인</a></li><li><a href="#section-8">Monitor 선택 설치 및 실행</a></li></ul></nav><main>
 <h1>SpecThread 설계와 실행 가이드</h1>
 <p>설계 1.0 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 <a href="README.md">주제별 설계 문서</a>에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 <a href="DECISIONS.md">결정 기록</a>에서 확인한다.</p>
 <h2 id="section-1">작업에 맞는 문서 찾기</h2>
@@ -96,7 +96,9 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 <p>설치·업데이트는 배포 폴더의 <code>python3 specthread install</code> 또는 <code>python3 specthread update</code>로 진행한다. Core 세부 설치 명령은 내부에서 처리하며 실제 두 명령의 확인 결과는 <a href="../validation/installation-two-command-review.md">설치 검증</a>에 기록한다.</p>
 <h2 id="section-6">질문과 단계 안내</h2>
 <p>init에서 필요한 질문 하나씩 답하고, 구체적인 다음 작업 제안에 “진행해”라고 답해 이어간다. 현재 단계·핵심 결과·다음 선택을 짧게 표시한다. 새로운 범위와 필수 승인은 별도로 확인하며 실제 준비 조건은 Core로 재검사한다. <a href="conversation-flow.md">대화·표시 계약</a></p>
-<h2 id="section-7">Monitor 선택 설치 및 실행</h2>
-<p>제품 폴더에서 <code>python3 specthread install --monitor</code>를 실행해 대상 프로젝트를 선택한다. 설치한 프로젝트에서 <code>./monitor</code>를 실행하면 설정한 에이전트의 새 터미널 세션과 함께 대시보드가 열린다. 화면만 열려면 <code>./monitor --dashboard-only</code>를 실행한다. <a href="../../monitor/README.md">Monitor 사용법</a></p>
+<h2 id="section-7">작업 중 실행 확인</h2>
+<p>초기화와 개발은 필요한 읽기 전용 시작 검사를 한 번의 호출로 실행한다. 이미 동의한 범위의 일상 작업은 이어서 진행한다. 에이전트의 권한 확인이나 SpecThread의 적용 승인 요청이 나타나면 화면에 표시된 실제 작업과 영향을 확인한다. <a href="conversation-flow.md">승인과 단계 이동</a></p>
+<h2 id="section-8">Monitor 선택 설치 및 실행</h2>
+<p>초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 <code>python3 specthread install --monitor --project PROJECT</code>로 추가한다. 프로젝트에서 <code>./monitor</code> 또는 Windows의 <code>.\monitor.cmd</code>를 실행한다. 새 에이전트도 함께 열려면 <code>--session</code>을 붙인다. <a href="../../monitor/README.md">Monitor 사용법</a></p>
 </main></div></body>
 </html>

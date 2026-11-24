@@ -55,6 +55,10 @@
 
 init에서 필요한 질문 하나씩 답하고, 구체적인 다음 작업 제안에 “진행해”라고 답해 이어간다. 현재 단계·핵심 결과·다음 선택을 짧게 표시한다. 새로운 범위와 필수 승인은 별도로 확인하며 실제 준비 조건은 Core로 재검사한다. [대화·표시 계약](conversation-flow.md)
 
+## 작업 중 실행 확인
+
+초기화와 개발은 필요한 읽기 전용 시작 검사를 한 번의 호출로 실행한다. 이미 동의한 범위의 일상 작업은 이어서 진행한다. 에이전트의 권한 확인이나 SpecThread의 적용 승인 요청이 나타나면 화면에 표시된 실제 작업과 영향을 확인한다. [승인과 단계 이동](conversation-flow.md)
+
 ## Monitor 선택 설치 및 실행
 
-제품 폴더에서 `python3 specthread install --monitor`를 실행해 대상 프로젝트를 선택한다. 설치한 프로젝트에서 `./monitor`를 실행하면 설정한 에이전트의 새 터미널 세션과 함께 대시보드가 열린다. 화면만 열려면 `./monitor --dashboard-only`를 실행한다. [Monitor 사용법](../../monitor/README.md)
+초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 `python3 specthread install --monitor --project PROJECT`로 추가한다. 프로젝트에서 `./monitor` 또는 Windows의 `.\monitor.cmd`를 실행한다. 새 에이전트도 함께 열려면 `--session`을 붙인다. [Monitor 사용법](../../monitor/README.md)

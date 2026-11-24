@@ -70,6 +70,15 @@ def main(argv=None):
     finish = commands.add_parser("complete")
     finish.add_argument("id")
     finish.add_argument("plan", type=Path)
+    preflight = commands.add_parser("preflight", help="Read-only installation and development entry checks")
+    phases = preflight.add_subparsers(dest="phase", required=True)
+    for phase in ("init", "develop"):
+        check = phases.add_parser(phase)
+        check.add_argument("--agent", required=True, choices=["codex", "claude"])
+        if phase == "develop":
+            check.add_argument("features", nargs="+")
+        else:
+            check.set_defaults(features=())
     version_check = commands.add_parser("version-check")
     version_check.add_argument("--agent", choices=["codex", "claude"])
     version_check.add_argument("features", nargs="*")
@@ -254,6 +263,12 @@ def main(argv=None):
                     return 2
         elif args.command == "install-skills":
             install_skills(root, args.agent)
+        elif args.command == "preflight":
+            require_project(root, args.agent, args.features)
+            if args.phase == "develop":
+                develop_check(root, args.features)
+            print(json.dumps({"phase": args.phase, "core_version": __version__,
+                              "agent": args.agent, "features": args.features, "status": "PASS"}))
         elif args.command == "version-check":
             require_project(root, args.agent, args.features)
             print(f"Core·Project·Skill {__version__} 일치")

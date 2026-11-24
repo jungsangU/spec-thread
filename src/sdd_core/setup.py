@@ -4,6 +4,7 @@ from contextlib import redirect_stderr
 from importlib.metadata import version
 import io
 import json
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -16,7 +17,7 @@ from .version_sync import (PROJECT, RUNNER, apply_sync, install_skills, json_byt
 
 SETUP = '.specify/spec-thread-install.json'
 SPEC_KIT = '1.4.0'
-IGNORED = {'.git', '.specify', '.agents', '.claude', '.venv', 'venv', 'node_modules',
+IGNORED = {'.git', '.specify', '.agents', '.claude', '.codex', '.venv', 'venv', 'node_modules',
            '__pycache__', '.pytest_cache', '.mypy_cache', 'build', 'dist', '.next', 'coverage'}
 
 
@@ -43,7 +44,9 @@ def input_files(root):
                   if path.is_file() and not path.is_symlink()
                   and not IGNORED.intersection(path.relative_to(root).parts)
                   and path.suffix not in ('.pyc', '.log')
-                  and path.name not in ('.DS_Store', '.coverage', 'coverage.xml', 'junit.xml'))
+                  and path.name not in ('.DS_Store', '.coverage', 'coverage.xml', 'junit.xml')
+                  and not (path.relative_to(root).as_posix() in ('monitor', 'monitor.cmd')
+                           and 'SpecThread managed Monitor launcher' in path.read_bytes()[:100].decode(errors='ignore')))
 
 
 def select_quality(root, saved, check, ask):
@@ -131,7 +134,7 @@ def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print):
     emit('1/3  Spec Kit 프로젝트 연동 확인')
     if before is None:
         official(root, 'init', '--here', '--force', '--integration', agent,
-                 '--ignore-agent-tools', '--non-interactive', '--script', 'sh')
+                 '--ignore-agent-tools', '--non-interactive', '--script', 'ps' if os.name == 'nt' else 'sh')
     elif agent not in installed:
         official(root, 'integration', 'install', agent)
     elif action == 'update':

@@ -30,7 +30,7 @@
 | 보안·보존·접근성 | 로컬 접근, 프로젝트 상대 경로 검증, 변경 요청을 처리하지 않는 API, 민감한 이벤트 필드 제거, 제한된 메모리 보존, 키보드·상태 텍스트 |
 | 검증 및 문서 | 기존 회귀와 신규 정상·차단·실패 테스트, UI 빌드·브라우저 확인, 문서 검사, 실제 데모 읽기 전후 대조, 양쪽 에이전트 연동 결과 및 DECISIONS·OPEN-ISSUES 반영 |
 
-[Codex 공식 JSONL 예제](https://developers.openai.com/blog/eval-skills)와 [Claude Code Hooks 레퍼런스](https://code.claude.com/docs/en/hooks)는 사용자가 선택해서 연결할 수 있는 후보 입력이다. 실제 실행 환경에서의 이벤트 전달과 파일 귀속은 아직 검증하지 않았다. Monitor가 클라이언트를 기동하거나 비공개 세션 파일을 탐색하거나 별도 LLM을 호출하는 방식은 범위에서 제외한다.
+[Codex 공식 JSONL 예제](https://developers.openai.com/blog/eval-skills)와 [Claude Code Hooks 레퍼런스](https://code.claude.com/docs/en/hooks)는 사용자가 선택해서 연결할 수 있는 후보 입력이다. 실제 실행 환경에서의 이벤트 전달과 파일 귀속은 아직 검증하지 않았다. 최초 승인 범위는 별도 실행형 관측이었다. 후속 ST-27부터 사용자가 명시적으로 선택하면 새 터미널 세션을 함께 열 수 있다. 비공개 세션 파일 탐색과 별도 LLM 호출은 제외한다.
 
 ## 시각 레퍼런스
 
@@ -48,3 +48,14 @@
 | 회귀·문서 | [제품 CI](../../.github/workflows/product-ci.yml), [설계 원본](../design/monitor.md) | 기존 Python 테스트 73개, 설치본 Monitor 테스트 7개, JS 구문 검사, Core 문서 실행 예시, 설계 문서 28개와 생성 HTML 동기화 및 릴리즈 노트 추출을 통과했다. |
 
 Monitor 화면에 표시하는 Git diff는 현재 Worktree의 스테이징·작업 트리 변경이다. 세션별 과거 diff 복원, 자동 세션 유추, 승인 대기 상태의 포괄적 판정은 제공 범위에 없다. 지원 인터페이스의 실제 전송 밀도, 사용자 Hook 구성 및 대화형 파일 귀속은 후속 PoC에서 확인한다.
+
+
+## 2026-11-24 추가 개선 대조
+
+| 개선 항목 | 구현과 확인 범위 |
+| --- | --- |
+| 초기 설치와 SSL 재시도 | [통합 설치](../design/installation.md)의 앱 경로·에이전트·Monitor 선택 및 `--ssl-trust`를 구현했다. pip 인증서 오류 뒤 기본 PyPI 호스트에 한정해 재시도하는 경로는 설치 테스트에서 확인했다. |
+| Monitor만 추가 및 실행 | macOS의 임시 Claude Code용 프로젝트에 Core만 설치한 뒤 Monitor를 추가했다. Core 실행 파일·버전 기록의 해시가 유지됐다. 설치한 데모 실행 명령도 확인했다. Windows용 실행 파일과 설치 검사는 CI에 추가했으며 네이티브 Windows 실행 결과는 아직 미확인이다. |
+| 이미 열린 Monitor의 새 세션 관측 | [실행 가이드](../../monitor/README.md)의 대시보드 우선 실행을 적용했다. 이미 응답 중인 대시보드에 별도 프로세스로 Claude Hook 두 건을 전달했고 동일 API에 두 세션이 표시됐다. 로그인된 실제 에이전트의 Hook 전달·신뢰·설정 반영은 ST-O17에서 추적한다. |
+| 세션별 Gate 모션 | [Monitor 명세](../design/monitor.md)의 Work Item UUID 연결을 적용했다. 표본 세션 두 개 중 관련 세션에만 Gate 목록과 캐릭터 느낌표를 표시하는 것을 브라우저에서 확인했다. 현재 대상 단계 밖 미실행 Gate와 연결 근거 없는 세션은 자동 표시 대상에서 제외한다. |
+| SDD 실행 확인 | [에이전트 런타임](../design/07-agent-runtime.md)의 읽기 전용 preflight 및 공통 Skill 지침을 적용했다. 프로젝트 파일 불변, 일치하지 않는 에이전트와 개발이 차단된 Feature 거부를 테스트했다. 실제 에이전트의 권한 팝업 감소 횟수는 미확인이다. |

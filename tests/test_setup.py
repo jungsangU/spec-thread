@@ -161,6 +161,49 @@ class SetupTest(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs['input'], 'project test command\ny\n')
         self.assertIn('-I', run.call_args.args[0])
 
+    def test_ssl_failure_can_retry_with_trusted_pypi_and_windows_launcher(self):
+        import runpy
+        from types import SimpleNamespace
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'specthread'))
+        environment = self.root / 'runtime'
+        environment.mkdir()
+        calls = []
+
+        def pip(argv, *, stdout, stderr, env=None):
+            calls.append(argv)
+            if len(calls) == 1:
+                stdout.write('SSLError: CERTIFICATE_VERIFY_FAILED\n')
+                return SimpleNamespace(returncode=1)
+            self.assertEqual(argv.count('--trusted-host'), 2)
+            self.assertIn('pypi.org', argv)
+            self.assertIn('files.pythonhosted.org', argv)
+            self.assertIn('pypi.org', env['PIP_TRUSTED_HOST'].split())
+            return SimpleNamespace(returncode=0)
+
+        with patch('venv.EnvBuilder.create'), patch('subprocess.run', side_effect=pip), \
+             patch('builtins.input', return_value='y'):
+            self.assertTrue(module['install_packages'](environment, ['local'], False, interactive=True))
+        launcher = module['launcher_script'](Path('C:/Apps with spaces/python.exe'), windows=True)
+        self.assertIn('cd /d "%~dp0"', launcher)
+        self.assertIn('specthread_monitor.server --launcher %*', launcher)
+
+    def test_monitor_hook_add_on_preserves_existing_claude_settings(self):
+        import runpy
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'specthread'))
+        folder = self.root / '.claude'
+        folder.mkdir()
+        settings = folder / 'settings.local.json'
+        user_hook = {'hooks': [{'type': 'command', 'command': 'user-check'}]}
+        settings.write_text(json.dumps({'permissions': {'deny': ['Edit']}, 'hooks': {'Stop': [user_hook]}}))
+        _, text = module['prepare_hooks'](self.root, 'claude', Path(sys.executable), 8)
+        settings.write_text(text)
+        _, repeated = module['prepare_hooks'](self.root, 'claude', Path(sys.executable), 8)
+        self.assertEqual(text, repeated)
+        config = json.loads(text)
+        self.assertEqual(config['permissions'], {'deny': ['Edit']})
+        self.assertEqual(config['hooks']['Stop'][0], user_hook)
+        self.assertEqual(config['hooks']['Stop'][1]['hooks'][0]['timeout'], 8)
+
     def test_user_can_change_saved_app_check_inside_same_update_command(self):
         (self.root / 'old.py').write_text('assert True\n')
         (self.root / 'new.py').write_text('assert 1 == 1\n')

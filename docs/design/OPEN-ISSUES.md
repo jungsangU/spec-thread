@@ -31,6 +31,6 @@ Core 0.4.0의 구현 근거는 analysis/discovery, work_items/gates/evidence, li
 
 | ID | 구분 | 내용 |
 | --- | --- | --- |
-| ST-O17 | 실행 검증 | [Monitor](monitor.md)의 실제 대화형 Codex·Claude Code 개별 이벤트와 파일 귀속, 사용자 운영 환경의 종단간 검증 |
+| ST-O17 | 실행 검증 | [Monitor](monitor.md)의 실제 대화형 Codex·Claude Code 개별 이벤트와 파일 귀속, 사용자 운영 환경의 종단간 검증. Windows 네이티브 설치·Hook 실행 결과와 기존 세션의 설정 반영 시점 확인 |
 
 인수 시나리오·수집할 증거와 MVP 통과 기준은 [PoC 명세](acceptance.md)에 둔다. 확정 정책·직렬화·CLI 계약은 [주제별 원본](README.md)을 따른다.

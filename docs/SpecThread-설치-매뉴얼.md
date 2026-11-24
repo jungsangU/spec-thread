@@ -76,4 +76,6 @@ Spec Kit 프로젝트 Skill 갱신, SpecThread Skill·실행 환경 연결, 기�
 
 ## Monitor 선택 설치 및 실행
 
-제품 폴더에서 `python3 specthread install --monitor`를 실행해 대상 프로젝트를 선택한다. 설치한 프로젝트에서 `./monitor`를 실행하면 설정한 에이전트의 새 터미널 세션과 함께 대시보드가 열린다. 화면만 열려면 `./monitor --dashboard-only`를 실행한다. [Monitor 사용법](../monitor/README.md)
+초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 `python3 specthread install --monitor --project PROJECT`로 추가한다. 프로젝트에서 `./monitor` 또는 Windows의 `.\monitor.cmd`를 실행한다. 새 에이전트도 함께 열려면 `--session`을 붙인다. [Monitor 사용법](../monitor/README.md)
+
+pip SSL 오류가 나면 재시도 질문에서 `y`를 선택한다. 질문 없이 재시도하려면 기존 설치 명령에 `--ssl-trust`를 붙인다. 이 옵션은 해당 설치에서 기본 PyPI 호스트에만 적용된다.

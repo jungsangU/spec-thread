@@ -155,6 +155,9 @@ function renderMetrics(metrics) {
   byId("metrics").replaceChildren(progress, testCard, gateCard);
 }
 
+const sessionStates = { working: "작업 관측", recent: "최근 활동", quiet: "최근 활동 없음",
+  ended: "종료 관측", unknown: "현재 상태 미확인" };
+
 const workStates = [
   ["in_progress", "진행", "#b398fa"], ["pending", "대기", "#e6b96c"],
   ["completed", "완료", "#76d8b7"], ["suspended", "보류", "#7c9ae9"], ["failed", "실패 종료", "#f38d9b"],
@@ -266,20 +269,36 @@ function render(data) {
   renderMetrics(data.metrics);
   renderWorkDistribution(items, baseline);
   const sessions = sessionStats(activity);
-  const openSessions = sessions.filter(({ session }) => session.kind !== "session_ended");
+  const working = sessions.filter(({ session }) => session.state === "working").length;
   byId("session-scope").textContent = activity.configured ?
-    `종료 미관측 ${openSessions.length} · 전체 ${sessions.length}` : "실시간 입력 미연결";
+    `작업 관측 ${working} · 관측 세션 ${sessions.length}` : "실시간 입력 미연결";
+  const sessionGates = activity.session_gates || [];
+  const gateKeys = new Set(sessionGates.map((row) => `${row.agent}:${row.session}`));
+  byId("session-gate-panel").hidden = !sessionGates.length;
+  cards("session-gate-data", sessionGates, (row) => {
+    const entry = node("div", undefined, "action");
+    entry.append(node("p", (row.agent === "codex" ? "Codex" : "Claude Code") + " · " + row.session.slice(0, 12)),
+      ...row.gates.map((gate) => line(gate.id + " · " + gate.status)));
+    return entry;
+  }, "");
   cards("session-cards", sessions.slice(0, 6), ({ session, events, files }) => {
     const card = node("div", undefined, "session-card");
     const head = node("strong");
+    const blocked = gateKeys.has(session.agent + ":" + session.session);
+    card.classList.toggle("has-gate", blocked);
     const indicator = node("span", "●", "signal");
     indicator.setAttribute("aria-hidden", "true");
     head.append(indicator, document.createTextNode(session.agent === "codex" ? "Codex" : "Claude Code"));
-    card.append(head, line(names[session.kind]), line(`이벤트 ${events.length} · 변경 파일 ${files}`));
+    const title = session.session.length > 12 ? `${session.session.slice(0, 8)}…` : session.session;
+    if (blocked) card.append(node("span", "Gate 확인 필요", "gate-chip"));
+    card.append(head, line(`${sessionStates[session.state]} · ${title}`),
+      line(`이벤트 ${events.length} · 변경 파일 ${files}`));
     return card;
-  }, activity.configured ? "첫 세션 이벤트를 기다리는 중" : "세션을 함께 실행하면 이곳에 활동이 표시됩니다.");
-  recordsTable("session-data", ["에이전트", "최근 활동", "변경 파일", "이벤트"], sessions.map(({ session, events, files }) => [
-    session.agent === "codex" ? "Codex" : "Claude Code", names[session.kind], String(files),
+  }, activity.project_agent
+    ? `다른 터미널에서 같은 프로젝트 폴더를 열고 ${activity.project_agent}를 실행하세요. 첫 이벤트가 오면 자동으로 표시됩니다.`
+    : activity.configured ? "첫 활동 이벤트를 기다리는 중" : "프로젝트에 Monitor를 추가 설치하면 세션을 연결할 수 있습니다.");
+  recordsTable("session-data", ["에이전트", "관측 상태", "최근 활동", "변경 파일", "이벤트"], sessions.map(({ session, events, files }) => [
+    session.agent === "codex" ? "Codex" : "Claude Code", sessionStates[session.state], names[session.kind], String(files),
     details(`${events.length}건 펼치기`, `${session.agent}:${session.session}`, [
       line(session.session), ...events.slice().reverse().map((event) => line([names[event.kind], ...event.paths].join(" · "))),
     ]),
@@ -350,7 +369,7 @@ function render(data) {
   seenEvents = new Set(activity.sessions.map((event) => event.id));
   lastSignal = activity.sessions.some((event) => event.id === latest?.id) ? latest : activity.events.at(-1);
   byId("office-signal").textContent = lastSignal ? eventLabel(lastSignal) : "세션 이벤트 대기";
-  office.update(activity.sessions);
+  office.update(activity.sessions, sessionGates);
 }
 
 async function api(path) {
@@ -383,6 +402,8 @@ function createOffice() {
   let seats = [];
   let signals = new Map();
   let pulses = new Map();
+  let gateSignals = new Map();
+  let gatePulses = new Map();
   const seatKey = (session) => `${session.agent}:${session.session}`;
   let frame;
 
@@ -425,14 +446,21 @@ function createOffice() {
       rect(x + 29, 82, 6, 5, "#17172c");
       const session = seats[index];
       if (session) {
-        const active = now < (pulses.get(seatKey(session)) || 0);
-        const bounce = active ? Math.floor(now / 100) % 2 * 3 : 0;
+        const key = seatKey(session);
+        const active = now < (pulses.get(key) || 0);
+        const alerting = now < (gatePulses.get(key) || 0);
+        const bounce = alerting ? Math.floor(now / 90) % 2 * 5 : active ? Math.floor(now / 100) % 2 * 3 : 0;
         rect(x + 2, 66 - bounce, 15, 16, session.agent === "codex" ? "#8965d9" : "#b6694b");
         rect(x + 4, 72 - bounce, 11, 9, "#efb989");
         rect(x + 6, 74 - bounce, 2, 2, "#24203a");
         rect(x + 12, 74 - bounce, 2, 2, "#24203a");
         rect(x + 3, 81 - bounce, 13, 6, colors[index]);
-        if (active) {
+        if (gateSignals.has(key)) {
+          const color = alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
+          rect(x + 10, 53 - bounce, 8, 9, "#583451");
+          rect(x + 13, 54 - bounce, 2, 4, color);
+          rect(x + 13, 59 - bounce, 2, 2, color);
+        } else if (active) {
           rect(x + 10, 59 - bounce, 6, 2, "#ffe1ac");
           rect(x + 12, 57 - bounce, 2, 6, "#ffe1ac");
         }
@@ -442,14 +470,19 @@ function createOffice() {
       rect(x + 2, 97, 4, 14, "#613748");
       rect(x + 42, 97, 4, 14, "#613748");
     }
-    if ([...pulses.values()].some((end) => now < end) && !reduced.matches && !document.hidden) {
+    if ([...pulses.values(), ...gatePulses.values()].some((end) => now < end) && !reduced.matches && !document.hidden) {
       frame = requestAnimationFrame(draw);
     }
   }
 
   return {
-    update(sessions) {
-      const visible = sessions.filter((session) => session.kind !== "session_ended").slice(-5);
+    update(sessions, gates) {
+      const nextGates = new Map(gates.map((entry) => [seatKey(entry), JSON.stringify(entry.gates)]));
+      const present = sessions.filter((session) => !["ended", "quiet"].includes(session.state));
+      const flagged = present.filter((session) => nextGates.has(seatKey(session))).slice(-5);
+      const others = present.filter((session) => !nextGates.has(seatKey(session)));
+      const extra = 5 - flagged.length;
+      const visible = [...(extra ? others.slice(-extra) : []), ...flagged];
       const byKey = new Map(visible.map((session) => [seatKey(session), session]));
       seats = seats.map((session) => session && byKey.get(seatKey(session)));
       const seated = new Set(seats.filter(Boolean).map(seatKey));
@@ -470,12 +503,20 @@ function createOffice() {
         if (end > now) nextPulses.set(key, end);
       }
       pulses = nextPulses;
+      const nextGatePulses = new Map();
+      for (const [key, signature] of nextGates) {
+        const end = animate && signature !== gateSignals.get(key) ? now + 1500 : gatePulses.get(key);
+        if (end > now) nextGatePulses.set(key, end);
+      }
+      gatePulses = nextGatePulses;
+      gateSignals = nextGates;
       signals = new Map(visible.map((session) => [seatKey(session), session.id]));
       cancelAnimationFrame(frame);
       draw(now);
     },
     pause() {
       pulses.clear();
+      gatePulses.clear();
       cancelAnimationFrame(frame);
       draw();
     },

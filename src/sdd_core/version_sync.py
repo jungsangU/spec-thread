@@ -21,6 +21,7 @@ ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync")
 RETIRED = "sdd-commit"
 LEGACY_HASHES = {
     "sdd-init": {
+        "9d1985ff03e94b7b74a316e15207b6f7c3e5b3e46b249ca00d6ba438c4921eb0",
         "b593e7cc40ec14886ca2cce690705e4c888ac729aabc62718efe1136333f034c",
         "352e1edb4690ddd6d8fb626a6ccf4948aa1cf801edb41bb78e5fdf1051b02e96",
         "f53a9d176581852c9c518dbe01b95c60684ee7eda030dad2e011225168691031",
@@ -29,6 +30,7 @@ LEGACY_HASHES = {
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "7aef15211c743d34dafb63b867aa908b99cbfa3a3cdbfd40bfa68b2ba2ab3baf",
         "fabd33d0a39727375f209ed982c56d0fa3b263292dedad11f7f8b002e7e90db0",
         "cbcf050225624c79756635eb65cff78baec8d72c27e6bfda986acfc33791ba0c",
         "aa1c89893dfb4b5e24664888a6e262fe30b91fc294ef00f1cfc925e5d071d595",
@@ -37,6 +39,7 @@ LEGACY_HASHES = {
         "73f439156645c2ee0b36f703b58256653e00634f6a7e145dc13d3fee4fa7b3bc",
     },
     "sdd-sync": {
+        "fdf79f730c3a29af08c15f6576f160ccf4a269656902aac5a3ab251ea71819bd",
         "99a4449d454ebff72bddb0994355846e389f59e2aeef68a31c5ffe21ae829c13",
         "ccb370626b4ce00b028c37473504807f1af90da6d894b1246b9720685682fd5e",
         "30750497bdaa1743657d467fb78816dd6d4dffc4882e81476029592238b389ba",

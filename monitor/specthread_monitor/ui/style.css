@@ -133,3 +133,6 @@ details[open] > summary { margin-bottom: .45rem; }
 .records td:first-child { font-weight: 650; }
 .records details { min-width: 8rem; }
 #pipeline-data { margin-bottom: 1rem; }
+.gate-alert, .session-card.has-gate { border-color: #705137; }
+.gate-alert h2, .gate-chip { color: var(--yellow); }
+.gate-chip { display: block; font-size: .7rem; font-weight: 650; }

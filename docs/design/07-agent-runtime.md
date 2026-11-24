@@ -23,6 +23,12 @@
 
 실제 에이전트별 실행 검증 상태는 [백로그](OPEN-ISSUES.md)에서 관리한다.
 
+## 작업 시작 검사와 실행 권한
+
+초기화는 `python3 .specify/sdd-core preflight init --agent AGENT`로 설치 버전·Baseline을 확인한다. 개발은 `python3 .specify/sdd-core preflight develop --agent AGENT FEATURE_UUID ...` 한 번으로 해당 검증과 대상 개발 진입을 확인한다. 이 명령은 파일을 쓰거나 프로젝트 테스트를 실행하지 않는다. 기존 조회 명령도 계속 지원한다.
+
+이미 동의한 범위의 통상 명령에는 별도의 SpecThread 확인 질문을 추가하지 않는다. 에이전트의 실제 실행 권한과 필수 SDD 승인 경계는 각각 해당 정책을 적용한다.
+
 ## 공통 CLI 호출·종료 코드
 
 Core 명령은 `sdd-core [--root PROJECT] COMMAND ...`로 호출한다. --root 기본값은 현재 폴더이며 서브명령 앞에 둔다. JSON 계획 파일은 UTF-8 JSON 객체다. 네이티브 `sdd-sync`는 Skill이며 Core `reconcile`에 승인 계획을 연결한다. 같은 이름의 Core sync 서브명령은 없다. `version-sync`는 별도의 Core 서브명령이다.
@@ -33,7 +39,7 @@ Core 명령은 `sdd-core [--root PROJECT] COMMAND ...`로 호출한다. --root �
 | 1 | 읽기·입력·구조·승인·전이·필수 Gate 차단 등 처리 오류. stderr에 이유를 출력 |
 | 2 | gate-run이 PASS 이외의 결과를 기록함, discovery-gate --issue-id에서 UUID 미발급, version-sync 적용 후 전역 품질 차단. 명령 인자 파서 오류도 2이므로 출력 형식과 오류를 함께 판독 |
 
-uuid/start/feature-register는 UUID 문자열, discovery-gate/gates 미리보기/gate-run/stage-check/feature-retire 미리보기/version-sync는 JSON을 반환한다. analysis-record·transition·complete·Gate 확정·아카이브 적용은 성공 시 별도 JSON을 출력하지 않는다. 성공 여부와 영속 파일을 확인한다. 명령 오류가 항상 전체 파일 원복을 의미하지는 않는다. 부분 적용 가능성이 있는 작업은 각 원본의 실패 처리 계약을 따른다.
+uuid/start/feature-register는 UUID 문자열, preflight는 phase/core_version/agent/features/status JSON, discovery-gate/gates 미리보기/gate-run/stage-check/feature-retire 미리보기/version-sync는 JSON을 반환한다. analysis-record·transition·complete·Gate 확정·아카이브 적용은 성공 시 별도 JSON을 출력하지 않는다. 성공 여부와 영속 파일을 확인한다. 명령 오류가 항상 전체 파일 원복을 의미하지는 않는다. 부분 적용 가능성이 있는 작업은 각 원본의 실패 처리 계약을 따른다.
 
 Core 0.4.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출력한다. gate-refresh가 실제 검사·검토 대기로 BLOCKED면 2를 반환한다. 상세 입력·출력·실패 처리는 [Sync](reconciliation.md)와 [선택적 재검증](06-verification.md)에 둔다.
 

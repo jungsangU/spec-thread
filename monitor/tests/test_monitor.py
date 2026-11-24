@@ -101,7 +101,12 @@ class MonitorTest(unittest.TestCase):
             self.assertEqual(error.exception.code, 400)
         artifact = self.root / relative
         artifact.unlink()
-        artifact.symlink_to(self.root / "private.txt")
+        try:
+            artifact.symlink_to(self.root / "private.txt")
+        except OSError as error:
+            if os.name != "nt":
+                raise
+            self.skipTest(f"Windows symlink privilege unavailable: {error}")
         with self.assertRaises(HTTPError):
             self.request(server, "/api/artifact?" + urlencode({"path": relative}))
 
@@ -196,6 +201,7 @@ class MonitorTest(unittest.TestCase):
         [event] = collect(self.root, [("codex", source)])["events"]
         self.assertEqual((event["session"], event["kind"]), ("large-session", "turn_completed"))
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO")
     def test_event_fifo_is_rejected_without_blocking(self):
         fifo = self.temp / "events.fifo"
         os.mkfifo(fifo)

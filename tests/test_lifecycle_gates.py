@@ -102,6 +102,17 @@ class LifecycleGateTest(unittest.TestCase):
     def test_not_started_rejects_start(self):
         self.assertEqual(self.cli("start", A)[0], 1)
 
+    def test_preflight_preserves_project_files_and_existing_scope_rules(self):
+        self.analyze()
+        before = {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
+        code, output, error = self.cli("preflight", "develop", "--agent", "codex", A)
+        self.assertEqual(code, 0, error)
+        self.assertEqual(json.loads(output)["features"], [A])
+        self.assertEqual(self.cli("preflight", "develop", "--agent", "codex", B)[0], 1)
+        self.assertEqual(self.cli("preflight", "init", "--agent", "codex")[0], 0)
+        self.assertEqual(self.cli("preflight", "init", "--agent", "claude")[0], 1)
+        self.assertEqual(before, {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()})
+
     def test_partial_ready_allows_only_confirmed_feature(self):
         self.analyze()
         self.assertEqual(self.cli("develop-check", A)[0], 0)

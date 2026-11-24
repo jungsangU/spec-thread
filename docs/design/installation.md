@@ -11,13 +11,15 @@
 
 ## 선택 설치
 
-`python3 specthread install --monitor`는 기존 설치 완료 뒤 별도 환경에 [Monitor](monitor.md)를 추가한다. 이미 등록한 대상에 이 옵션으로 install을 실행하면 Monitor만 설치한다. 프로젝트의 `./monitor`를 실행하며 대상 Core의 Python·버전 기록은 기존 설치 흐름이 소유한다.
+`python3 specthread install --monitor`는 기존 설치 완료 뒤 별도 환경에 [Monitor](monitor.md)를 추가한다. 이미 등록한 대상에 이 옵션으로 install을 실행하면 Monitor만 설치한다. 프로젝트의 `./monitor` 또는 Windows의 `.\monitor.cmd`를 실행하며 대상 Core의 Python·버전 기록은 기존 설치 흐름이 소유한다.
 
 ## 입력·출력
 
 적용 확인에서 c를 선택하면 저장한 앱 검사 명령을 변경하고 현재 입력으로 계획을 다시 계산한 뒤 적용 동의를 받는다. 별도 설치 명령을 조합하지 않는다.
 
-입력은 action, 대상 앱 폴더, 선택 또는 기존 기록의 에이전트, 로컬 Core 소스와 필요한 기존 프로젝트 검사다. 기본 질문으로 입력하며 자동화는 --project/--agent/--check/--yes를 사용할 수 있다. 여러 에이전트를 같은 프로젝트에 자동 설치·전환하지 않는다.
+입력은 action, 대상 앱 폴더, 선택 또는 기존 기록의 에이전트, 로컬 Core 소스와 필요한 기존 프로젝트 검사다. 기본 질문으로 입력하며 자동화는 --project/--agent/--check/--yes를 사용할 수 있다. 여러 에이전트를 같은 프로젝트에 자동 설치·전환하지 않는다. 새 대화형 설치는 앱 경로, 에이전트, Monitor 설치 여부를 순서대로 묻는다. `--monitor`와 `--no-monitor`로 선택을 명시할 수 있다.
+
+pip의 SSL 오류 이후 사용자가 동의하면 기본 PyPI 호스트인 pypi.org와 files.pythonhosted.org의 인증서 검사를 건너뛰고 다운로드를 한 번 다시 시도한다. `--ssl-trust`로 처음부터 지정하거나 비대화형으로 다시 실행할 수 있다. 해당 설정은 이 설치의 pip 프로세스에만 적용한다.
 
 출력은 공식 Spec Kit 프로젝트 연동, Harness 네이티브 Skill, 기존 Project·Skill 버전 표식, Baseline 여섯 파일과 프로젝트 실행 파일·설치 설정이다. 새 설치는 아직 분석되지 않은 빈 Baseline을 만들며 UUID·READY·PASS를 추정하지 않는다. 업데이트는 기존 기록을 유지한다.
 

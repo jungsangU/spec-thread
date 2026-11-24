@@ -2,21 +2,31 @@
 
 ## 설치
 
-기존 SpecThread 설치 명령에 `--monitor`를 붙입니다. 제품 폴더에서 실행한 뒤 설치할 프로젝트를 지정하세요. 이미 등록한 프로젝트에서도 이 옵션으로 Monitor를 추가할 수 있습니다.
+제품 폴더에서 `python3 specthread install`을 실행하면 앱 폴더, 에이전트, Monitor 설치 여부를 묻습니다. 이미 SpecThread를 설치한 프로젝트에는 Monitor만 추가할 수 있습니다.
 
 ```sh
-python3 specthread install --monitor
+python3 specthread install --monitor --project /path/to/project
 ```
+
+pip SSL 오류 후 재시도 질문에 `y`를 고르거나 처음부터 `--ssl-trust`를 지정하세요. 해당 설치에서만 기본 PyPI 호스트의 인증서 검사를 건너뜁니다.
 
 ## 실행
 
-설치한 프로젝트 폴더에서 아래 한 줄을 실행하면 설정된 에이전트의 새 터미널 세션과 Monitor가 함께 열립니다.
+설치한 프로젝트에서 Monitor를 먼저 엽니다. Windows PowerShell에서는 `.\monitor.cmd`를 실행하세요.
 
 ```sh
 ./monitor
 ```
 
-Codex에서는 처음에 `/hooks`로 Monitor Hook을 검토하고 신뢰해야 합니다. 에이전트 CLI 설치와 로그인은 기존 설정을 사용합니다. CLI를 찾지 못하면 대시보드만 열립니다. 대시보드만 열려면 `./monitor --dashboard-only`를 실행하고 표시된 주소를 여세요. Git 프로젝트에서는 변경 목록과 diff도 표시됩니다.
+브라우저가 열리면 첫 터미널을 켜 둔 채, **다른 터미널에서 같은 프로젝트 폴더를 열고** 평소처럼 실행합니다.
+
+```sh
+claude
+```
+
+Claude Code용으로 설치한 프로젝트는 첫 Hook 이벤트가 들어오면 열려 있는 화면에 세션을 추가합니다. Codex 프로젝트는 `codex`를 실행하며 처음에 `/hooks`로 Monitor Hook을 검토하고 신뢰해야 합니다. 각 에이전트의 프로젝트 신뢰 및 관리 정책이 적용됩니다. 기존 세션이 새 Hook을 로드하지 못하면 새 세션에서 확인하세요.
+
+작업 관측 표시가 유지되는 기본 시간은 15분입니다. `./monitor --session-idle-seconds 300`처럼 바꿀 수 있습니다. Hook 자체의 실행 한도는 기본 5초이며 설치 시 `--hook-timeout 10`처럼 지정합니다. Git 프로젝트에서는 변경 목록과 diff도 표시됩니다.
 
 왼쪽 메뉴에서 세션·작업·산출물 상세 화면을 엽니다. 산출물 화면에서 경로를 검색하고 파일 내용을 확인할 수 있습니다. 테스트 통과율을 표시하려면 기존 테스트 도구에서 JUnit 보고서를 `test-results/junit.xml`로 저장하세요.
 
