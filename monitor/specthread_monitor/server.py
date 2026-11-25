@@ -64,10 +64,15 @@ def artifact_text(text, limit):
 
 
 def session_gates(items, sessions):
-    """Use an exact observed Work Item ID and the latest Core gate results."""
+    """Combine observed user-review signals with exactly linked Core gates."""
     by_id = {item["id"]: item for item in items}
     matched = {}
+    attention = []
     for session in reversed(sessions):
+        if session["state"] != "ended" and session.get("kind") in (
+                "permission_requested", "input_requested", "turn_completed", "turn_failed", "turn_interrupted"):
+            attention.append({"work": None, "agent": session["agent"], "session": session["session"],
+                              "gates": [{"id": "사용자 응답·결과 확인", "status": "REVIEW"}]})
         link = session.get("gate_work") or {}
         work_id = link.get("work")
         phase = link.get("phase")
@@ -87,7 +92,8 @@ def session_gates(items, sessions):
             gates = [{"id": "Gate 검토", "status": "REVIEW"}]
         if gates:
             matched[work_id] = {"work": work_id, "agent": session["agent"], "session": session["session"], "gates": gates}
-    return list(matched.values())
+    linked = {(row["agent"], row["session"]) for row in matched.values()}
+    return list(matched.values()) + [row for row in attention if (row["agent"], row["session"]) not in linked]
 
 
 class MonitorServer(HTTPServer):

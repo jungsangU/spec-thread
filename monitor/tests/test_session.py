@@ -64,6 +64,58 @@ class SessionTest(unittest.TestCase):
                         server.shutdown()
                         runner.join()
 
+    def test_user_waiting_without_work_id_shows_attention_and_clears(self):
+        session = {"agent": "claude", "session": "question", "state": "recent"}
+        for kind in ("input_requested", "permission_requested", "turn_completed", "turn_failed", "turn_interrupted"):
+            self.assertEqual(session_gates([], [{**session, "kind": kind}])[0]["session"], "question")
+        for kind in ("turn_started", "tool_completed", "session_ended"):
+            self.assertEqual(session_gates([], [{**session, "kind": kind}]), [])
+        self.assertEqual(len(session_gates([], [{**session, "kind": "input_requested", "state": "quiet"}])), 1)
+
+    def test_question_and_notification_are_observed_without_saving_content(self):
+        from specthread_monitor.events import hook_event
+        root = Path.cwd().resolve()
+        base = {"cwd": str(root), "session_id": "question"}
+        for tool in ("AskUserQuestion", "ExitPlanMode", "request_user_input"):
+            self.assertEqual(hook_event(root, {**base, "hook_event_name": "PreToolUse", "tool_name": tool}, "claude")[1], "input_requested")
+        self.assertIsNone(hook_event(root, {**base, "hook_event_name": "PreToolUse", "tool_name": "Bash"}, "claude")[1])
+        self.assertEqual(hook_event(root, {**base, "hook_event_name": "Notification", "notification_type": "idle_prompt"}, "claude")[1], "input_requested")
+        self.assertIsNone(hook_event(root, {**base, "hook_event_name": "Notification", "notification_type": "auth_success"}, "claude")[1])
+
+    def test_input_observations_survive_relay_without_private_content(self):
+        with TemporaryDirectory() as temp:
+            path = Path(temp) / "events.jsonl"
+            path.touch()
+            root = Path.cwd().resolve()
+            for fields in ({"hook_event_name": "Notification", "notification_type": "elicitation_dialog"},
+                           {"hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion"}):
+                payload = {"cwd": str(root), "session_id": "waiting", "message": "SECRET", "tool_input": {"question": "SECRET"}, **fields}
+                with patch.dict(os.environ, {EVENT_FILE: str(path), "SPECTHREAD_MONITOR_AGENT": "claude"}), patch.object(sys, 'stdin', io.TextIOWrapper(io.BytesIO(json.dumps(payload).encode()))):
+                    record_event()
+                self.assertNotIn('SECRET', path.read_text())
+                self.assertEqual(collect(root, [('claude', path)])['sessions'][0]['kind'], 'input_requested')
+
+    @unittest.skipUnless(os.name == "nt", "Requires native Windows shells and installed Monitor")
+    def test_windows_generated_hooks_execute_in_git_bash_and_cmd(self):
+        import runpy
+        module = runpy.run_path(str(Path(__file__).resolve().parents[2] / 'specthread'))
+        bash = Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe'
+        self.assertTrue(bash.is_file(), 'Git Bash is required for the Windows Claude compatibility test')
+        with TemporaryDirectory() as temp:
+            base = Path(temp)
+            project = base / "한글 project O'Brien"
+            project.mkdir()
+            with patch.dict(os.environ, {'LOCALAPPDATA': str(base)}):
+                for agent in ('claude', 'codex'):
+                    _, text = module['prepare_hooks'](project, agent, Path(sys.executable), 5)
+                    hook = json.loads(text)['hooks']['Stop'][0]['hooks'][0]
+                    command = ([str(bash), '-c', hook['command']] if agent == 'claude' else
+                               ['cmd.exe', '/d', '/c', hook['commandWindows']])
+                    payload = {'cwd': str(project), 'session_id': agent, 'hook_event_name': 'Stop'}
+                    result = subprocess.run(command, input=json.dumps(payload), text=True, encoding='utf-8', capture_output=True, cwd=project, timeout=20)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual({row['session_id'] for _, row in read(project.resolve())}, {'claude', 'codex'})
+
     def test_gate_alert_matches_exact_session_and_current_stage(self):
         identifier = "01951d7f-b507-7200-8000-000000000002"
         command = f"python3 .specify/sdd-core stage-check {identifier} develop"

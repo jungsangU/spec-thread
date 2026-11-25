@@ -174,6 +174,8 @@ class SetupTest(unittest.TestCase):
             if len(calls) == 1:
                 stdout.write('SSLError: CERTIFICATE_VERIFY_FAILED\n')
                 return SimpleNamespace(returncode=1)
+            self.assertEqual(env['PYTHONIOENCODING'], 'utf-8')
+            self.assertEqual(env['PYTHONUTF8'], '1')
             self.assertEqual(argv.count('--trusted-host'), 2)
             self.assertIn('pypi.org', argv)
             self.assertIn('files.pythonhosted.org', argv)
@@ -204,6 +206,38 @@ class SetupTest(unittest.TestCase):
         self.assertEqual(config['hooks']['Stop'][0], user_hook)
         self.assertEqual(config['hooks']['Stop'][1]['hooks'][0]['timeout'], 8)
 
+    def test_windows_hooks_have_shell_safe_paths_and_replace_themselves(self):
+        import base64
+        import runpy
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'specthread'))
+        for agent in ('claude', 'codex'):
+            path, text = module['prepare_hooks'](self.root, agent, Path(r"C:\한글 App\O'Brien\python.exe"), 5, windows=True)
+            config = json.loads(text)
+            handler = config['hooks']['Stop'][0]['hooks'][0]
+            self.assertNotIn('args', handler)
+            command = handler['command' if agent == 'claude' else 'commandWindows']
+            self.assertTrue(command.isascii())
+            script = base64.b64decode(command.split('-EncodedCommand ')[1]).decode('utf-16-le')
+            self.assertIn(r"'C:\한글 App\O''Brien\python.exe'", script)
+            self.assertIn("'-X' 'utf8'", script)
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(text, encoding='utf-8')
+            self.assertEqual(module['prepare_hooks'](self.root, agent, Path(r"C:\한글 App\O'Brien\python.exe"), 5, windows=True)[1], text)
+
+    def test_update_refreshes_an_installed_monitor(self):
+        import io
+        import os
+        import runpy
+        from types import SimpleNamespace
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'specthread'))
+        marker = self.root / PROJECT
+        marker.parent.mkdir(exist_ok=True)
+        marker.write_text(json.dumps({'agent': 'codex'}), encoding='utf-8')
+        (self.root / ('monitor.cmd' if os.name == 'nt' else 'monitor')).write_text('# SpecThread managed Monitor launcher\n', encoding='utf-8')
+        with patch.dict(os.environ, {'SPEC_THREAD_CACHE': str(self.root / 'cache')}), patch.object(sys, 'argv', ['specthread', 'update', '--project', str(self.root), '--yes']), patch.object(sys, 'stdin', io.StringIO('')), patch.dict(module['main'].__globals__, {'install_packages': lambda folder, *a, **kw: Path(folder).mkdir(parents=True, exist_ok=True)}), patch('subprocess.run', return_value=SimpleNamespace(returncode=0)), patch.dict(module['main'].__globals__, {'install_monitor': unittest.mock.Mock()}) as globals_:
+            self.assertEqual(module['main'](), 0)
+            globals_['install_monitor'].assert_called_once()
+
     def test_user_can_change_saved_app_check_inside_same_update_command(self):
         (self.root / 'old.py').write_text('assert True\n')
         (self.root / 'new.py').write_text('assert 1 == 1\n')
@@ -232,3 +266,21 @@ class SetupTest(unittest.TestCase):
             self.run_setup('update')
         path.write_text('assert 2 + 2 == 4\n')
         self.assertEqual(self.run_setup('update')['status'], 'complete')
+
+
+class SetupEncodingTest(unittest.TestCase):
+    def test_official_child_uses_utf8_even_with_cp949_environment(self):
+        import os
+        from sdd_core.setup import official
+        original = subprocess.run
+        control = original([sys.executable, '-c', "print('한글 \U0001f9f5')"],
+                           env={**os.environ, 'PYTHONIOENCODING': 'cp949', 'PYTHONUTF8': '0'},
+                           capture_output=True)
+        self.assertNotEqual(control.returncode, 0)
+        self.assertIn(b'cp949', control.stderr)
+        def run(argv, **options):
+            self.assertEqual(options['encoding'], 'utf-8')
+            self.assertEqual(options['env']['PYTHONIOENCODING'], 'utf-8')
+            return original([sys.executable, '-c', 'import json; print(json.dumps({"value": "한글 \U0001f9f5"}, ensure_ascii=False))'], **options)
+        with TemporaryDirectory() as root, patch.dict(os.environ, {'PYTHONIOENCODING': 'cp949', 'PYTHONUTF8': '0'}), patch('sdd_core.setup.subprocess.run', side_effect=run):
+            self.assertEqual(official(Path(root), capture=True), {'value': '한글 \U0001f9f5'})

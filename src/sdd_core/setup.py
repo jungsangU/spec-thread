@@ -23,7 +23,8 @@ IGNORED = {'.git', '.specify', '.agents', '.claude', '.codex', '.venv', 'venv', 
 
 def official(root, *args, capture=False):
     result = subprocess.run([sys.executable, '-c', 'import sys; from specify_cli import main; sys.exit(main())',
-                             *args], cwd=root, capture_output=True, text=True)
+                             *args], cwd=root, capture_output=True, text=True, encoding='utf-8',
+                             env={**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8'})
     if capture:
         try:
             return json.loads(result.stdout)
@@ -56,7 +57,7 @@ def select_quality(root, saved, check, ask):
     if command is None and active:
         suggestion = ''
         package = root / 'package.json'
-        if package.is_file() and json.loads(package.read_text()).get('scripts', {}).get('test'):
+        if package.is_file() and json.loads(package.read_text(encoding='utf-8')).get('scripts', {}).get('test'):
             suggestion = 'npm test'
         answer = ask('기존 앱을 확인할 테스트·빌드 명령' + (f' [{suggestion}]' if suggestion else '') + ': ').strip()
         command = shlex.split(answer or suggestion)

@@ -131,6 +131,15 @@ def hook_event(root, raw, agent):
             filename = str(directory / filename)
         path = normalized_path(root, filename)
         return session, "file_change" if path else "tool_completed", [path] if path else []
+    if hook == "Notification":
+        return session, "input_requested" if raw.get("notification_type") in (
+            "permission_prompt", "idle_prompt", "elicitation_dialog") else None, []
+    if hook == "PreToolUse":
+        tool = raw.get("tool_name", "")
+        return session, "input_requested" if isinstance(tool, str) and (
+            tool.rsplit(".", 1)[-1] in ("AskUserQuestion", "ExitPlanMode", "request_user_input")
+            or tool.endswith("__request_user_input")
+        ) else None, []
     kind = {"SessionStart": "session_started", "SessionEnd": "session_ended",
             "Stop": "turn_completed", "PostToolUse": "tool_completed", "UserPromptSubmit": "turn_started", "Interrupt": "turn_interrupted",
             "PermissionRequest": "permission_requested"}.get(hook)

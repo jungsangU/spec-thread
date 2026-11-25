@@ -15,6 +15,7 @@ const names = {
   file_change: "파일 변경 관측", tool_completed: "도구 완료 관측",
   file_change_failed: "파일 변경 실패 관측", command_completed: "명령 완료 관측",
   command_failed: "명령 실패 관측", command_declined: "명령 거절 관측",
+  input_requested: "사용자 입력 요청 관측",
   permission_requested: "권한 요청 관측",
 };
 const states = {
@@ -290,7 +291,7 @@ function render(data) {
     indicator.setAttribute("aria-hidden", "true");
     head.append(indicator, document.createTextNode(session.agent === "codex" ? "Codex" : "Claude Code"));
     const title = session.session.length > 12 ? `${session.session.slice(0, 8)}…` : session.session;
-    if (blocked) card.append(node("span", "Gate 확인 필요", "gate-chip"));
+    if (blocked) card.append(node("span", "사용자 확인 필요", "gate-chip"));
     card.append(head, line(`${sessionStates[session.state]} · ${title}`),
       line(`이벤트 ${events.length} · 변경 파일 ${files}`));
     return card;
@@ -337,9 +338,10 @@ function render(data) {
     installation?.global_blocked ? "저장된 품질 검사 · 전역 차단" :
       `저장된 품질 제한 · ${installation?.quality_available ? installation.restricted_features.join(", ") || "없음" : "미확인"}`,
   ], line, "");
-  const permissionEvents = activity.sessions.filter((event) => event.kind === "permission_requested");
+  const permissionEvents = activity.sessions.filter((event) => event.state !== "ended" &&
+    ["permission_requested", "input_requested", "turn_completed", "turn_failed", "turn_interrupted"].includes(event.kind));
   const actions = data.next_actions.concat(permissionEvents.map((event) => ({
-    text: "에이전트의 권한 요청 확인 · 현재 대기 여부 미확인", ref: event.session,
+    text: "에이전트의 응답·결과 확인 · 실제 대기 여부는 터미널에서 확인", ref: event.session,
   })));
   cards("action-data", actions.slice(0, 3), (action) => {
     const row = node("div", undefined, "action");
@@ -478,7 +480,8 @@ function createOffice() {
   return {
     update(sessions, gates) {
       const nextGates = new Map(gates.map((entry) => [seatKey(entry), JSON.stringify(entry.gates)]));
-      const present = sessions.filter((session) => !["ended", "quiet"].includes(session.state));
+      const present = sessions.filter((session) => session.state !== "ended" &&
+        (session.state !== "quiet" || nextGates.has(seatKey(session))));
       const flagged = present.filter((session) => nextGates.has(seatKey(session))).slice(-5);
       const others = present.filter((session) => !nextGates.has(seatKey(session)));
       const extra = 5 - flagged.length;

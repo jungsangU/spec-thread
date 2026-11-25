@@ -59,3 +59,17 @@ Monitor 화면에 표시하는 Git diff는 현재 Worktree의 스테이징·작�
 | 이미 열린 Monitor의 새 세션 관측 | [실행 가이드](../../monitor/README.md)의 대시보드 우선 실행을 적용했다. 이미 응답 중인 대시보드에 별도 프로세스로 Claude Hook 두 건을 전달했고 동일 API에 두 세션이 표시됐다. 로그인된 실제 에이전트의 Hook 전달·신뢰·설정 반영은 ST-O17에서 추적한다. |
 | 세션별 Gate 모션 | [Monitor 명세](../design/monitor.md)의 Work Item UUID 연결을 적용했다. 표본 세션 두 개 중 관련 세션에만 Gate 목록과 캐릭터 느낌표를 표시하는 것을 브라우저에서 확인했다. 현재 대상 단계 밖 미실행 Gate와 연결 근거 없는 세션은 자동 표시 대상에서 제외한다. |
 | SDD 실행 확인 | [에이전트 런타임](../design/07-agent-runtime.md)의 읽기 전용 preflight 및 공통 Skill 지침을 적용했다. 프로젝트 파일 불변, 일치하지 않는 에이전트와 개발이 차단된 Feature 거부를 테스트했다. 실제 에이전트의 권한 팝업 감소 횟수는 미확인이다. |
+
+
+## 2026-11-25 설치 인코딩·Windows Hook·사용자 확인 표시
+
+| 보고 항목 | 원인과 수정 | 검증·한계 |
+| --- | --- | --- |
+| 간헐적 CP949 오류 | 설치기가 JSON을 기본 인코딩으로 읽고 Spec Kit 출력을 `text=True`의 로캘 인코딩으로 해석했다. pip·Core·Spec Kit 자식 환경과 파이프는 UTF-8로 통일하고 격리 Python에는 `-X utf8`을 명시한다. 터미널에 표현 불가능한 문자는 대체 표기한다. | CP949 강제 자식에서 한글·이모지 출력 실패를 재현하고 수정 경로에서 같은 출력과 JSON 파싱 성공을 확인했다. 사용자 원본 traceback이 없어 보고된 모든 실패가 같은 지점에서 발생했는지는 단정하지 않는다. |
+| Windows Stop Hook 경로·인자 오류 | Claude용 exec-form `args`는 최신 공식 문서에서는 지원되지만 구버전 호환을 보장하지 못한다. 구버전에서 command만 셸로 실행되면 경로·인자가 잘못 해석될 수 있다. Claude에는 command 단일 문자열, Codex에는 commandWindows를 사용하고, 실제 경로·인자는 PowerShell EncodedCommand 내부에서 인용한다. stdin 전달도 UTF-8로 맞춘다. Windows 실행기는 UTF-8로 읽고 실행 후 원래 코드 페이지와 반환 코드를 보존한다. | 한글·공백·백슬래시·작은따옴표 경로, 설정 반복 적용, 사용자 Hook 보존을 검사했다. Windows의 Git Bash·cmd에서 생성 Hook을 실제 실행하는 테스트를 추가했다. 이 테스트는 macOS에서 건너뛰며 Windows CI 결과는 아직 미확인이다. 실제 에이전트 버전·로그도 미제공이므로 비차단 오류의 나머지 원인은 미확인이다. |
+| Gate에서 느낌표 누락 | 기존 조건은 특정 Core 명령에서 관측한 Work Item UUID와 필수 Gate 결과에 한정됐다. 권한·질문·계획 승인·지원 알림과 턴 종료·실패·중단도 사용자 확인 신호로 표시한다. 다음 활동에서 해제하며 확인 신호는 단순 활동 시간 만료로 지우지 않는다. | 다른 세션 오표시 방지, 후속 입력 해제, 오래된 확인 신호 유지, 민감 질문·알림 본문 미저장을 검사했다. Chrome에서 사용자 확인 카드·패널·캐릭터 느낌표와 해제를 확인했다. 턴 종료는 실제 승인 대기 확정이 아니라 결과 확인 안내다. 미전달 이벤트와 비공개 대화 내용은 추정하지 않는다. |
+| 수정본 적용 | 기존 관리 Monitor가 있으면 내려받은 배포본의 update에서 패키지·실행기·관리 Hook을 함께 갱신한다. 사용자 Hook과 파일은 보존한다. | 설치 회귀 테스트에서 기존 Monitor 갱신 호출을 확인했다. 설정 변경 후 에이전트 재시작과 Codex Hook 재신뢰는 사용자가 수행한다. |
+
+관련 공식 계약: [Claude command/args 및 셸](https://code.claude.com/docs/en/hooks), [Codex commandWindows와 Hook 이벤트](https://learn.chatgpt.com/docs/hooks). 이 수정은 설계 1.0과 기존 Core·Monitor 배포 버전을 유지한다. Windows 네이티브 및 실제 에이전트 종단간 확인은 기존 ST-O17 범위로 남긴다.
+
+검증 결과: Core·설치 전체 79개 통과, 이후 설치 관련 최종 회귀 21개 통과. Monitor 20개 중 19개 통과·Windows 전용 1개 제외. 설계 문서 28개 구조·링크 검사, 실행 예시 13개 계약 검증, 생성 HTML 동기화, JavaScript 구문, Git diff 공백 검사를 통과했다. Chrome에서 확인 대기 유지·다른 세션 비표시·다음 프롬프트 후 해제와 JavaScript 오류 없음을 확인했다.

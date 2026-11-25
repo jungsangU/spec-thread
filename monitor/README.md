@@ -10,6 +10,8 @@ python3 specthread install --monitor --project /path/to/project
 
 pip SSL 오류 후 재시도 질문에 `y`를 고르거나 처음부터 `--ssl-trust`를 지정하세요. 해당 설치에서만 기본 PyPI 호스트의 인증서 검사를 건너뜁니다.
 
+기존 Monitor도 내려받은 최신 배포본에서 `python3 specthread update --project /path/to/project`를 실행하면 함께 갱신됩니다. Hook 변경 후 에이전트 세션을 다시 열고 Codex에서는 변경된 Hook을 다시 검토·신뢰하세요.
+
 ## 실행
 
 설치한 프로젝트에서 Monitor를 먼저 엽니다. Windows PowerShell에서는 `.\monitor.cmd`를 실행하세요.
@@ -27,6 +29,8 @@ claude
 Claude Code용으로 설치한 프로젝트는 첫 Hook 이벤트가 들어오면 열려 있는 화면에 세션을 추가합니다. Codex 프로젝트는 `codex`를 실행하며 처음에 `/hooks`로 Monitor Hook을 검토하고 신뢰해야 합니다. 각 에이전트의 프로젝트 신뢰 및 관리 정책이 적용됩니다. 기존 세션이 새 Hook을 로드하지 못하면 새 세션에서 확인하세요.
 
 작업 관측 표시가 유지되는 기본 시간은 15분입니다. `./monitor --session-idle-seconds 300`처럼 바꿀 수 있습니다. Hook 자체의 실행 한도는 기본 5초이며 설치 시 `--hook-timeout 10`처럼 지정합니다. Git 프로젝트에서는 변경 목록과 diff도 표시됩니다.
+
+느낌표는 연결된 필수 Gate뿐 아니라 권한 요청·질문·계획 승인·턴 종료 후 결과 확인에도 표시됩니다. 종료 신호만 관측한 경우 실제 승인 대기로 단정하지 않습니다. 새 프롬프트나 도구 완료가 오면 사용자 확인 표시는 해제됩니다.
 
 왼쪽 메뉴에서 세션·작업·산출물 상세 화면을 엽니다. 산출물 화면에서 경로를 검색하고 파일 내용을 확인할 수 있습니다. 테스트 통과율을 표시하려면 기존 테스트 도구에서 JUnit 보고서를 `test-results/junit.xml`로 저장하세요.
 

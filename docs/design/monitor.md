@@ -7,7 +7,7 @@
 - Project Overview와 SDD Pipeline은 Worktree, 분석, 공식 태스크, 설치 버전·Skill·runner 해시 대조, 저장 품질 제한의 출처를 표시한다.
 - Feature·Work Item Explorer는 기존 UUID와 의존성, 선언·실제 범위 및 과거 작업 참조를 유지한다. 저장 상태의 의미는 [개발 생명주기](04-artifact-lifecycle.md)를 따른다.
 - Artifact Explorer는 Spec Kit와 Baseline의 경로, 존재 여부, 수정 시각, 관측된 변경과 연결 Gate 결과를 표시한다. Gate Monitor는 실제 필수 여부, 적용 단계, 최근 실행과 증거를 표시한다. 열린 작업은 [Core 검증](06-verification.md)의 증거 유효성을 재사용하고 종료 기록은 당시 결과로 표시한다.
-- Next Actions는 저장 상태에서 확인한 검토 항목과 수신한 권한 요청을 제시한다. 현재 승인 대기를 확인할 근거가 없으면 화면에 미확인으로 표시한다.
+- Next Actions는 저장 상태에서 확인한 검토 항목과 수신한 권한·입력 요청을 제시한다. 현재 승인 대기를 확인할 근거가 없으면 화면에 미확인으로 표시한다.
 - Session Monitor는 사용자가 연결한 에이전트 스트림의 세션과 파일 이벤트를 시간순 소스 순서로 보여 준다. 작업 트리 diff의 범위는 Git이고 세션에 귀속할 수 있는 경로는 에이전트 이벤트에 명시된 경로다.
 - Focus와 Living은 동일한 데이터를 제공한다. Living의 야간 픽셀 사무실은 새 관측 이벤트에서만 짧게 움직인다. 키보드 탐색, 텍스트 상태, 시스템의 축소 모션을 지원한다.
 
@@ -18,6 +18,9 @@
 테스트 통과율은 현재 프로젝트의 `test-results/junit.xml`에서 읽은 최근 보고서의 통과 케이스를 실행 케이스로 나눈 값이다. 실패와 오류는 실행 분모에 포함하고 건너뛴 케이스는 별도로 표시한다. 보고서 시각은 파일 수정 시각이다. 테스트 재실행은 사용자 또는 기존 검사 흐름이 수행한다.
 
 대시보드는 공식 태스크 진행 바, 최근 테스트 도넛, 필수 Gate 진행 바, Work Item 상태 분포와 세션별 최근 이벤트·변경 파일 수를 표시한다. 작업 관측 세션 수는 최근에 수신한 이벤트 기준이다. Living 사무실은 최대 다섯 캐릭터를 배치하고 한 번의 관측에서 여러 세션 활동이 바뀌면 각각 반응한다. 공식 Core Gate 명령에서 Work Item UUID를 관측하고 현재 필수 Gate의 차단 근거를 확인할 수 있으면, 연결된 세션 캐릭터가 짧게 반응하고 오른쪽 세션 Gate 목록에 표시된다. 현재 단계 밖의 미실행 Gate와 세션 연결이 확인되지 않은 작업은 이 모션의 근거로 쓰지 않는다.
+
+
+사용자 확인 표시는 Core Gate UUID 연결에만 한정하지 않는다. 권한 요청, 질문·계획 승인 도구 호출, Claude의 permission_prompt·idle_prompt·elicitation_dialog 알림, 턴 종료·실패·중단을 수신한 세션에도 `!`와 텍스트를 표시한다. 턴 종료만으로 실제 승인 대기를 단정하지 않으며 “사용자 응답·결과 확인”으로 구분한다. 다음 프롬프트·도구 완료·세션 종료를 수신하면 이 표시를 해제하고 현재 Core Gate 차단 근거는 별도로 다시 계산한다. 사용자 확인 신호는 활동 유효 시간이 지나도 다음 이벤트 또는 관측 이력 보존 한도까지 유지한다. 이벤트가 전달되지 않은 대기는 추정하지 않는다.
 
 좌측 메뉴는 세션·Feature·Work Item과 Gate·산출물·Git·Pipeline의 상세 화면으로 이동한다. 산출물 탐색에서 경로를 검색하고 선택하면 발견된 프로젝트 내부 일반 텍스트 파일의 처음 96 KiB를 미리 본다. 원문은 텍스트로 표시한다.
 
@@ -34,6 +37,7 @@ Monitor 배포는 Core와 별도다. 0.1.0은 Core 0.4.0을 사용한다. Baseli
 - 제품 루트에서 `python3 specthread install`로 앱 폴더, 에이전트, Monitor 설치 여부를 선택한다. 자동화와 기존 프로젝트에 Monitor만 추가하는 명령은 `python3 specthread install --monitor --project PROJECT`다. Core 설치 기록은 기존 설치 흐름이 소유한다.
 - 설치한 프로젝트에서 macOS·Linux는 `./monitor`, Windows PowerShell은 `.\monitor.cmd`를 실행한다. 기본 명령은 브라우저와 대시보드를 열고, `--session`을 명시하면 터미널 세션도 함께 시작한다.
 - 프로젝트 Hook은 Codex의 `.codex/hooks.json` 또는 Claude Code의 `.claude/settings.local.json`에 설치하고 기존 사용자 Hook을 보존한다. 프로젝트에서 따로 시작한 세션도 Hook이 로드되고 신뢰된 뒤 수신한 이벤트부터 함께 표시한다. 하위 디렉터리를 포함하며 인접 프로젝트의 작업은 제외한다. 기존 세션은 Hook 설정이 다시 로드되어야 할 수 있다.
+- Windows Hook은 경로·인자를 PowerShell EncodedCommand 내부에서 개별 인용하고 stdin을 UTF-8로 전달한다. Claude에는 구버전 호환을 위해 `command` 단일 문자열을 사용하고 Codex에는 `commandWindows`를 사용한다. 최신 Claude의 exec-form `args` 지원 여부와 관계없이 동일하게 동작하도록 한다. 설치·업데이트는 기존 사용자 Hook을 보존하며 관리 Hook만 교체한다. 기존 Monitor 설치는 `update`에서 함께 갱신한다.
 - 프로젝트 경로별 사용자 캐시에 세션 식별자·이벤트 종류·관측 시각·프로젝트 상대 변경 경로만 저장한다. 대시보드를 닫아도 Hook은 기록을 계속한다. 최근 256개·7일 이내 기록만 읽고 다음 이벤트 저장 시 오래된 파일을 정리한다. 프롬프트와 명령·응답 본문은 저장하지 않는다.
 - Hook 실행 시간 한도는 기본 5초이고 설치 또는 추가 설치 시 `--hook-timeout SECONDS`로 조정한다. 최근 활동의 유효 시간은 기본 15분이며 실행 시 `--session-idle-seconds SECONDS`로 조정한다. 두 값은 세션을 종료시키지 않는다. 세션별 작업 관측은 최근 프롬프트 제출·도구 완료·파일 변경 신호에 근거하고, 저장된 Work Item은 별도로 표시한다.
 - Codex의 [공식 exec JSONL](https://learn.chatgpt.com/docs/non-interactive-mode)은 실행당 한 파일에 사용자가 기록하여 `--codex-events FILE`로 선택한다. [Codex 공식 Hooks](https://learn.chatgpt.com/docs/hooks)의 사용자 설정 전달자도 지원한다. Codex Hooks의 패치 본문 대신 exec의 명시적 file_change 경로로 파일을 연결한다.

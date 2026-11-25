@@ -1,4 +1,5 @@
 """Local observation history shared by independently opened project sessions."""
+import base64
 import hashlib
 import json
 import os
@@ -75,8 +76,15 @@ def configured_agent(root):
         path = root / directory / name
         try:
             if path.is_file() and path.stat().st_size <= 2 * 1024 * 1024:
-                if "specthread_monitor.session" in path.read_text(encoding="utf-8"):
-                    return agent
-        except (OSError, UnicodeError):
+                config = json.loads(path.read_text(encoding="utf-8"))
+                for groups in config.get("hooks", {}).values():
+                    for group in groups:
+                        for handler in group.get("hooks", []):
+                            command = handler.get("command", "")
+                            if "-EncodedCommand " in command:
+                                command = base64.b64decode(command.split("-EncodedCommand ", 1)[1]).decode("utf-16-le")
+                            if "specthread_monitor.session" in command or "specthread_monitor.session" in handler.get("args", []):
+                                return agent
+        except (OSError, ValueError, TypeError, AttributeError, UnicodeError):
             continue
     return None

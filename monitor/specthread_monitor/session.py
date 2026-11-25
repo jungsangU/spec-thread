@@ -1,5 +1,6 @@
 """Opt-in interactive launch and an observation-only hook receiver."""
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -15,20 +16,26 @@ from sdd_core.version_sync import PROJECT
 from .events import IDENTIFIER, hook_event, observed_gate_work
 from .project_events import configured_agent, record
 
-EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "PermissionRequest", "Stop", "SessionEnd")
+EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "PermissionRequest", "PreToolUse", "Notification", "Stop", "SessionEnd", "Interrupt")
 EVENT_FILE = "SPECTHREAD_MONITOR_EVENTS"
 FILE_LIMIT = 1024 * 1024
 
 
 def hook_groups(command):
     return {event: [{"hooks": [{"type": "command", "command": command, "timeout": 1}]}]
-            for event in EVENTS}
+            for event in EVENTS if event != "Interrupt"}
 
 
 def launch_arguments(executable, agent):
     if agent == "codex":
         return [executable]
-    command = shlex.join([sys.executable, "-m", "specthread_monitor.session"])
+    argv = [sys.executable, "-X", "utf8", "-m", "specthread_monitor.session"]
+    command = shlex.join(argv)
+    if os.name == "nt":
+        parts = " ".join("'" + value.replace("'", "''") + "'" for value in argv)
+        script = ("$OutputEncoding = [Console]::InputEncoding = [Text.UTF8Encoding]::new($false); "
+                  f"[Console]::In.ReadToEnd() | & {parts}; exit $LASTEXITCODE")
+        command = "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + base64.b64encode(script.encode("utf-16-le")).decode("ascii")
     return [executable, "--settings", json.dumps({"hooks": hook_groups(command)})]
 
 
@@ -46,6 +53,10 @@ def record_event(root=None, agent=None):
         if not kind or not isinstance(session, str) or not IDENTIFIER.fullmatch(session):
             return
         event = {"session_id": session, "cwd": str(project), "hook_event_name": raw["hook_event_name"]}
+        if raw["hook_event_name"] == "Notification":
+            event["notification_type"] = raw.get("notification_type")
+        if raw["hook_event_name"] == "PreToolUse":
+            event["tool_name"] = raw.get("tool_name")
         work = observed_gate_work(raw)
         if work:
             event["gate_work"] = work

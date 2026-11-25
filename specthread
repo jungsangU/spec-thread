@@ -13,11 +13,26 @@ import sys
 import venv
 
 
-HOOK_EVENTS = ('SessionStart', 'UserPromptSubmit', 'PostToolUse', 'PermissionRequest', 'Stop', 'SessionEnd')
+HOOK_EVENTS = ('SessionStart', 'UserPromptSubmit', 'PostToolUse', 'PermissionRequest', 'PreToolUse', 'Stop', 'SessionEnd')
 OLD_MONITOR_HOOK = {'hooks': [{'type': 'command', 'command': './monitor --record-event', 'timeout': 1}]}
 
 
-def prepare_hooks(target, agent, python, timeout):
+def monitor_handler(handler):
+    if not isinstance(handler, dict):
+        return False
+    if 'specthread_monitor.session' in (handler.get('args') or []):
+        return True
+    command = str(handler.get('command', ''))
+    if 'specthread_monitor.session --root' in command:
+        return True
+    try:
+        script = base64.b64decode(command.split('-EncodedCommand ', 1)[1], validate=True).decode('utf-16-le')
+        return "'specthread_monitor.session' '--root'" in script
+    except (IndexError, ValueError, UnicodeError):
+        return False
+
+
+def prepare_hooks(target, agent, python, timeout, *, windows=None):
     folder = target / ('.codex' if agent == 'codex' else '.claude')
     path = folder / ('hooks.json' if agent == 'codex' else 'settings.local.json')
     if folder.is_symlink() or path.is_symlink():
@@ -25,20 +40,22 @@ def prepare_hooks(target, agent, python, timeout):
     config = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
     if not isinstance(config, dict) or not isinstance(config.setdefault('hooks', {}), dict):
         raise ValueError('기존 Hook 설정 형식을 확인하세요.')
-    args = ['-I', '-m', 'specthread_monitor.session', '--root', str(target), '--agent', agent]
-    handler = {'type': 'command', 'timeout': timeout}
-    if agent == 'claude':
-        handler.update(command=str(python), args=args)
-    else:
-        handler['command'] = shlex.join([str(python), *args])
-        if os.name == 'nt':
-            parts = " ".join("'" + value.replace("'", "''") + "'" for value in [str(python), *args])
-            script = ("$OutputEncoding = [Console]::InputEncoding = [Text.UTF8Encoding]::new($false); "
-                      f"[Console]::In.ReadToEnd() | & {parts}; exit $LASTEXITCODE")
-            encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
-            handler['commandWindows'] = f'powershell.exe -NoProfile -NonInteractive -EncodedCommand {encoded}'
+    args = ['-I', '-X', 'utf8', '-m', 'specthread_monitor.session', '--root', str(target), '--agent', agent]
+    # Shell form also works with Claude versions predating exec-form args support.
+    # Windows commands contain only ASCII; paths are quoted inside encoded PowerShell.
+    command = shlex.join([str(python), *args])
+    handler = {'type': 'command', 'timeout': timeout, 'command': command}
+    if windows is None:
+        windows = os.name == 'nt'
+    if windows:
+        parts = " ".join("'" + value.replace("'", "''") + "'" for value in [str(python), *args])
+        script = ("$OutputEncoding = [Console]::InputEncoding = [Text.UTF8Encoding]::new($false); "
+                  f"[Console]::In.ReadToEnd() | & {parts}; exit $LASTEXITCODE")
+        encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
+        windows_command = f'powershell.exe -NoProfile -NonInteractive -EncodedCommand {encoded}'
+        handler['command' if agent == 'claude' else 'commandWindows'] = windows_command
     group = {'hooks': [handler]}
-    for event in HOOK_EVENTS:
+    for event in (*HOOK_EVENTS, *(['Notification'] if agent == 'claude' else ['Interrupt'])):
         groups = config['hooks'].setdefault(event, [])
         if not isinstance(groups, list):
             raise ValueError('기존 Hook 목록 형식을 확인하세요.')
@@ -47,8 +64,7 @@ def prepare_hooks(target, agent, python, timeout):
             isinstance(existing, dict) and set(existing) == {'hooks'}
             and isinstance(existing['hooks'], list) and len(existing['hooks']) == 1
             and isinstance(existing['hooks'][0], dict)
-            and ('specthread_monitor.session' in (existing['hooks'][0].get('args') or [])
-                 or 'specthread_monitor.session --root' in str(existing['hooks'][0].get('command', '')))
+            and monitor_handler(existing['hooks'][0])
         )]
         groups.append(group)
     return path, json.dumps(config, ensure_ascii=False, indent=2) + '\n'
@@ -64,11 +80,11 @@ def install_packages(environment, packages, ssl_trust, *, interactive=False):
     command = [str(python), '-m', 'pip', 'install', '--no-input', '--disable-pip-version-check']
     while True:
         with log.open('w', encoding='utf-8') as stream:
-            options = {}
+            options = {'env': {**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8'}}
             trust_flags = []
             if ssl_trust:
                 hosts = [*os.environ.get('PIP_TRUSTED_HOST', '').split(), *PIP_TRUST_HOSTS]
-                options['env'] = {**os.environ, 'PIP_TRUSTED_HOST': ' '.join(dict.fromkeys(hosts))}
+                options['env'] = {**options['env'], 'PIP_TRUSTED_HOST': ' '.join(dict.fromkeys(hosts))}
                 trust_flags = [flag for host in PIP_TRUST_HOSTS for flag in ('--trusted-host', host)]
             result = subprocess.run([*command, *trust_flags, *packages],
                                     stdout=stream, stderr=subprocess.STDOUT, **options)
@@ -91,10 +107,14 @@ def launcher_script(python, *, windows=False):
         executable = str(python).replace('%', '%%')
         return ('@echo off\nrem SpecThread managed Monitor launcher\nsetlocal DisableDelayedExpansion\n'
                 'cd /d "%~dp0" || exit /b 1\n'
-                f'"{executable}" -I -m specthread_monitor.server --launcher %*\n'
-                'exit /b %errorlevel%\n')
+                'for /f "tokens=2 delims=:" %%C in (\'chcp\') do set "_ST_CODEPAGE=%%C"\n'
+                'chcp 65001 >nul\n'
+                f'"{executable}" -I -X utf8 -m specthread_monitor.server --launcher %*\n'
+                'set "_ST_RESULT=%errorlevel%"\n'
+                'chcp %_ST_CODEPAGE% >nul\n'
+                'exit /b %_ST_RESULT%\n')
     return ('#!/bin/sh\n# SpecThread managed Monitor launcher\nset -eu\ncd -- "$(dirname -- "$0")"\n'
-            f'exec {shlex.quote(str(python))} -I -m specthread_monitor.server --launcher "$@"\n')
+            f'exec {shlex.quote(str(python))} -I -X utf8 -m specthread_monitor.server --launcher "$@"\n')
 
 
 def install_monitor(source, target, cache, core_digest, ssl_trust, *, interactive, timeout):
@@ -129,6 +149,10 @@ def install_monitor(source, target, cache, core_digest, ssl_trust, *, interactiv
 
 
 def main():
+    # Preserve the terminal's encoding but never crash on non-CP949 characters.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(errors='backslashreplace')
     parser = argparse.ArgumentParser(description='SpecThread 신규 설치와 업데이트')
     parser.add_argument('command', choices=['install', 'update'])
     parser.add_argument('--project', type=Path)
@@ -167,7 +191,7 @@ def main():
     marker = target / '.specify/spec-thread.json'
     if args.command == 'update' and not marker.exists() and not (target / '.specify/baseline').exists():
         parser.error('설치 기록이 없습니다. 먼저 install을 실행하세요.')
-    records = json.loads(marker.read_text()) if marker.exists() else {}
+    records = json.loads(marker.read_text(encoding='utf-8')) if marker.exists() else {}
     if args.agent and records.get('agent') and args.agent != records['agent']:
         parser.error('업데이트 중 에이전트를 바꾸지 않습니다. 설치된 에이전트를 사용하세요.')
     agent = args.agent or records.get('agent')
@@ -203,16 +227,20 @@ def main():
         print('전용 환경 준비 중입니다. 처음에는 패키지 다운로드로 시간이 걸릴 수 있습니다.', flush=True)
         ssl_trust = install_packages(environment, [str(source), 'specify-cli==1.4.0'], ssl_trust, interactive=interactive)
         (environment / '.ready').write_text(digest.hexdigest())
-    argv = [str(python), '-I', '-m', 'sdd_core.setup', args.command, '--project', str(target), '--agent', agent]
+    argv = [str(python), '-I', '-X', 'utf8', '-m', 'sdd_core.setup', args.command, '--project', str(target), '--agent', agent]
     if args.yes:
         argv.append('--yes')
     if args.check:
         argv += ['--check', args.check]
-    options = {}
+    options = {'env': {**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8'}}
     if not sys.stdin.isatty():
-        options.update(input=sys.stdin.read(), text=True)
+        options.update(input=sys.stdin.read(), text=True, encoding='utf-8')
     result = subprocess.run(argv, **options).returncode
-    if result == 0 and args.monitor and marker.is_file():
+    monitor_launcher = target / ('monitor.cmd' if os.name == 'nt' else 'monitor')
+    update_monitor = (result == 0 and args.command == 'update' and args.monitor is not False and monitor_launcher.is_file()
+                      and not monitor_launcher.is_symlink()
+                      and b'SpecThread managed Monitor launcher' in monitor_launcher.read_bytes()[:150])
+    if result == 0 and (args.monitor or update_monitor) and marker.is_file():
         install_monitor(source, target, cache, digest.hexdigest(), ssl_trust,
                         interactive=interactive, timeout=args.hook_timeout)
     return result
