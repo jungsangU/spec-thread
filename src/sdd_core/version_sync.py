@@ -21,6 +21,7 @@ ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync")
 RETIRED = "sdd-commit"
 LEGACY_HASHES = {
     "sdd-init": {
+        "93c4dbae17c47ef3d19d8adc6e82908285695108c8dffe13b57d9bf14a097e34",
         "9d1985ff03e94b7b74a316e15207b6f7c3e5b3e46b249ca00d6ba438c4921eb0",
         "b593e7cc40ec14886ca2cce690705e4c888ac729aabc62718efe1136333f034c",
         "352e1edb4690ddd6d8fb626a6ccf4948aa1cf801edb41bb78e5fdf1051b02e96",
@@ -30,6 +31,7 @@ LEGACY_HASHES = {
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "6d61ce1ed74dd7712b2b9041e054e1e77d542e0b6ec0a25fcf9402da05791cad",
         "7aef15211c743d34dafb63b867aa908b99cbfa3a3cdbfd40bfa68b2ba2ab3baf",
         "fabd33d0a39727375f209ed982c56d0fa3b263292dedad11f7f8b002e7e90db0",
         "cbcf050225624c79756635eb65cff78baec8d72c27e6bfda986acfc33791ba0c",
@@ -39,6 +41,7 @@ LEGACY_HASHES = {
         "73f439156645c2ee0b36f703b58256653e00634f6a7e145dc13d3fee4fa7b3bc",
     },
     "sdd-sync": {
+        "bc873b8d758c60091da732accbee7c773b2b29a1a6e21ec0369bc8132ba687c2",
         "fdf79f730c3a29af08c15f6576f160ccf4a269656902aac5a3ab251ea71819bd",
         "99a4449d454ebff72bddb0994355846e389f59e2aeef68a31c5ffe21ae829c13",
         "ccb370626b4ce00b028c37473504807f1af90da6d894b1246b9720685682fd5e",
@@ -53,6 +56,7 @@ MIGRATIONS = {
     "0.1.0": ("0.2.0", "path-only-source-map"),
     "0.2.0": ("0.3.0", "feature-lifecycle-and-gates"),
     "0.3.0": ("0.4.0", "approved-reconciliation-and-selective-revalidation"),
+    "0.4.0": ("0.5.0", "risk-profiles-and-reusable-verification"),
 }
 
 
@@ -281,6 +285,9 @@ def snapshot(root, paths):
 
 def plan_sync(root, config):
     validate(root, legacy=True)
+    if read_file(root, BASELINE + "verification.yaml") is not None:
+        from .verification import registry
+        registry(root, configured=False)
     project = read_marker(root, PROJECT)
     agent = installed_agent(root, config.get("agent"), project)
     from_version = config.get("from_version")
@@ -347,6 +354,10 @@ def plan_sync(root, config):
             outputs[source_name] = yaml.safe_dump(
                 document, allow_unicode=True, sort_keys=False,
             ).encode("utf-8")
+    if any(step['migration'] == 'risk-profiles-and-reusable-verification' for step in steps):
+        if read_file(root, BASELINE + 'verification.yaml') is None:
+            from .verification import empty_registry
+            outputs[BASELINE + 'verification.yaml'] = yaml.safe_dump(empty_registry(), allow_unicode=True, sort_keys=False).encode('utf-8')
     if read_file(root, BASELINE + "features.yaml") is not None and not steps:
         validate(root)
 
@@ -359,7 +370,7 @@ def plan_sync(root, config):
     validation_paths = {
         PROJECT, RUNNER, skill_marker(agent), *(skill_path(agent, name) for name in (*ACTIVE, RETIRED)),
         *(BASELINE + name for name in ("project.md", "architecture.md", "decisions.md",
-                                        "features.yaml", "source-map.yaml", "work-items.yaml")),
+                                        "features.yaml", "source-map.yaml", "work-items.yaml", "verification.yaml")),
         *(f"{feature['spec_path']}/{name}" for feature in all_features for name in ("spec.md", "plan.md")),
         *(name for row in read_records(root, "source-map.yaml", "mappings")
           if row["feature_id"] in {feature["id"] for feature in features}

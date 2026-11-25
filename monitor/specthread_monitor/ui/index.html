@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SpecThread Monitor</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/details.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -37,7 +38,7 @@
           <div class="stack">
             <section class="panel office" aria-labelledby="office-heading">
               <div class="panel-heading"><div><h2 id="office-heading">SDD Office</h2><span id="office-signal" class="muted">세션 이벤트 대기</span></div><a class="jump" href="#sessions">세션 보기 ↗</a></div>
-              <canvas id="office" width="360" height="124" aria-hidden="true"></canvas>
+              <div class="office-stage"><canvas id="office" width="360" height="124" aria-hidden="true"></canvas><div id="office-bubbles" aria-label="캐릭터별 최근 작업"></div></div><p class="muted office-note">캐릭터와 같은 색의 세션·작업·검증을 따라가세요. 말풍선은 관측된 활동입니다.</p>
             </section>
             <section class="panel activity" aria-labelledby="activity-heading">
               <div class="panel-heading"><h2 id="activity-heading">세션 활동</h2><span id="session-scope" class="muted"></span></div>
@@ -60,20 +61,20 @@
           </div>
         </div>
       </div>
-      <section class="panel detail-page" id="sessions" data-page hidden aria-label="세션 상세"><div id="session-data"></div></section>
-      <section class="panel detail-page" id="features" data-page hidden aria-label="Feature 상세"><div id="feature-data"></div></section>
-      <section class="panel detail-page" id="work-items" data-page hidden aria-label="Work Item과 Gate 상세"><div id="work-data"></div></section>
+      <section class="panel detail-page" id="sessions" data-page hidden aria-label="세션 상세"><div class="page-intro"><h2>무슨 일을 하는 세션인가요?</h2><p>주제를 고르면 작업 폴더, 연결된 검증과 활동 흐름을 확인할 수 있습니다.</p></div><div class="session-toolbar"><p class="muted">종료된 세션도 보존 범위 안에서 확인할 수 있습니다.</p><label><input id="show-permissions" type="checkbox"> 권한 확인 이벤트도 보기</label></div><div id="session-data"></div></section>
+      <section class="panel detail-page" id="features" data-page hidden aria-label="Feature 상세"><div class="page-intro"><h2>기능별 진행과 연결 관계</h2><p>태스크 진척을 비교하고, 선택한 기능의 의존 관계와 관련 작업을 따라가세요.</p></div><div id="feature-data"></div></section>
+      <section class="panel detail-page" id="work-items" data-page hidden aria-label="Work Item과 Gate 상세"><div class="page-intro"><h2>작업의 결과와 검증 근거</h2><p>작업 상태를 고르고 필수 Gate, 실행 이력과 증거를 확인하세요.</p></div><div id="work-data"></div></section>
       <section class="panel detail-page" id="artifacts" data-page hidden aria-label="산출물 상세">
+        <div class="page-intro"><h2>설계와 실행 근거 찾아보기</h2><p>문서 종류나 경로로 좁힌 뒤 파일을 선택해 읽을 수 있습니다.</p></div><div id="artifact-summary" class="summary-strip"></div>
         <div class="explorer">
-          <div><label class="search-label" for="artifact-filter">경로 검색</label><input id="artifact-filter" type="search" placeholder="예: spec.md"><div id="artifact-data"></div></div>
-          <div class="preview" id="artifact-preview"><h2 id="artifact-title">파일 내용</h2><p id="artifact-path" class="muted">왼쪽에서 파일을 선택하세요.</p><pre id="artifact-text" tabindex="0" aria-labelledby="artifact-title" hidden></pre></div>
+          <div><label class="search-label" for="artifact-filter">경로 검색</label><input id="artifact-filter" type="search" placeholder="예: spec.md"><select id="artifact-kind" aria-label="산출물 종류"><option value="">모든 종류</option><option value="spec">명세</option><option value="plan">계획</option><option value="tasks">태스크</option><option value="baseline">Baseline</option><option value="changed">변경된 파일</option></select><div id="artifact-data"></div></div>
+          <div class="preview" id="artifact-preview"><div class="panel-heading"><h2 id="artifact-title">파일 내용</h2><button id="artifact-refresh" type="button" disabled>다시 읽기</button></div><div id="artifact-meta" class="tag-row"></div><p id="artifact-path" class="muted">왼쪽에서 파일을 선택하세요.</p><pre id="artifact-text" tabindex="0" aria-labelledby="artifact-title" hidden></pre></div>
         </div>
       </section>
       <section class="panel detail-page" id="changes" data-page hidden aria-label="Git 변경 상세">
-        <div id="change-data"></div>
-        <div id="diff-display" hidden><h2 id="diff-title"></h2><pre id="patch" tabindex="0" aria-labelledby="diff-title"></pre></div>
+        <div class="page-intro"><h2>어떤 파일이 바뀌었나요?</h2><p>작업 트리와 스테이징을 구분하고 선택한 파일의 diff만 확인합니다.</p></div><div id="change-data"></div>
       </section>
-      <section class="panel detail-page" id="pipeline" data-page hidden aria-label="SDD Pipeline 상세"><div id="pipeline-data"></div><h2>다음 행동</h2><div id="pipeline-actions"></div></section>
+      <section class="panel detail-page" id="pipeline" data-page hidden aria-label="SDD Pipeline 상세"><div class="page-intro"><h2>프로젝트 흐름과 다음 판단</h2><p>단계별 기록을 선택해 확인하세요. 여러 기능이 동시에 진행될 수 있으며 자동으로 다음 단계를 실행하지 않습니다.</p></div><div id="pipeline-data"></div><h2>다음 행동</h2><div id="pipeline-actions"></div></section>
     </main>
   </div>
 </body>

@@ -11,6 +11,7 @@ if (fragment.has("token")) {
 const names = {
   session_started: "세션 시작 관측", session_ended: "세션 종료 관측",
   turn_started: "턴 시작 관측", turn_completed: "턴 완료 관측", turn_failed: "턴 실패 관측",
+  tool_started: "작업 시작 관측",
   turn_interrupted: "턴 중단 관측",
   file_change: "파일 변경 관측", tool_completed: "도구 완료 관측",
   file_change_failed: "파일 변경 실패 관측", command_completed: "명령 완료 관측",
@@ -26,6 +27,108 @@ const states = {
 };
 const label = (value) => Object.hasOwn(states, value) ? states[value] : (value || "미확인");
 const eventLabel = (event) => `${event.agent === "codex" ? "Codex" : "Claude Code"} · ${names[event.kind]}`;
+
+const personas = [
+  ["👨🏻‍💻", "short"], ["👩🏽‍💻", "long"], ["🧑🏿‍💻", "curly"], ["🤖", "robot"],
+  ["🐱", "cat"], ["🦊", "fox"], ["🌱", "plant"], ["👽", "alien"],
+];
+const sessionColors = new Map();
+const sessionPalette = ["#bda1ff", "#66d5c5", "#ffbb78", "#f58db8", "#81baff", "#e8d879", "#a8db87", "#df9ef2", "#8bdeea", "#f3958e"];
+function identity(session) {
+  const key = `${session.agent}:${session.session}`;
+  let hash = 2166136261;
+  for (const char of key) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
+  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d) >>> 0;
+  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b) >>> 0;
+  hash = (hash ^ (hash >>> 16)) >>> 0;
+  const [icon, appearance] = personas[(hash >>> 8) % personas.length];
+  if (!sessionColors.has(key)) {
+    const usage = sessionPalette.map((color) => [...sessionColors.values()].filter((value) => value === color).length);
+    const least = Math.min(...usage);
+    const offset = hash % sessionPalette.length;
+    const index = sessionPalette.findIndex((_, index) => usage[(index + offset) % usage.length] === least);
+    sessionColors.set(key, sessionPalette[(index + offset) % sessionPalette.length]);
+  }
+  return { key, icon, appearance, color: sessionColors.get(key) };
+}
+function tint(element, session) {
+  const who = identity(session);
+  element.style.setProperty("--session-color", who.color);
+  element.classList.add("session-linked");
+  return element;
+}
+const customTopics = new Map();
+let topicScope = "";
+function resolvedSession(session) {
+  return lastSnapshot?.activity.sessions.find((item) => item.agent === session.agent && item.session === session.session) || session;
+}
+function sessionTopic(original, automatic = false) {
+  const session = resolvedSession(original);
+  const key = `${topicScope}:${session.agent}:${session.session}`;
+  if (!automatic) {
+    if (!customTopics.has(key)) {
+      try { customTopics.set(key, localStorage.getItem(`specthread-topic:${key}`) || ""); }
+      catch { customTopics.set(key, ""); }
+    }
+    if (customTopics.get(key)) return customTopics.get(key);
+  }
+  const context = session.context || {};
+  if (context.features?.length) return context.features.join(" · ");
+  const activity = context.activity || session.activity;
+  if (activity?.gate) return `${activity.gate} 검증`;
+  if (activity?.path) {
+    const actions = { editing: "수정", reading: "검토", verification: "테스트", build: "빌드" };
+    return `${activity.path.split("/").at(-1)} ${actions[activity.kind] || "작업"}`;
+  }
+  const directory = context.directory || session.directory;
+  return directory && directory !== "." ? `${directory.split("/").at(-1)} 작업` : "작업 주제 미확인";
+}
+function renameTopic(session) {
+  const button = node("button", "주제 이름 설정", "rename-topic");
+  button.type = "button";
+  button.addEventListener("click", () => {
+    const value = window.prompt("어떤 주제로 작업하는 세션인가요? 비우면 자동 이름으로 돌아갑니다.", sessionTopic(session));
+    if (value === null) return;
+    const name = value.trim().slice(0, 80);
+    const key = `${topicScope}:${session.agent}:${session.session}`;
+    customTopics.set(key, name);
+    try {
+      if (name) localStorage.setItem(`specthread-topic:${key}`, name);
+      else localStorage.removeItem(`specthread-topic:${key}`);
+    } catch { /* Display names still work for this page when storage is disabled. */ }
+    button.blur();
+    if (lastSnapshot) render(lastSnapshot);
+  });
+  return button;
+}
+function sessionTitle(session) {
+  return `${identity(session).icon} ${sessionTopic(session)}`;
+}
+function activityTitle(session) {
+  const activity = session.context?.activity || session.activity;
+  const ended = session.state === "ended";
+  if (["permission_requested", "input_requested"].includes(session.kind)) return `${activity?.gate || "사용자 확인"} · 확인 대기 관측`;
+  if (["turn_completed", "turn_failed", "turn_interrupted"].includes(session.kind)) return "응답·결과 확인";
+  const titles = { verification: "테스트·검증", build: "빌드", editing: "파일 수정", reading: "파일 읽기", command: "명령 실행", review: "SDD 작업 검토" };
+  if (!activity) return ended ? "세션 종료" : "작업 내용 미확인";
+  const target = activity.gate || activity.path || titles[activity.kind];
+  return `${target} · ${ended ? "종료 전 관측" : session.kind === "tool_started" && session.state === "working" ? "진행 관측" : "최근 관측"}`;
+}
+function contextLines(session, detailed = false) {
+  const context = session.context || {};
+  return [
+    `폴더 · ${context.directory ?? session.directory ?? "미확인"}`,
+    context.features?.length ? `최근 연결 · ${context.features.join(", ")}` : "연결 Feature 미확인",
+    ...(detailed ? [`세션 ID · ${session.session}`, context.work ? `Work Item · ${context.work}` : "연결 Work Item 미확인"] : []),
+  ];
+}
+let showPermissions = false;
+let lastSnapshot;
+byId("show-permissions").addEventListener("change", (event) => {
+  showPermissions = event.target.checked;
+  // Blur the filter so focused table preservation does not defer the update.
+  if (lastSnapshot) render(lastSnapshot);
+});
 
 function node(tag, text, className) {
   const result = document.createElement(tag);
@@ -48,35 +151,6 @@ function cards(id, rows, create, empty) {
   target.replaceChildren(...(rendered.length ? rendered : [line(empty)]));
 }
 
-function recordsTable(id, headers, rows, empty) {
-  const target = byId(id);
-  if (target.contains(document.activeElement)) return;
-  if (!rows.length) {
-    target.replaceChildren(line(empty));
-    return;
-  }
-  const open = new Set([...target.querySelectorAll("details[open]")].map((element) => element.dataset.key));
-  const table = node("table", undefined, "records");
-  const heading = table.createTHead().insertRow();
-  for (const header of headers) {
-    const column = node("th", header);
-    column.scope = "col";
-    heading.append(column);
-  }
-  const body = table.createTBody();
-  for (const columns of rows) {
-    const row = body.insertRow();
-    for (const value of columns) {
-      const cell = row.insertCell();
-      if (typeof value === "string") cell.textContent = value;
-      else {
-        if (open.has(value.dataset.key)) value.open = true;
-        cell.append(value);
-      }
-    }
-  }
-  target.replaceChildren(table);
-}
 
 function details(title, key, children) {
   const panel = node("details", undefined, "row");
@@ -102,6 +176,7 @@ function showPage() {
     else link.removeAttribute("aria-current");
   }
   byId("page-title").textContent = pages[current];
+  if (lastSnapshot) render(lastSnapshot);
 }
 window.addEventListener("hashchange", showPage);
 showPage();
@@ -127,10 +202,10 @@ function progressBar(title, value, total) {
 
 function renderMetrics(metrics) {
   const progress = metricCard("공식 태스크 진척률", "primary");
-  progress.append(node("strong", ratio(metrics.tasks_done, metrics.tasks_total)),
+  progress.append(node("strong", (metrics.tasks_unavailable ? "확인분 " : "") + ratio(metrics.tasks_done, metrics.tasks_total)),
     progressBar("공식 태스크 진척률", metrics.tasks_done, metrics.tasks_total),
     node("small", metrics.tasks_total ?
-      `${metrics.tasks_done} / ${metrics.tasks_total} 완료 · 활성 Feature ${metrics.features_with_tasks}개${metrics.feature_sampled ? " · 표시 범위" : ""}` :
+      `${metrics.tasks_done} / ${metrics.tasks_total} 완료 · 프로젝트 활성 Feature ${metrics.active_features}개${metrics.tasks_unavailable ? ` · 태스크 미확인 ${metrics.tasks_unavailable}개` : ""}${metrics.feature_sampled ? " · 부분 집계" : ""}` :
       "표시할 공식 태스크 없음"));
 
   const { tests } = metrics;
@@ -149,11 +224,17 @@ function renderMetrics(metrics) {
   testCard.append(ring, testText);
 
   const gateCard = metricCard("필수 Gate 충족률", "gates");
-  gateCard.append(node("strong", ratio(metrics.required_pass, metrics.required_total)),
-    progressBar("필수 Gate 충족률", metrics.required_pass, metrics.required_total),
-    node("small", metrics.required_total ? `${metrics.required_pass} / ${metrics.required_total} 유효 PASS` :
+  const gatePass = metrics.required_pass + (metrics.historical_pass || 0);
+  gateCard.append(node("strong", ratio(gatePass, metrics.required_total)),
+    progressBar("필수 Gate 충족률", gatePass, metrics.required_total),
+    node("small", metrics.required_total ? `${gatePass} / ${metrics.required_total} · 현재 PASS ${metrics.required_pass} · 종료 이력 PASS ${metrics.historical_pass || 0}` :
       metrics.items_without_gates ? `Gate 미정의 작업 ${metrics.items_without_gates}개` : "확인할 필수 Gate 없음"));
-  byId("metrics").replaceChildren(progress, testCard, gateCard);
+  const workCard = metricCard("프로젝트 작업 완료율", "work-progress");
+  workCard.append(node("strong", ratio(metrics.work_completed, metrics.work_total)),
+    progressBar("프로젝트 작업 완료율", metrics.work_completed, metrics.work_total),
+    node("small", `${metrics.work_completed} / ${metrics.work_total} 완료 · 세션 종료와 무관한 저장 기록`));
+  if (metrics.gate_unknown) gateCard.append(node("small", `현재 유효성 미확인 ${metrics.gate_unknown}개`));
+  byId("metrics").replaceChildren(progress, workCard, testCard, gateCard);
 }
 
 const sessionStates = { working: "작업 관측", recent: "최근 활동", quiet: "최근 활동 없음",
@@ -164,9 +245,9 @@ const workStates = [
   ["completed", "완료", "#76d8b7"], ["suspended", "보류", "#7c9ae9"], ["failed", "실패 종료", "#f38d9b"],
 ];
 
-function renderWorkDistribution(items, baseline) {
+function renderWorkDistribution(items, baseline, metrics) {
   const totals = new Map(workStates.map(([state]) => [state, 0]));
-  for (const item of items) if (totals.has(item.status)) totals.set(item.status, totals.get(item.status) + 1);
+  for (const [state] of workStates) totals.set(state, metrics.work_counts?.[state] || 0);
   const target = byId("work-distribution");
   if (baseline.state !== "available") {
     target.replaceChildren(line("Work Item 기록을 읽을 수 없습니다."));
@@ -193,7 +274,7 @@ function renderWorkDistribution(items, baseline) {
     grid.append(tile);
   }
   target.replaceChildren(
-    line(`전체 ${baseline.item_count}개 · 표시 작업 완료율 ${ratio(totals.get("completed"), items.length)}`),
+    line(`전체 ${baseline.item_count}개 · 프로젝트 작업 완료율 ${ratio(metrics.work_completed, metrics.work_total)}`),
     band, grid,
   );
 }
@@ -206,7 +287,7 @@ function sessionStats(activity) {
     grouped.get(key).push(event);
   }
   return activity.sessions.slice().reverse().map((session) => {
-    const events = grouped.get(`${session.agent}:${session.session}`) || [];
+    const events = (grouped.get(`${session.agent}:${session.session}`) || []).filter((event) => showPermissions || event.kind !== "permission_requested");
     const files = new Set(events.flatMap((event) => event.paths));
     return { session, events, files: files.size };
   });
@@ -217,8 +298,19 @@ let selectedArtifact;
 let artifactRequest = 0;
 
 function renderArtifacts() {
+  if (selectedArtifact && !artifacts.some((row) => row.path === selectedArtifact && row.present)) {
+    artifactRequest += 1; selectedArtifact = undefined;
+    byId("artifact-title").textContent = "파일 내용";
+    byId("artifact-path").textContent = "선택한 파일이 현재 산출물 목록에 없습니다.";
+    byId("artifact-text").hidden = true; byId("artifact-text").textContent = "";
+    byId("artifact-meta").replaceChildren(chip("현재 미발견", "warn"));
+    byId("artifact-refresh").disabled = true;
+  }
   const filter = byId("artifact-filter").value.trim().toLowerCase();
-  const visible = artifacts.filter((artifact) => artifact.path.toLowerCase().includes(filter));
+  const kind = byId("artifact-kind").value;
+  const visible = artifacts.filter((artifact) => artifact.path.toLowerCase().includes(filter) && (
+    !kind || kind === "changed" && artifact.changed || kind === "baseline" && artifact.path.startsWith(".specify/baseline/") || artifact.path.split("/").at(-1) === `${kind}.md`));
+  byId("artifact-summary").replaceChildren(chip(`${visible.length}개 표시`), chip(`${artifacts.filter((row) => row.changed).length}개 변경`, "warn"), chip(`${artifacts.filter((row) => !row.present).length}개 미발견`));
   cards("artifact-data", visible, (artifact) => {
     const row = node("button", undefined, "artifact-button");
     row.type = "button";
@@ -234,13 +326,18 @@ function renderArtifacts() {
   }, "일치하는 산출물이 없습니다.");
 }
 byId("artifact-filter").addEventListener("input", renderArtifacts);
+byId("artifact-kind").addEventListener("change", renderArtifacts);
+byId("artifact-refresh").addEventListener("click", () => { if (selectedArtifact) loadArtifact(selectedArtifact); });
 
 async function loadArtifact(path) {
   selectedArtifact = path;
+  byId("artifact-refresh").disabled = false;
   const request = ++artifactRequest;
   for (const button of byId("artifact-data").querySelectorAll("button")) {
     button.setAttribute("aria-pressed", String(button.querySelector("code").textContent === path));
   }
+  const artifact = artifacts.find((row) => row.path === path);
+  byId("artifact-meta").replaceChildren(...(artifact ? [chip(artifact.changed ? "변경됨" : "저장 파일", artifact.changed ? "warn" : "neutral"), ...artifact.gate_statuses.map((status) => chip(status, statusTone(status)))] : []));
   byId("artifact-title").textContent = path.split("/").at(-1);
   byId("artifact-path").textContent = path;
   const output = byId("artifact-text");
@@ -257,7 +354,11 @@ async function loadArtifact(path) {
 }
 
 function render(data) {
+  lastSnapshot = data;
+  topicScope = data.root;
   const { baseline, git, activity, installation } = data;
+  // Allocate accents once; new sessions never recolor an existing session.
+  activity.sessions.slice().sort((a, b) => `${a.agent}:${a.session}`.localeCompare(`${b.agent}:${b.session}`)).forEach(identity);
   const features = baseline.features || [];
   const items = baseline.items || [];
   byId("project-name").textContent = data.root;
@@ -268,7 +369,7 @@ function render(data) {
     ...(activity.errors.length ? ["일부 이벤트 입력 읽기 오류"] : []),
   ].filter(Boolean).join(" · ");
   renderMetrics(data.metrics);
-  renderWorkDistribution(items, baseline);
+  renderWorkDistribution(items, baseline, data.metrics);
   const sessions = sessionStats(activity);
   const working = sessions.filter(({ session }) => session.state === "working").length;
   byId("session-scope").textContent = activity.configured ?
@@ -277,96 +378,47 @@ function render(data) {
   const gateKeys = new Set(sessionGates.map((row) => `${row.agent}:${row.session}`));
   byId("session-gate-panel").hidden = !sessionGates.length;
   cards("session-gate-data", sessionGates, (row) => {
-    const entry = node("div", undefined, "action");
-    entry.append(node("p", (row.agent === "codex" ? "Codex" : "Claude Code") + " · " + row.session.slice(0, 12)),
+    const entry = tint(node("div", undefined, "action"), row);
+    entry.append(node("p", sessionTitle(row)),
       ...row.gates.map((gate) => line(gate.id + " · " + gate.status)));
     return entry;
   }, "");
   cards("session-cards", sessions.slice(0, 6), ({ session, events, files }) => {
-    const card = node("div", undefined, "session-card");
+    const card = tint(node("div", undefined, "session-card"), session);
     const head = node("strong");
     const blocked = gateKeys.has(session.agent + ":" + session.session);
     card.classList.toggle("has-gate", blocked);
     const indicator = node("span", "●", "signal");
     indicator.setAttribute("aria-hidden", "true");
-    head.append(indicator, document.createTextNode(session.agent === "codex" ? "Codex" : "Claude Code"));
-    const title = session.session.length > 12 ? `${session.session.slice(0, 8)}…` : session.session;
+    head.append(indicator, document.createTextNode(sessionTitle(session)));
     if (blocked) card.append(node("span", "사용자 확인 필요", "gate-chip"));
-    card.append(head, line(`${sessionStates[session.state]} · ${title}`),
-      line(`이벤트 ${events.length} · 변경 파일 ${files}`));
+    card.append(head, node("p", activityTitle(session), "session-task"),
+      ...contextLines(session).map(line), line(`${session.agent === "codex" ? "Codex" : "Claude Code"} · ${sessionStates[session.state]}`),
+      ...((session.context?.gates || []).slice(0, 2).map((gate) => line(`다음 검증 · ${gate.id} · ${gate.status}`))),
+      line(`이벤트 ${events.length} · 변경 파일 ${files}`), renameTopic(session));
     return card;
   }, activity.project_agent
     ? `다른 터미널에서 같은 프로젝트 폴더를 열고 ${activity.project_agent}를 실행하세요. 첫 이벤트가 오면 자동으로 표시됩니다.`
     : activity.configured ? "첫 활동 이벤트를 기다리는 중" : "프로젝트에 Monitor를 추가 설치하면 세션을 연결할 수 있습니다.");
-  recordsTable("session-data", ["에이전트", "관측 상태", "최근 활동", "변경 파일", "이벤트"], sessions.map(({ session, events, files }) => [
-    session.agent === "codex" ? "Codex" : "Claude Code", sessionStates[session.state], names[session.kind], String(files),
-    details(`${events.length}건 펼치기`, `${session.agent}:${session.session}`, [
-      line(session.session), ...events.slice().reverse().map((event) => line([names[event.kind], ...event.paths].join(" · "))),
-    ]),
-  ]), activity.configured ? "표시할 이벤트가 없습니다." : "에이전트 이벤트 미연결");
-  recordsTable("feature-data", ["Feature", "상태", "공식 태스크", "상세"], features.map((feature) => [
-    feature.name, feature.status, feature.tasks ? `${feature.tasks.done}/${feature.tasks.total}` : "미확인",
-    details("상세 펼치기", feature.id, [
-      line(feature.id), line(feature.spec_path), line(`저장된 Discovery ${label(feature.discovery)}`),
-      ...feature.dependencies.map((dependency) => line(`의존성 ${dependency.type} · ${dependency.feature_id}`)),
-    ]),
-  ]), "등록된 Feature를 읽을 수 없습니다.");
-  recordsTable("work-data", ["상태", "Work Item", "Gate와 작업 범위"], items.map((work) => {
-    const children = [
-      line(`선언 Feature ${work.declared_features.join(", ") || "—"}`),
-      line(`실제 Feature ${work.actual_features.join(", ") || "—"}`),
-      ...((work.related_work_items || []).map((id) => line(`이전 작업 ${id}`))),
-    ];
-    if (work.gate_issue) children.push(line(work.gate_issue));
-    for (const gate of work.gates) {
-      const row = node("div", undefined, "row");
-      row.append(node("p", `${gate.id} · ${gate.required ? "필수" : "선택"} · ${gate.historical ? "종료 이력" : `현재 ${gate.current}`}`, "badge"),
-        line(`기록 ${gate.recorded} · 실행 ${gate.runs}회${gate.stages.length ? ` · ${gate.stages.join(" / ")}` : ""}`),
-        ...gate.evidence.map((ref) => line(`증거 ${ref}`)));
-      children.push(row);
-    }
-    return [label(work.status), node("code", work.id), details("상세 펼치기", work.id, children)];
-  }), "저장된 Work Item을 읽을 수 없습니다.");
   artifacts = data.artifacts;
   renderArtifacts();
-  cards("pipeline-data", [
-    `Baseline 분석 · ${label(baseline.analysis)}`,
-    `공식 Spec Kit · ${data.artifacts.filter((artifact) => artifact.present && artifact.path.startsWith("specs/")).length}개 발견`,
-    `진행 기록 · ${baseline.state === "available" ? `${items.filter((item) => item.status === "in_progress").length}개 (표시 범위)` : "미확인"}`,
-    `설치 Core · ${installation?.core_version || "미확인"}`,
-    `설치 버전·Skill·runner 해시 · ${installation?.record_integrity || "미확인"}`,
-    installation?.global_blocked ? "저장된 품질 검사 · 전역 차단" :
-      `저장된 품질 제한 · ${installation?.quality_available ? installation.restricted_features.join(", ") || "없음" : "미확인"}`,
-  ], line, "");
   const permissionEvents = activity.sessions.filter((event) => event.state !== "ended" &&
     ["permission_requested", "input_requested", "turn_completed", "turn_failed", "turn_interrupted"].includes(event.kind));
-  const actions = data.next_actions.concat(permissionEvents.map((event) => ({
-    text: "에이전트의 응답·결과 확인 · 실제 대기 여부는 터미널에서 확인", ref: event.session,
+  const projectActions = data.next_actions.map((action) => {
+    const linked = activity.sessions.filter((session) => session.context?.work === action.ref ||
+      session.context?.spec_paths?.some((path) => action.ref === `${path}/tasks.md`));
+    return linked.length === 1 ? { ...action, session: linked[0], text: sessionTopic(linked[0]) + " · " + action.text } : action;
+  });
+  const actions = projectActions.concat(permissionEvents.map((event) => ({
+    text: sessionTitle(event) + " · 응답·결과 확인", ref: event.session, session: event,
   })));
   cards("action-data", actions.slice(0, 3), (action) => {
     const row = node("div", undefined, "action");
+    if (action.session) tint(row, action.session);
     row.append(node("p", action.text));
     return row;
   }, "표시할 다음 행동이 없습니다.");
-  cards("pipeline-actions", actions, (action) => {
-    const row = node("div", undefined, "row");
-    row.append(node("p", action.text), line(action.ref));
-    return row;
-  }, "표시할 다음 행동이 없습니다.");
-  cards("change-data", git?.files || [], (change) => {
-    const row = node("div", undefined, "row");
-    row.append(node("p", `${change.status.trim()} · ${change.path}`));
-    if (change.status === "??" || change.status.includes("U")) return row;
-    for (const staged of [true, false]) {
-      if (change.status[staged ? 0 : 1] === " ") continue;
-      const title = staged ? "스테이징 diff" : "작업 파일 diff";
-      const button = node("button", title);
-      button.type = "button";
-      button.addEventListener("click", () => loadDiff(change.path, staged, title));
-      row.append(button);
-    }
-    return row;
-  }, git ? "현재 Worktree 변경이 없습니다." : "Git 변경을 읽을 수 없습니다.");
+  renderDetailPages(data, actions);
   const latest = activity.sessions.findLast((event) => !seenEvents.has(event.id)) || lastSignal || activity.events.at(-1);
   seenEvents = new Set(activity.sessions.map((event) => event.id));
   lastSignal = activity.sessions.some((event) => event.id === latest?.id) ? latest : activity.events.at(-1);
@@ -385,15 +437,14 @@ let diffRequest = 0;
 async function loadDiff(path, staged, title) {
   const request = ++diffRequest;
   byId("diff-display").hidden = false;
-  byId("diff-title").textContent = `${title} · ${path}`;
+  byId("diff-title").textContent = `${title} · ${path} · 조회 ${new Date().toLocaleTimeString()}`;
   byId("patch").textContent = "읽는 중";
-  byId("patch").focus();
   try {
     const query = new URLSearchParams({ path, staged: staged ? "1" : "0" });
     const { patch } = await api(`/api/diff?${query}`);
-    if (request === diffRequest) byId("patch").textContent = patch || "표시할 텍스트 diff가 없습니다.";
+    if (request === diffRequest && byId("patch")) renderDiffLines(patch || "표시할 텍스트 diff가 없습니다.");
   } catch (error) {
-    if (request === diffRequest) byId("patch").textContent = error.message;
+    if (request === diffRequest && byId("patch")) byId("patch").textContent = error.message;
   }
 }
 
@@ -412,6 +463,41 @@ function createOffice() {
   function rect(x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
+  }
+
+  function character(x, y, session) {
+    const { appearance, color } = identity(session);
+    if (["cat", "fox"].includes(appearance)) {
+      const fur = appearance === "fox" ? "#e89e63" : "#c5b8ed";
+      rect(x + 2, y + 1, 4, 7, fur); rect(x + 13, y + 1, 4, 7, fur);
+      rect(x + 2, y + 6, 15, 13, fur); rect(x + 5, y + 14, 9, 5, "#fff0d5");
+      rect(x + 5, y + 10, 2, 3, "#252136"); rect(x + 12, y + 10, 2, 3, "#252136");
+      rect(x + 8, y + 15, 3, 2, "#654154");
+    } else if (appearance === "robot") {
+      rect(x + 9, y, 2, 4, color); rect(x + 8, y, 4, 2, "#f7dd94");
+      rect(x + 1, y + 5, 17, 14, "#b4c5d5"); rect(x + 4, y + 8, 11, 6, "#25354e");
+      rect(x + 5, y + 10, 3, 2, color); rect(x + 11, y + 10, 3, 2, color);
+      rect(x + 6, y + 16, 7, 1, "#57667e");
+    } else if (appearance === "plant") {
+      rect(x + 8, y + 3, 3, 12, "#6dbb92");
+      rect(x + 2, y + 2, 7, 5, "#a1d899"); rect(x + 11, y, 7, 5, "#6fbfa3");
+      rect(x + 3, y + 12, 14, 9, "#d99679");
+      rect(x + 6, y + 15, 2, 2, "#403142"); rect(x + 12, y + 15, 2, 2, "#403142");
+    } else if (appearance === "alien") {
+      rect(x + 4, y + 2, 12, 15, "#90d3b3"); rect(x + 1, y + 6, 18, 7, "#90d3b3");
+      rect(x + 4, y + 8, 4, 5, "#22263d"); rect(x + 12, y + 8, 4, 5, "#22263d");
+      rect(x + 8, y + 15, 4, 1, "#416d6a");
+    } else {
+      const skin = appearance === "curly" ? "#91634f" : appearance === "long" ? "#c48b67" : "#efbf99";
+      const hair = appearance === "long" ? "#6e3d46" : "#302c40";
+      rect(x + 2, y + 2, 16, appearance === "long" ? 22 : 14, hair);
+      rect(x + 4, y + 7, 12, 13, skin);
+      rect(x + 4, y + 4, 12, 5, hair);
+      if (appearance === "curly") { rect(x, y + 2, 20, 5, hair); rect(x + 3, y, 14, 3, hair); }
+      rect(x + 6, y + 11, 2, 2, "#24203a"); rect(x + 12, y + 11, 2, 2, "#24203a");
+      if (appearance === "short") { rect(x + 5, y + 10, 5, 4, "#596484"); rect(x + 11, y + 10, 5, 4, "#596484"); }
+    }
+    if (appearance !== "plant") rect(x + 3, y + 20, 14, 6, color);
   }
 
   function draw(now = 0) {
@@ -443,7 +529,7 @@ function createOffice() {
     for (const [index, x] of [23, 87, 151, 215, 279].entries()) {
       const colors = ["#829aff", "#6bc8b3", "#b78ef4", "#e290ad", "#d2ac83"];
       rect(x + 23, 66, 20, 15, "#16192f");
-      rect(x + 25, 68, 16, 9, colors[index]);
+      rect(x + 25, 68, 16, 9, seats[index] ? identity(seats[index]).color : colors[index]);
       rect(x + 27, 70, 8, 1, "#f8e8ff");
       rect(x + 29, 82, 6, 5, "#17172c");
       const session = seats[index];
@@ -452,11 +538,7 @@ function createOffice() {
         const active = now < (pulses.get(key) || 0);
         const alerting = now < (gatePulses.get(key) || 0);
         const bounce = alerting ? Math.floor(now / 90) % 2 * 5 : active ? Math.floor(now / 100) % 2 * 3 : 0;
-        rect(x + 2, 66 - bounce, 15, 16, session.agent === "codex" ? "#8965d9" : "#b6694b");
-        rect(x + 4, 72 - bounce, 11, 9, "#efb989");
-        rect(x + 6, 74 - bounce, 2, 2, "#24203a");
-        rect(x + 12, 74 - bounce, 2, 2, "#24203a");
-        rect(x + 3, 81 - bounce, 13, 6, colors[index]);
+        character(x, 61 - bounce, session);
         if (gateSignals.has(key)) {
           const color = alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
           rect(x + 10, 53 - bounce, 8, 9, "#583451");
@@ -496,6 +578,16 @@ function createOffice() {
         if (empty === -1) seats.push(session);
         else seats[empty] = session;
       }
+      const bubbles = seats.map((session, index) => {
+        if (!session) return null;
+        const bubble = tint(node("div", undefined, "speech-bubble"), session);
+        bubble.style.left = `${(index * 64 + 24) / 360 * 100}%`;
+        const text = activityTitle(session);
+        bubble.append(node("strong", sessionTopic(session)), node("span", text));
+        bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
+        return bubble;
+      }).filter(Boolean);
+      byId("office-bubbles").replaceChildren(...bubbles);
       const now = performance.now();
       const animate = !reduced.matches && !document.hidden && !byId("overview").hidden &&
         !document.body.classList.contains("focus-mode");

@@ -66,11 +66,11 @@ flowchart TD
 | 대상 Discovery `CONDITIONAL` 또는 `BLOCKED`, 핵심 의존성 `UNKNOWN` 또는 `CONFLICT` | 해당 Feature 차단 |
 | `complete` | 대상 Feature의 활성 상태·Discovery·의존성 및 적용 Gate를 확인한 뒤 허용. 모든 Feature의 개발을 자동 허용하지 않음 |
 
-진입 판정은 기존 Baseline의 분석 기록·Feature·의존관계·Discovery 근거를 활용한다. 개발 범위가 확대되거나 관련 근거가 달라지면 영향 범위를 다시 평가한다. 전체 분석 완료를 선언하는 조건과 부분 분석 상태에서의 개발 진입은 각각 판단한다. Core 0.4.0의 `analysis-record`가 분석과 대상별 근거를 저장하며 `develop-check`가 현재 입력의 유효성과 대상·의존성 READY를 확인한다. start, in_progress 진입, Gate 실행과 완료에서도 이 조건을 검사한다.
+진입 판정은 기존 Baseline의 분석 기록·Feature·의존관계·Discovery 근거를 활용한다. 개발 범위가 확대되거나 관련 근거가 달라지면 영향 범위를 다시 평가한다. 전체 분석 완료를 선언하는 조건과 부분 분석 상태에서의 개발 진입은 각각 판단한다. Core 0.5.0의 `analysis-record`가 분석과 대상별 근거를 저장하며 `develop-check`가 현재 입력의 유효성과 대상·의존성 READY를 확인한다. start, in_progress 진입, Gate 실행과 완료에서도 이 조건을 검사한다.
 
 ## 초기화 완료와 재개
 
-Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.md`, `data-model.md`, `contracts/`, `quickstart.md` 등)를 작성하고 Baseline 여섯 파일을 검증한다. `scaffold`는 누락 파일의 틀을 만들고 기존 파일을 보존한다. 범위 내 Feature가 모두 확정되고 전체 조사와 의미 검토, 필요한 산출물 및 참조 검증을 마쳤으며 차단 소견이 없을 때 초기 분석을 완료한다. 새 `tasks.md`는 개발 때 만들고 기존 태스크는 보존한다. 초기화에는 적용 가능한 공식 명세 품질 검사, spec·plan 정합성과 Core 구조 검사를 조합한다. 태스크를 요구하는 `analyze`와 구현 이후의 `converge`는 각 전제가 갖춰진 단계에서 실행한다.
+Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.md`, `data-model.md`, `contracts/`, `quickstart.md` 등)를 작성하고 Baseline 일곱 파일을 검증한다. `scaffold`는 누락 파일의 틀을 만들고 기존 파일을 보존한다. 범위 내 Feature가 모두 확정되고 전체 조사와 의미 검토, 필요한 산출물 및 참조 검증을 마쳤으며 차단 소견이 없을 때 초기 분석을 완료한다. 새 `tasks.md`는 개발 때 만들고 기존 태스크는 보존한다. 초기화에는 적용 가능한 공식 명세 품질 검사, spec·plan 정합성과 Core 구조 검사를 조합한다. 태스크를 요구하는 `analyze`와 구현 이후의 `converge`는 각 전제가 갖춰진 단계에서 실행한다.
 
 실패·중단 시 유효한 기존 산출물, 초안과 Markdown의 판단 근거를 보존한다. 재개하면 현재 파일, 분석 근거, Gate 조건, Baseline을 대조한다. 이미 검증한 범위와 UUID는 유지하고 누락·변경·조건부·차단 범위만 이어서 검증한다. 경계나 요구사항이 바뀌면 영향받은 분리·통합 검증과 Gate를 다시 평가한다. 충돌한 파일은 덮어쓰지 않고 판단을 요청한다. 초기 분석 완료와 최초 Git 반영은 별도 이정표다.
 
@@ -86,7 +86,7 @@ Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.
 
 공식 호출과 활성 경로는 [Spec Kit 연동](spec-kit-integration.md), 확정 이후 등록·재편은 [Feature 생명주기](feature-lifecycle.md), 개발은 [Work Item 생명주기](04-artifact-lifecycle.md)를 따른다.
 
-## Core 0.4.0 제출 예시와 차단 순서
+## Core 0.5.0 제출 예시와 차단 순서
 
 다음은 필드 형식을 실행 검증하기 위한 예시다. 실제 명세·계획과 판단 근거 파일이 먼저 존재해야 한다. 코드가 없는 Greenfield이므로 소스 매핑은 생략한다. 아래의 `verified`와 `SAFE`는 실제 조사 후 제출하며 이 예시 자체를 의미 검토 증거로 사용할 수 없다.
 
@@ -141,3 +141,5 @@ Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.
 `<FEATURE_UUID>`는 등록 반환값, `<DISCOVERY_PLAN>`은 위 객체로 교체한다. dependencies는 실제 Feature 그래프 간선 목록과 다른 **분석 소견 배열**이다. 명시적 의존이 없어도 미분석 경계 안전성에 대한 비어 있지 않은 소견이 필요하다.
 
 개발 진입은 구조 검사 → 프로젝트 status → 프로젝트 inputs/evidence 유효성 → 대상과 의존 Feature 순회 → 각 Feature의 구조·분석·입력·증거 해시 → READY → 의존성 위험 순으로 확인한다. 현재 구현은 대상의 등록된 의존 Feature도 재귀적으로 확인하고 방문 집합으로 순환을 종료한다. complete 분석 기록은 미분석 목록이 비고 모든 활성 Feature가 유효해야 저장한다. 분석 객체가 바뀌면 이전 보고서의 analysis_hash가 맞지 않으므로 필요한 보고서를 같은 제출에서 재확정한다. Core가 그래프 밖의 미발견 의존성을 자동 탐색하는 것은 아니며 그 충분성은 Skill이 판단한다.
+
+초기화는 기존 테스트·빌드·정적 검사·실제 검토 방법도 탐색하여 [verification.yaml](verification-profiles.md)에 재사용 정의를 등록한다. 방법이 미확인이면 unconfigured를 유지하며 검증을 추정해 통과시키지 않는다. Feature 탐색·Discovery·분리/통합 보존 정책은 변하지 않고, 이후 개발은 유효한 분석과 검증 정의를 재사용한다.

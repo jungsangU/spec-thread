@@ -1,6 +1,6 @@
 # Feature 등록·재편·폐기
 
-설계 1.0. Feature의 불변 식별, 병합·분할, 폐기 및 아카이브 처리의 원본이다. 레코드 구조는 [산출물과 데이터 모델](01-artifact-model.md), 확정 전 분석은 [Discovery](03-analysis-standard.md)를 따른다.
+설계 1.1. Feature의 불변 식별, 병합·분할, 폐기 및 아카이브 처리의 원본이다. 레코드 구조는 [산출물과 데이터 모델](01-artifact-model.md), 확정 전 분석은 [Discovery](03-analysis-standard.md)를 따른다.
 
 ## 활성·폐기와 아카이브
 
@@ -20,7 +20,7 @@
 
 `feature-retire UUID PLAN.json`은 reason, evidence(로컬 결정 근거 파일), successors(UUID 배열), dependency_updates(활성 소비자 UUID별 새 dependencies 배열)를 받는다. 미종료 Work Item이 있거나 활성 소비자 의존 재평가가 빠졌으면 차단한다. 미리보기의 approval_hash를 검토하고 사용자 승인 후 `--confirm HASH`로 적용한다. 입력이 바뀌면 다시 승인받는다. 기본 아카이브 위치는 `docs/sdd/archive/<UUID>`다. 이동한 Markdown의 상대 링크와 해당 자료를 참조하는 링크·활성 Source Map을 갱신하고, 공식 활성 선택자가 폐기 기능을 가리키면 해제한다. 역사적 Work Item과 폐기 Source Map은 그대로 보존한다.
 
-## Core 0.4.0 미리보기·적용 결과 계약
+## Core 0.5.0 미리보기·적용 결과 계약
 
 미리보기는 feature/from/to/reason/successors/dependency_updates/decision_evidence/moves/writes/inputs/features_hash와 approval_hash를 반환한다. moves는 이전→새 파일 경로, writes는 갱신할 파일별 내용 해시, inputs는 승인에 묶인 실제 파일 해시다. 승인 해시는 [객체 내용 해시](01-artifact-model.md)로 미리보기의 approval_hash 제외 내용을 계산한다. `--confirm` 적용 직전에 같은 계획과 현재 입력으로 미리보기를 다시 계산해 비교한다. 미리보기에는 파일 이동·쓰기 부수 효과가 없다.
 
@@ -40,3 +40,5 @@ successors는 중복 없는 다른 활성 Feature UUID 배열이며 후속이 �
   "dependency_updates": {}
 }
 ```
+
+신규 Feature의 검증 방법이 확인되면 verification.yaml의 해당 정의만 추가한다. 폐기 Feature의 정의는 보존하고 현재 합성에서 제외한다. 공통 검증에 해당 Feature의 이전 경로·계약이 포함돼 있으면 폐기 영향 검토에서 확인하고 필요한 정책 변경을 명시적으로 승인한다. 역사적 Work Item 정의·결과를 새 정책으로 재작성하지 않는다. [정의 재사용 원본](verification-profiles.md)

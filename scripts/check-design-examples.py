@@ -49,7 +49,18 @@ cli('transition',wi,'in_progress',expect=1)
 gateplan=code('06-verification.md')[0]
 gateplan['gates'][0]['targets']=[feature];gateplan['gates'][0]['command'][0]=sys.executable
 path=plan('gates.json',gateplan)
+policy_gate=json.loads(json.dumps(gateplan['gates'][0]))
+policy_gate.update(targets='$scope', profiles=['lightweight','standard','strict'],mandatory=True)
+policy={'schema_version':1,'status':'configured','reason':'Existing fixture unittest verification','basis':['verification-rules.md'],'project':{'gates':[policy_gate]},'features':{}}
+cli('verification-policy',plan('policy.json',policy),'--apply')
+write('specs/example/tasks.md','# Tasks\n- [x] Existing fixture implementation and test.\n')
+
 def define(id):
+ profile=code('verification-profiles.md')[0]
+ profile['basis']=['basis.md']
+ cli('profile',id,plan('profile.json',profile),'--apply')
+ for step,ref in [('plan','specs/example/plan.md'),('tasks','specs/example/tasks.md'),('implement','app.py')]:
+  cli('procedure',id,step,plan('step.json',{'status':'done','conclusion':'Actual isolated Core fixture artifact reviewed','evidence':[ref]}))
  preview=json.loads(cli('gates',id,path)[0]);cli('gates',id,path,'--confirm',preview['approval_hash'])
 define(wi);cli('transition',wi,'in_progress');cli('stage-check',wi,'complete',expect=1)
 record('Gate set required before entry; NOT_RUN blocks completion')

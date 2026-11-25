@@ -1,6 +1,6 @@
 # 04 Work Item과 개발 흐름
 
-설계 1.0. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
+설계 1.1. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
 
 ## 입력과 결과
 
@@ -41,7 +41,7 @@ stateDiagram-v2
 
 이 재개는 [초기화 재개](03-analysis-standard.md) 및 [버전 동기화 실패 후 재시도](version-sync.md)와 다르다. 세션 실행·동시성과 복구의 운영 경계는 [Git·세션 운영](08-git-integration.md)을 따른다. 예외적인 외부 변경은 [수동 Sync](reconciliation.md)에서 처리한다.
 
-## Core 0.4.0 상태 명령 계약
+## Core 0.5.0 상태 명령 계약
 
 `transition ID in_progress|suspended|failed`를 사용한다. 허용 간선은 위 상태도에 한정된다. pending에서 바로 suspended/failed로, suspended에서 바로 failed/completed로 전환하지 않는다. 상태도의 in_progress 자기 반복은 수정·재검증 루프를 뜻하며 같은 상태로 transition을 저장하는 명령이 아니다. completed는 transition 인자로 받지 않고 `complete ID PLAN.json`으로만 기록한다.
 
@@ -49,8 +49,15 @@ stateDiagram-v2
 
 수정 가능한 검증 오류를 만났다고 자동으로 failed를 저장하지 않는다. 중단·실패 전환은 현재 작업 상태와 사용자 의사를 확인하며, 일반 개발 진입의 품질 제한이 있더라도 suspended/failed 기록 자체는 가능한 로컬 버전·구조 조건에서 처리한다. 이와 달리 in_progress 재개에는 대상 진입과 develop Gate를 다시 확인한다.
 
-Core 0.4.0의 kind=reconciliation 작업은 [정합화 승인 계약](reconciliation.md)으로 생성하며 변경으로 무효화된 Discovery를 복원하기 위해 일반 개발의 READY 진입을 전제하지 않는다. 기존 버전·활성 범위·구조·필수 Gate·증거·완료 상태 검사는 유지한다. 일반 개발 Work Item의 진입 조건을 완화하지 않는다.
+Core 0.5.0의 kind=reconciliation 작업은 [정합화 승인 계약](reconciliation.md)으로 생성하며 변경으로 무효화된 Discovery를 복원하기 위해 일반 개발의 READY 진입을 전제하지 않는다. 기존 버전·활성 범위·구조·필수 Gate·증거·완료 상태 검사는 유지한다. 일반 개발 Work Item의 진입 조건을 완화하지 않는다.
 
 ## 대화에서의 다음 작업
 
 [대화형 진행](conversation-flow.md)의 구체적 다음 제안을 사용자가 수락하면 새 명령을 다시 입력하지 않아도 개발 요청으로 처리한다. 현재 대상 진입과 범위를 다시 확인하고 기존 Work Item·Gate 규칙을 따른다. 요청 안의 통상적 단계는 진행 안내로 이어가고 새로운 범위·필수 승인만 확인한다.
+
+
+## 위험도 기반 요청 진행
+
+새 요청은 기존 Feature 매칭·Preflight·pending 생성 뒤 [프로파일](verification-profiles.md)을 확정하고 공통/Feature 정의와 추가 Gate를 합성한다. Lightweight/Standard의 명확한 분류와 기존 정책 재사용은 최초 요청 범위에서 진행한다. Strict·중요 불확실성은 구체적 승인 후 진행한다. 필요한 공식 절차 수행과 근거를 같은 Work Item에 기록하며 완료 시 프로파일 최소·동적 의무도 검사한다. 상태 간선·UUID·failed 종료·suspended 재개는 바뀌지 않는다.
+
+scope-expand의 기본 호출은 이제 Preview다. features/reason과 현재 Work Item/Feature 입력에 대한 실제 사용자 승인을 받은 뒤 --confirm HASH로 범위를 반영하고 프로파일·Gate 집합을 재평가한다. 일반 테스트 실패 수정은 승인 범위 안에서 같은 in_progress를 유지하며 별도 진행 동의를 반복하지 않는다. Baseline은 변경된 관리정보만 즉시/선택 반영하고 마지막 구조·참조 검사도 유지한다.

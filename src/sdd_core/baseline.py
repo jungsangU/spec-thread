@@ -5,7 +5,7 @@ from uuid import UUID
 import yaml
 
 
-class BaselineLoader(yaml.SafeLoader):
+class BaselineLoader(getattr(yaml, "CSafeLoader", yaml.SafeLoader)):
     def construct_mapping(self, node, deep=False):
         seen = set()
         for key_node, _ in node.value:
@@ -96,6 +96,7 @@ def scaffold(root):
         "features.yaml": "schema_version: 1\nanalysis:\n  status: not_started\n  unanalysed: []\nfeatures: []\npath_redirects: {}\n",
         "source-map.yaml": "mappings: []\n",
         "work-items.yaml": "work_items: []\n",
+        "verification.yaml": "schema_version: 1\nstatus: unconfigured\nreason: ''\nbasis: []\nproject:\n  gates: []\nfeatures: {}\n",
     }
     for name, contents in defaults.items():
         project_path(root, f".specify/baseline/{name}")
@@ -156,6 +157,10 @@ def validate(root, *, legacy=False):
 
     for item in work_items:
         validate_work_item(root, item, feature_ids, work_ids)
+    if not legacy:
+        from .verification import validate_registry
+        from .records import read_document
+        validate_registry(root, read_document(root, 'verification.yaml'))
 
 
 
@@ -214,6 +219,9 @@ def validate_work_item(root, item, feature_ids, work_ids):
         mapping(reconciliation.get("inputs"), "inputs")
         mapping(reconciliation.get("changes"), "changes")
 
+    if "verification" in item:
+        from .verification import validate_work_record
+        validate_work_record(root, item, feature_ids, work_ids)
     result = item.get("validation")
     if result is None and status != "completed":
         return

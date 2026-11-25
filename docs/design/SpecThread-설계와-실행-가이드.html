@@ -29,9 +29,9 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 @media print { nav { display: none; } .layout { display: block; padding: 0; } main { padding: 0; border: 0; } pre { background: white; color: black; white-space: pre-wrap; } tr, .diagram { break-inside: avoid; } .diagram svg { min-width: 0; } }
 </style>
 </head>
-<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">작업 중 실행 확인</a></li><li><a href="#section-8">Monitor 선택 설치 및 실행</a></li></ul></nav><main>
+<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">작업 중 실행 확인</a></li><li><a href="#section-8">Monitor 선택 설치 및 실행</a></li><li><a href="#section-9">변경 위험에 비례해 개발하기</a></li></ul></nav><main>
 <h1>SpecThread 설계와 실행 가이드</h1>
-<p>설계 1.0 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 <a href="README.md">주제별 설계 문서</a>에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 <a href="DECISIONS.md">결정 기록</a>에서 확인한다.</p>
+<p>설계 1.1 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 <a href="README.md">주제별 설계 문서</a>에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 <a href="DECISIONS.md">결정 기록</a>에서 확인한다.</p>
 <h2 id="section-1">작업에 맞는 문서 찾기</h2>
 <table>
 <thead>
@@ -100,5 +100,8 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 <p>초기화와 개발은 필요한 읽기 전용 시작 검사를 한 번의 호출로 실행한다. 이미 동의한 범위의 일상 작업은 이어서 진행한다. 에이전트의 권한 확인이나 SpecThread의 적용 승인 요청이 나타나면 화면에 표시된 실제 작업과 영향을 확인한다. <a href="conversation-flow.md">승인과 단계 이동</a></p>
 <h2 id="section-8">Monitor 선택 설치 및 실행</h2>
 <p>초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 <code>python3 specthread install --monitor --project PROJECT</code>로 추가한다. 프로젝트에서 <code>./monitor</code> 또는 Windows의 <code>.\monitor.cmd</code>를 실행한다. 새 에이전트도 함께 열려면 <code>--session</code>을 붙인다. <a href="../../monitor/README.md">Monitor 사용법</a></p>
+<h2 id="section-9">변경 위험에 비례해 개발하기</h2>
+<p>sdd-develop은 요청·계약·의존성에 따라 Lightweight/Standard/Strict를 선택한다. 경량은 유효한 기존 계획과 변경 태스크를 활용하며, 일반 기능·신규 Feature는 필요한 공식 절차를, 고위험 계약은 구체적 확인과 확대 검증을 사용한다. 단순 파일 수로 위험을 정하지 않는다.</p>
+<p>검증 정의는 verification.yaml에서 재사용하고 같은 Work Item의 유효 PASS는 완료 직전에 무조건 다시 실행하지 않는다. 바뀐 검사·실패·누락 증거만 재검증한다. 일반 과정은 최초 요청 범위에서 이어가며 Strict·범위 확대·필수 정책 완화는 실제 사용자 판단을 받는다. 모든 프로파일의 완료 조건은 동일하다. <a href="verification-profiles.md">상세 정책·Core 예시</a></p>
 </main></div></body>
 </html>

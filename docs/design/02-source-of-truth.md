@@ -17,3 +17,5 @@ Brownfield Discovery는 현행 동작과 설계 의도를 별도로 확인한다
 Greenfield의 아키텍처는 계획으로, Brownfield의 관찰 결과는 현재 구현 사실로 표시한다. 정상 개발은 Harness를 사용하고 외부 변경은 예외로 다룬다. 의미 있는 미확정 요구사항·Feature 경계·아키텍처 판단은 사용자에게 확인한다.
 
 외부 변경의 조사·승인·적용 절차는 [수동 정합화](reconciliation.md)를 따른다.
+
+검증 정책의 재사용 정의는 verification.yaml이 원본이고, 현재 요청에 적용한 정의·실행·프로파일 이력은 work-items.yaml이 원본이다. 정의가 존재한다는 사실과 실행 PASS는 구분한다. 공식 검토·테스트 원문을 중복 관리하지 않고 실제 결과를 참조한다. [프로파일과 책임](verification-profiles.md)

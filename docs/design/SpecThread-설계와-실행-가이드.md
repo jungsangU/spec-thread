@@ -1,6 +1,6 @@
 # SpecThread 설계와 실행 가이드
 
-설계 1.0 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 [주제별 설계 문서](README.md)에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 [결정 기록](DECISIONS.md)에서 확인한다.
+설계 1.1 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 [주제별 설계 문서](README.md)에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 [결정 기록](DECISIONS.md)에서 확인한다.
 
 ## 작업에 맞는 문서 찾기
 
@@ -62,3 +62,10 @@ init에서 필요한 질문 하나씩 답하고, 구체적인 다음 작업 제�
 ## Monitor 선택 설치 및 실행
 
 초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 `python3 specthread install --monitor --project PROJECT`로 추가한다. 프로젝트에서 `./monitor` 또는 Windows의 `.\monitor.cmd`를 실행한다. 새 에이전트도 함께 열려면 `--session`을 붙인다. [Monitor 사용법](../../monitor/README.md)
+
+
+## 변경 위험에 비례해 개발하기
+
+sdd-develop은 요청·계약·의존성에 따라 Lightweight/Standard/Strict를 선택한다. 경량은 유효한 기존 계획과 변경 태스크를 활용하며, 일반 기능·신규 Feature는 필요한 공식 절차를, 고위험 계약은 구체적 확인과 확대 검증을 사용한다. 단순 파일 수로 위험을 정하지 않는다.
+
+검증 정의는 verification.yaml에서 재사용하고 같은 Work Item의 유효 PASS는 완료 직전에 무조건 다시 실행하지 않는다. 바뀐 검사·실패·누락 증거만 재검증한다. 일반 과정은 최초 요청 범위에서 이어가며 Strict·범위 확대·필수 정책 완화는 실제 사용자 판단을 받는다. 모든 프로파일의 완료 조건은 동일하다. [상세 정책·Core 예시](verification-profiles.md)

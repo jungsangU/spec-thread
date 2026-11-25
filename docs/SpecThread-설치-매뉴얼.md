@@ -79,3 +79,5 @@ Spec Kit 프로젝트 Skill 갱신, SpecThread Skill·실행 환경 연결, 기�
 초기 설치에서 Monitor를 선택하거나 기존 프로젝트에 `python3 specthread install --monitor --project PROJECT`로 추가한다. 프로젝트에서 `./monitor` 또는 Windows의 `.\monitor.cmd`를 실행한다. 새 에이전트도 함께 열려면 `--session`을 붙인다. [Monitor 사용법](../monitor/README.md)
 
 pip SSL 오류가 나면 재시도 질문에서 `y`를 선택한다. 질문 없이 재시도하려면 기존 설치 명령에 `--ssl-trust`를 붙인다. 이 옵션은 해당 설치에서 기본 PyPI 호스트에만 적용된다.
+
+Core 0.5.0은 verification.yaml의 미확인 정의 틀을 포함합니다. 설치·업데이트만으로 검증 방법이나 프로파일이 확정되지는 않습니다. sdd-init/개발 준비에서 실제 기존 검사와 필요한 검토를 확인합니다. [위험도 기반 개발·검증](design/verification-profiles.md)

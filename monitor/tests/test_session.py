@@ -78,7 +78,7 @@ class SessionTest(unittest.TestCase):
         base = {"cwd": str(root), "session_id": "question"}
         for tool in ("AskUserQuestion", "ExitPlanMode", "request_user_input"):
             self.assertEqual(hook_event(root, {**base, "hook_event_name": "PreToolUse", "tool_name": tool}, "claude")[1], "input_requested")
-        self.assertIsNone(hook_event(root, {**base, "hook_event_name": "PreToolUse", "tool_name": "Bash"}, "claude")[1])
+        self.assertEqual(hook_event(root, {**base, "hook_event_name": "PreToolUse", "tool_name": "Bash"}, "claude")[1], "tool_started")
         self.assertEqual(hook_event(root, {**base, "hook_event_name": "Notification", "notification_type": "idle_prompt"}, "claude")[1], "input_requested")
         self.assertIsNone(hook_event(root, {**base, "hook_event_name": "Notification", "notification_type": "auth_success"}, "claude")[1])
 
@@ -94,6 +94,46 @@ class SessionTest(unittest.TestCase):
                     record_event()
                 self.assertNotIn('SECRET', path.read_text())
                 self.assertEqual(collect(root, [('claude', path)])['sessions'][0]['kind'], 'input_requested')
+
+    def test_work_context_survives_permission_and_stop_without_command_body(self):
+        from specthread_monitor.server import connect_sessions
+        identifier = "01951d7f-b507-7200-8000-000000000002"
+        with TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            (root / 'backend').mkdir()
+            path = root / 'events.jsonl'
+            path.touch()
+            base = {"cwd": str(root / 'backend'), "session_id": "test-session"}
+            command = f'python .specify/sdd-core gate-run {identifier} api-tests'
+            with patch('specthread_monitor.project_events.location', return_value=root / 'cache'):
+                for fields in ({"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command, "secret": "SECRET"}},
+                               {"hook_event_name": "PermissionRequest"}, {"hook_event_name": "Stop"}):
+                    with patch.dict(os.environ, {EVENT_FILE: str(path), 'SPECTHREAD_MONITOR_AGENT': 'claude'}), patch.object(sys, 'stdin', io.TextIOWrapper(io.BytesIO(json.dumps({**base, **fields}).encode()))):
+                        record_event(root, 'claude')
+                rows = read(root)
+                result = collect(root, [], rows)
+                session = result['sessions'][0]
+                self.assertEqual(session['directory'], 'backend')
+                self.assertEqual(session['activity'], {'kind': 'verification', 'gate': 'api-tests'})
+                self.assertEqual(session['gate_work']['work'], identifier)
+                connect_sessions({'features': [{'id': 'feature', 'name': 'Account API'}], 'items': [
+                    {'id': identifier, 'status': 'in_progress', 'declared_features': ['feature'], 'actual_features': [], 'gates': []}]}, [session])
+                self.assertEqual(session['context']['features'], ['Account API'])
+                self.assertNotIn('SECRET', json.dumps(rows))
+                self.assertNotIn(command, json.dumps(rows))
+
+    def test_verification_target_is_a_safe_project_file_not_command_text(self):
+        from specthread_monitor.events import observed_activity, observed_directory
+        with TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            (root / 'tests').mkdir()
+            (root / 'tests/test_api.py').write_text('# test')
+            payload = {'cwd': str(root), 'hook_event_name': 'PreToolUse', 'tool_name': 'Bash',
+                       'tool_input': {'command': 'python -m pytest test_api.py --token SECRET', 'workdir': 'tests'}}
+            self.assertEqual(observed_activity(root, payload), {'kind': 'verification', 'path': 'tests/test_api.py'})
+            self.assertEqual(observed_directory(root, payload), 'tests')
+            payload['tool_input']['command'] = 'pytest ../../test_secret.py'
+            self.assertEqual(observed_activity(root, payload), {'kind': 'verification'})
 
     @unittest.skipUnless(os.name == "nt", "Requires native Windows shells and installed Monitor")
     def test_windows_generated_hooks_execute_in_git_bash_and_cmd(self):
@@ -220,7 +260,13 @@ class SessionTest(unittest.TestCase):
                 return 0
 
             with redirect_stdout(output), patch("specthread_monitor.session.shutil.which", return_value="/fake/codex"):
-                with patch("specthread_monitor.session.subprocess.call", side_effect=fake_cli):
+                def after_agent_exit():
+                    url = urlsplit(output.getvalue().splitlines()[0].split()[-1])
+                    request = Request(f"http://{url.netloc}/api/snapshot", headers={"X-Monitor-Token": url.fragment.removeprefix("token=")})
+                    with urlopen(request, timeout=5) as response:
+                        self.assertEqual(response.status, 200)
+                with patch("specthread_monitor.session.subprocess.call", side_effect=fake_cli), patch("specthread_monitor.session.wait_for_dashboard", side_effect=after_agent_exit) as wait:
                     self.assertEqual(run_session(root, 0, [], browser=False), 0)
+                    wait.assert_called_once()
             self.assertIsNotNone(event_path)
             self.assertFalse(event_path.exists())

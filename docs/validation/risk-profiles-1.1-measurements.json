@@ -1,0 +1,203 @@
+{
+  "comparison_before": {
+    "core": "0.4.0",
+    "samples": [
+      {
+        "agent": "codex",
+        "core": "0.4.0",
+        "core_request_seconds": 0.4115106670069508,
+        "implementation_seconds": 0.0002772090374492109,
+        "verification_seconds": 0.17437150003388524,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      },
+      {
+        "agent": "codex",
+        "core": "0.4.0",
+        "core_request_seconds": 0.41957749996799976,
+        "implementation_seconds": 0.0002631669631227851,
+        "verification_seconds": 0.1857810840010643,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      },
+      {
+        "agent": "codex",
+        "core": "0.4.0",
+        "core_request_seconds": 0.4114297920023091,
+        "implementation_seconds": 0.0002456660149618983,
+        "verification_seconds": 0.1760882080416195,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.4.0",
+        "core_request_seconds": 0.4058741250191815,
+        "implementation_seconds": 0.0002398340147919953,
+        "verification_seconds": 0.17437620798591524,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.4.0",
+        "core_request_seconds": 0.40769291698234156,
+        "implementation_seconds": 0.00024029100313782692,
+        "verification_seconds": 0.17454337497474626,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.4.0",
+        "core_request_seconds": 0.4065219589974731,
+        "implementation_seconds": 0.00022908294340595603,
+        "verification_seconds": 0.17428237502463162,
+        "actual_test_runs": 2,
+        "required_explicit_gate_plan_confirmations": 1,
+        "second_result_action": "run",
+        "completed": true
+      }
+    ],
+    "median_core_request_seconds": 0.40956135449232534,
+    "median_verification_seconds": 0.17445979148033075,
+    "limits": [
+      "Core workflow microbenchmark, not a native LLM agent run",
+      "Same Python/runtime/request/source/test; new registry configured before timing",
+      "No actual model token or human dialog measurement"
+    ]
+  },
+  "comparison_after": {
+    "core": "0.5.0",
+    "samples": [
+      {
+        "agent": "codex",
+        "core": "0.5.0",
+        "core_request_seconds": 0.31201024999609217,
+        "implementation_seconds": 0.0002872080076485872,
+        "verification_seconds": 0.10635412496048957,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      },
+      {
+        "agent": "codex",
+        "core": "0.5.0",
+        "core_request_seconds": 0.2912172920187004,
+        "implementation_seconds": 0.00026104203425347805,
+        "verification_seconds": 0.10891908395569772,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      },
+      {
+        "agent": "codex",
+        "core": "0.5.0",
+        "core_request_seconds": 0.289466958027333,
+        "implementation_seconds": 0.00024058402050286531,
+        "verification_seconds": 0.10013654199428856,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.5.0",
+        "core_request_seconds": 0.28599945799214765,
+        "implementation_seconds": 0.00023804197553545237,
+        "verification_seconds": 0.10048808302963153,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.5.0",
+        "core_request_seconds": 0.2883555830339901,
+        "implementation_seconds": 0.0002620830200612545,
+        "verification_seconds": 0.09821604198077694,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      },
+      {
+        "agent": "claude",
+        "core": "0.5.0",
+        "core_request_seconds": 0.2770471660187468,
+        "implementation_seconds": 0.00024983397452160716,
+        "verification_seconds": 0.09823504200903699,
+        "actual_test_runs": 1,
+        "required_explicit_gate_plan_confirmations": 0,
+        "second_result_action": "reuse",
+        "completed": true
+      }
+    ],
+    "median_core_request_seconds": 0.28891127053066157,
+    "median_verification_seconds": 0.10031231251196004,
+    "limits": [
+      "Core workflow microbenchmark, not a native LLM agent run",
+      "Same Python/runtime/request/source/test; new registry configured before timing",
+      "No actual model token or human dialog measurement"
+    ]
+  },
+  "migration": {
+    "from": "0.4.0",
+    "to": "0.5.0",
+    "mandatory": "passed",
+    "quality": "passed",
+    "history_and_app_hashes_preserved": true,
+    "completed_work_items": 1,
+    "verification_status": "unconfigured",
+    "migrations": [
+      {
+        "from": "0.4.0",
+        "migration": "risk-profiles-and-reusable-verification",
+        "to": "0.5.0"
+      }
+    ],
+    "preserved_sha256": {
+      ".specify/baseline/work-items.yaml": "8b6a62dd70bff928ca99ebf48863509cb57e81019fd85895c84d3111b4219164",
+      ".specify/baseline/features.yaml": "429c43ed5a1f011ee20c9da5822206784fdc9697a2eff392301ca719131ac78b",
+      ".specify/baseline/source-map.yaml": "93878a88ea06f4d07588f45bdbc7d22cfb1cd9046a11b79f4cbe20d19e617aa8",
+      "app.py": "a9df880bba71517aa73f0058c297f4d0c7757efd083c61c2f5f6b79b1fd2e146",
+      "tests/check_label.py": "04a553aa4a50d7ffd5df970fe1dfce465e541179e912b862a865f9436b06c171"
+    }
+  },
+  "official_install_update": [
+    {
+      "agent": "codex",
+      "install": "complete",
+      "update": "complete",
+      "official_spec_kit": "ok",
+      "core_version": "0.5.0",
+      "verification_state": "unconfigured",
+      "baseline_files": 7,
+      "skill_bytes": 16718
+    },
+    {
+      "agent": "claude",
+      "install": "complete",
+      "update": "complete",
+      "official_spec_kit": "ok",
+      "core_version": "0.5.0",
+      "verification_state": "unconfigured",
+      "baseline_files": 7,
+      "skill_bytes": 16718
+    }
+  ]
+}

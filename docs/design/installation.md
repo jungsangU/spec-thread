@@ -1,6 +1,6 @@
 # 신규 설치와 업데이트의 통합 진입점
 
-설계 1.0 · 사용자 요청: 내려받은 배포본에서 install/update 두 명령으로 설치 절차를 끝낸다. 사용자 단계는 [설치 가이드](../SpecThread-설치-매뉴얼.md), 내부 버전 변환·품질 제한은 [버전 동기화](version-sync.md)가 원본이다.
+설계 1.1 · 사용자 요청: 내려받은 배포본에서 install/update 두 명령으로 설치 절차를 끝낸다. 사용자 단계는 [설치 가이드](../SpecThread-설치-매뉴얼.md), 내부 버전 변환·품질 제한은 [버전 동기화](version-sync.md)가 원본이다.
 
 ## 경계와 명령
 
@@ -21,7 +21,7 @@
 
 pip의 SSL 오류 이후 사용자가 동의하면 기본 PyPI 호스트인 pypi.org와 files.pythonhosted.org의 인증서 검사를 건너뛰고 다운로드를 한 번 다시 시도한다. `--ssl-trust`로 처음부터 지정하거나 비대화형으로 다시 실행할 수 있다. 해당 설정은 이 설치의 pip 프로세스에만 적용한다.
 
-출력은 공식 Spec Kit 프로젝트 연동, Harness 네이티브 Skill, 기존 Project·Skill 버전 표식, Baseline 여섯 파일과 프로젝트 실행 파일·설치 설정이다. 새 설치는 아직 분석되지 않은 빈 Baseline을 만들며 UUID·READY·PASS를 추정하지 않는다. 업데이트는 기존 기록을 유지한다.
+출력은 공식 Spec Kit 프로젝트 연동, Harness 네이티브 Skill, 기존 Project·Skill 버전 표식, Baseline 일곱 파일과 프로젝트 실행 파일·설치 설정이다. 새 설치는 아직 분석되지 않은 빈 Baseline을 만들며 UUID·READY·PASS를 추정하지 않는다. 업데이트는 기존 기록을 유지한다.
 
 | 위치 | 소유와 목적 |
 | --- | --- |
@@ -61,3 +61,5 @@ flowchart TD
 Core 실행 파일은 기록한 관리 해시와 일치하는 파일만 교체한다. 기존 Project에 실행 파일이 없으면 추가하며 사용자 수정본은 덮어쓰지 않는다. 설치된 Native Skill의 Core 명령은 `python3 .specify/sdd-core ...`를 사용해 새 AI 세션에서도 PATH와 활성 venv를 가정하지 않는다. 공식 Skill은 공식 설치본을 유지한다.
 
 설치·업데이트의 Python 자식 프로세스와 Spec Kit 출력은 UTF-8로 통일하며 JSON 파일도 UTF-8로 읽는다. CP949 터미널의 표현 불가능한 문자는 설치를 중단시키지 않도록 대체 표기한다. 선택 설치한 Monitor의 관리 실행기와 Hook도 같은 `update`에서 갱신하며 상세 관측 계약은 [Monitor](monitor.md)를 따른다.
+
+새 설치는 verification.yaml을 포함한 일곱 파일을 만들며 실제 검증 정의가 없으면 unconfigured다. 설치 성공은 개발 준비·검증 통과를 의미하지 않는다. 기존 0.4.0 배포의 업데이트는 [0.5.0 누적 변환](version-sync.md) 후 현재 위험/검증 정의를 확인한다.

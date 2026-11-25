@@ -1,6 +1,6 @@
 # 공식 Spec Kit 연동 계약
 
-설계 1.0 · 재현 기준 GitHub Spec Kit **v1.4.0** (`0019fa1`). 이 문서는 공식 기능·전제와 SpecThread 연결 방식의 원본이다. 현재 최신 버전 일반론이 아니라 고정한 태그의 문헌 대조다. [릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
+설계 1.1 · 재현 기준 GitHub Spec Kit **v1.4.0** (`0019fa1`). 이 문서는 공식 기능·전제와 SpecThread 연결 방식의 원본이다. 현재 최신 버전 일반론이 아니라 고정한 태그의 문헌 대조다. [릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
 
 | 영역 | 공식 기능 및 전제 | Harness 설계에 적용 |
 | --- | --- | --- |
@@ -20,3 +20,8 @@
 ## 관련 명세
 
 [에이전트 설치·호출](07-agent-runtime.md) · [Discovery](03-analysis-standard.md) · [개발 흐름](04-artifact-lifecycle.md) · [검증](06-verification.md) · [공식 호출 PoC](acceptance.md)
+
+
+## 프로파일별 호출 선택
+
+[설계 1.1 프로파일](verification-profiles.md)은 공식 명령을 바꾸지 않고 적용할 단계를 선택한다. Lightweight의 기본 제외는 새 Checklist/Analyze/Converge 호출을 항상 생성하지 않는다는 뜻이며 이미 존재하는 공식 체크리스트·필수 확장 훅·프로젝트 정책을 무시하지 않는다. 선택한 Implement는 실제 tasks와 기존 공식 검사를 수행한다. Analyze와 Converge는 각각 산출물 일관성과 구현 격차라는 별개 목적을 유지한다. 공식 Analyze가 요구하는 후속 조치 승인 등 원형의 명시적 판단은 일반 자동 진행으로 대체하지 않는다. 공식 결과 공유 API를 가정하지 않고 실제 보고서와 동일 입력이 확인된 범위만 재사용한다.

@@ -30,6 +30,10 @@ def definitions(root, plan, scope, *, allow_missing_evidence=False):
             raise ValueError("Gate ID가 중복되었습니다")
         ids.add(identifier)
         nonempty(gate.get("rationale"), "Gate 적용 근거")
+        if gate.get("official_step") is not None:
+            from .verification import STEPS
+            if gate["official_step"] not in STEPS or gate.get("kind") != "review":
+                raise ValueError("공식 절차 Gate는 구분된 review 방법으로 기록하세요")
         if type(gate.get("required")) is not bool:
             raise ValueError("Gate required는 boolean입니다")
         targets = sequence(gate.get("targets"), "targets")
@@ -62,11 +66,17 @@ def definitions(root, plan, scope, *, allow_missing_evidence=False):
     return gates
 
 
-def prepare_gate_plan(root, identifier, plan):
+def prepare_gate_plan(root, identifier, plan, *, compose_policy=False):
     validate(root)
     _, item = work_item(root, identifier, editable=True)
     scope = list(dict.fromkeys(item["declared_features"] + item["actual_features"]))
-    gates = definitions(root, plan, scope)
+    from .verification import compose, enforce, auto_gate_allowed
+    policy_sources = {}
+    if compose_policy:
+        plan = deepcopy(plan)
+        plan['gates'], policy_sources = compose(root, item, plan.get('gates', []))
+    gates = definitions(root, plan, scope, allow_missing_evidence=True)
+    enforce(root, item, gates)
     reason = nonempty(plan.get("reason"), "Gate 집합 결정/변경 근거")
     inputs = {}
     for gate in gates:
@@ -75,6 +85,8 @@ def prepare_gate_plan(root, identifier, plan):
     preview = {
         "work_item": identifier, "previous": content_hash(item.get("gate_revisions", [])),
         "scope": scope, "gates": gates, "reason": reason, "basis": basis, "inputs": inputs,
+        "policy_sources": policy_sources,
+        "approval_required": not auto_gate_allowed(item, gates),
     }
     return preview
 
@@ -83,9 +95,29 @@ def register_gates(root, identifier, preview):
     document, item = work_item(root, identifier, editable=True)
     if content_hash(item.get("gate_revisions", [])) != preview["previous"]:
         raise ValueError("Gate 집합이 변경됐습니다")
+    from .verification import enforce
+    enforce(root, item, preview['gates'])
+    old = item.get('gate_revisions', [])
+    previous = old[-1] if old else None
     revision = deepcopy(preview)
     revision["hash"] = content_hash(preview)
     item.setdefault("gate_revisions", []).append(revision)
+    old_basis_valid = False
+    if previous:
+        try:
+            old_basis_valid = verify_evidence(root, list(previous['basis'])) == previous['basis']
+        except (OSError, ValueError):
+            pass
+    if previous and old_basis_valid:
+        old_defs = {gate['id']: gate for gate in previous['gates']}
+        for gate in revision['gates']:
+            history = item.get('gate_results', {}).get(gate['id'], [])
+            prior = old_defs.get(gate['id'])
+            if prior == gate and history and current_result(root, history[-1], {**prior, 'revision': previous['hash']}) == 'PASS':
+                result = deepcopy(history[-1])
+                result['reused_from'] = {'work_item': identifier, 'gate': gate['id'], 'run_index': len(history) - 1, 'definition_hash': result['definition_hash']}
+                result['definition_hash'] = content_hash({**gate, 'revision': revision['hash']})
+                history.append(result)
     write_document(root, "work-items.yaml", document)
 
 
@@ -102,7 +134,9 @@ def latest_revision(root, item, *, allow_missing_evidence=False):
     scope = list(dict.fromkeys(item["declared_features"] + item["actual_features"]))
     if set(scope) != set(revision["scope"]):
         raise ValueError("Work Item 범위와 Gate 집합 범위가 다릅니다")
-    definitions(root, revision, scope, allow_missing_evidence=allow_missing_evidence)
+    definitions(root, revision, scope, allow_missing_evidence=True)
+    from .verification import enforce
+    enforce(root, item, revision['gates'])
     return revision
 
 
@@ -110,6 +144,9 @@ def gate_status(root, item, stage):
     if stage not in STAGES:
         raise ValueError("단계는 develop/verify/complete입니다")
     revision = latest_revision(root, item)
+    if stage == 'complete':
+        from .verification import steps_required
+        steps_required(root, item)
     results = []
     for gate in revision["gates"]:
         if not gate["required"] or (stage != "complete" and not any(
@@ -130,7 +167,7 @@ def require_gates(root, item, stage):
     return statuses
 
 
-def execute_gate(root, identifier, gate_id, review=None):
+def execute_gate(root, identifier, gate_id, review=None, *, force=False):
     validate(root)
     document, item = work_item(root, identifier, editable=True)
     revision = latest_revision(root, item)
@@ -142,6 +179,22 @@ def execute_gate(root, identifier, gate_id, review=None):
         require_gates(root, item, "develop")
     if "verify" not in gate["required_for"] and "develop" not in gate["required_for"]:
         require_gates(root, item, "verify")
+    history = item.get('gate_results', {}).get(gate_id, [])
+    bound = {**gate, 'revision': revision['hash']}
+    if not force and review is None and history and current_result(root, history[-1], bound) == 'PASS':
+        return {**history[-1], 'action': 'reuse', 'reused_from': {'work_item': identifier, 'gate': gate_id, 'run_index': len(history) - 1}}
+    # Equal explicit purpose + execution scope/input/evidence can share one actual result.
+    def objective(value):
+        return {key: value.get(key) for key in ('kind', 'command', 'method', 'targets', 'paths', 'evidence', 'evidence_requirement', 'official_step')} | {'purpose': value.get('purpose', value['id'])}
+    if not force and review is None:
+        for other in revision['gates']:
+            runs = item.get('gate_results', {}).get(other['id'], [])
+            if other['id'] != gate_id and objective(other) == objective(gate) and runs and current_result(root, runs[-1], {**other, 'revision': revision['hash']}) == 'PASS':
+                result = deepcopy(runs[-1])
+                result.update(definition_hash=content_hash(bound), reused_from={'work_item': identifier, 'gate': other['id'], 'run_index': len(runs) - 1, 'definition_hash': result['definition_hash']})
+                item.setdefault('gate_results', {}).setdefault(gate_id, []).append(result)
+                write_document(root, 'work-items.yaml', document)
+                return {**result, 'action': 'reuse'}
     history_hash = content_hash(document)
     before = input_files(root, gate["paths"])
     bound = {**gate, "revision": revision["hash"]}
@@ -172,6 +225,22 @@ def execute_gate(root, identifier, gate_id, review=None):
             result["execution"] = error.result
     if content_hash(read_document(root, "work-items.yaml")) != history_hash:
         raise ValueError("검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요")
+    if gate.get('capture_log'):
+        from .version_sync import write_file, json_bytes
+        expected = f'docs/sdd/evidence/{identifier}/{gate_id}.log'
+        if gate_id not in ('', '.', '..') and expected in gate['evidence'] and len(gate_id) <= 100 and '/' not in gate_id and '\\' not in gate_id:
+            write_file(root, expected, json_bytes(result.get('execution', {'error': result.get('error')})))
+            try:
+                result['evidence'] = verify_evidence(root, gate['evidence'])
+                if input_files(root, gate['paths']) != before:
+                    result['status'] = 'STALE'
+                elif result.get('execution', {}).get('exit_code') == 0:
+                    result['status'] = 'PASS'
+                    result.pop('error', None)
+            except (OSError, ValueError) as error:
+                result.update(status='FAIL', error=str(error))
+        else:
+            raise ValueError('자동 실행 로그는 Core가 정한 경로에만 기록합니다')
     item.setdefault("gate_results", {}).setdefault(gate_id, []).append(result)
     write_document(root, "work-items.yaml", document)
     return result

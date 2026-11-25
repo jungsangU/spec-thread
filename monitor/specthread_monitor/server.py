@@ -21,6 +21,7 @@ from .project_events import configured_agent, read as read_project_events
 
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
+    "/details.js": ("details.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
 }
@@ -96,6 +97,25 @@ def session_gates(items, sessions):
     return list(matched.values()) + [row for row in attention if (row["agent"], row["session"]) not in linked]
 
 
+def connect_sessions(baseline, sessions):
+    """Annotate explicit observations; never infer ownership from concurrent files."""
+    works = {item["id"]: item for item in baseline.get("items", [])}
+    features = {feature["id"]: feature for feature in baseline.get("features", [])}
+    for session in sessions:
+        link = session.get("gate_work") or {}
+        work = works.get(link.get("work"))
+        scope = (work.get("actual_features") or work.get("declared_features") or []) if work else []
+        session["context"] = {
+            "work": link.get("work"), "directory": session.get("directory"),
+            "features": [features[id]["name"] if id in features else id for id in scope],
+            "feature_ids": scope,
+            "spec_paths": [features[id]["spec_path"] for id in scope if id in features and "spec_path" in features[id]],
+            "activity": session.get("activity"),
+            "gates": [{"id": gate["id"], "status": gate["current"] or gate["recorded"]}
+                      for gate in work.get("gates", []) if gate["required"] and gate["current"] != "PASS"] if work and work["status"] not in ("completed", "failed") else [],
+        }
+
+
 class MonitorServer(HTTPServer):
     def __init__(self, root, sources, port, idle_seconds=900):
         super().__init__(("127.0.0.1", port), Handler)
@@ -116,6 +136,7 @@ class MonitorServer(HTTPServer):
             agent = configured_agent(self.root)
             activity = collect(self.root, self.sources, read_project_events(self.root),
                                idle_seconds=self.idle_seconds, project_configured=agent is not None)
+            connect_sessions(data["baseline"], activity["sessions"])
             activity["project_agent"] = agent
             activity["session_gates"] = session_gates(data["baseline"].get("items", []), activity["sessions"])
             self.cached = {**data, "activity": activity,

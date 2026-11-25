@@ -176,3 +176,29 @@ class VersionSyncTest(unittest.TestCase):
         self.assertEqual(result[0], 0, result[2])
         self.assertEqual(before, {p.name: p.read_bytes() for p in (self.root / '.specify/baseline').iterdir()})
         self.assertEqual(self.cli('version-check')[0], 0)
+
+    def test_v04_adds_unconfigured_verification_without_rewriting_history_or_app(self):
+        from sdd_core.records import write_document, read_document
+        from sdd_core.version_sync import skill_marker
+        install_skills(self.root, 'codex'); scaffold(self.root)
+        self.write('basis.md', 'Actual structural migration fixture')
+        self.write('app.py', 'value = 1\n')
+        write_document(self.root, 'work-items.yaml', {'work_items': [{'id': A, 'status': 'failed', 'declared_features': [], 'actual_features': []}]})
+        history = (self.root / '.specify/baseline/work-items.yaml').read_bytes()
+        project = json.loads((self.root / PROJECT).read_text())
+        project['core_version'] = '0.4.0'; self.write(PROJECT, json.dumps(project))
+        marker = skill_marker('codex'); record = json.loads((self.root / marker).read_text())
+        record['core_version'] = '0.4.0'; self.write(marker, json.dumps(record))
+        (self.root / '.specify/baseline/verification.yaml').unlink()
+        config = {'agent': 'codex', 'quality': [{'features': [], 'paths': ['basis.md'],
+                  'command': [sys.executable, str(self.root / '.specify/sdd-core'), 'validate']}]}
+        self.write('sync-v04.json', json.dumps(config))
+        preview = self.cli('version-sync', str(self.root / 'sync-v04.json'))
+        self.assertEqual(preview[0], 0, preview[2])
+        plan = json.loads(preview[1])
+        self.assertEqual(plan['migrations'][-1]['migration'], 'risk-profiles-and-reusable-verification')
+        result = self.cli('version-sync', str(self.root / 'sync-v04.json'), '--confirm', plan['approval_hash'])
+        self.assertEqual(result[0], 0, result[2])
+        self.assertEqual(read_document(self.root, 'verification.yaml')['status'], 'unconfigured')
+        self.assertEqual((self.root / '.specify/baseline/work-items.yaml').read_bytes(), history)
+        self.assertEqual((self.root / 'app.py').read_text(), 'value = 1\n')

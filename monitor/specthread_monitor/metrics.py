@@ -1,4 +1,4 @@
-"""Dashboard totals derived from the visible Baseline and a local JUnit report."""
+"""Project totals from persisted Baseline records and a local JUnit report."""
 from datetime import datetime, timezone
 from xml.etree import ElementTree
 
@@ -40,7 +40,7 @@ def dashboard(baseline, tests):
     works = baseline.get("items", [])
     open_work = [row for row in works if row["status"] not in ("completed", "failed")]
     gates = [gate for row in open_work for gate in row["gates"] if gate["required"]]
-    return {
+    result = {
         "tasks_done": sum(row["tasks"]["done"] for row in features if row["tasks"]),
         "tasks_total": sum(row["tasks"]["total"] for row in features if row["tasks"]),
         "features_with_tasks": sum(bool(row["tasks"]) for row in features),
@@ -53,4 +53,17 @@ def dashboard(baseline, tests):
         "required_total": len(gates),
         "items_without_gates": sum(not any(gate["required"] for gate in row["gates"]) for row in open_work),
         "tests": tests,
+        "historical_pass": sum(gate.get("recorded") == "PASS" for row in works
+                               if row["status"] in ("completed", "failed") for gate in row["gates"] if gate["required"]),
+        "gate_unknown": sum(gate["current"] == "UNKNOWN" for gate in gates),
+        "tasks_unavailable": sum(row["tasks"] is None for row in features),
+        "work_counts": {state: sum(row["status"] == state for row in works)
+                        for state in ("pending", "in_progress", "suspended", "completed", "failed")},
     }
+    result["required_total"] += sum(gate["required"] for row in works
+                                    if row["status"] in ("completed", "failed") for gate in row["gates"])
+    totals = baseline.get("project_totals")
+    if totals:
+        result.update(totals)
+        result.update(feature_sampled=False, work_sampled=False)
+    return result

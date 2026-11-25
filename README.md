@@ -7,8 +7,8 @@
 공식 **GitHub Spec Kit**와 함께 사용하는 개발 하네스.<br>
 **Codex · Claude Code**의 개발 흐름에 기능 추적과 검증 기준을 연결합니다.
 
-![Core 0.4.0](https://img.shields.io/badge/Core-0.4.0-b75d43?style=flat-square)
-![Design 1.0](https://img.shields.io/badge/Design-1.0-7b7265?style=flat-square)
+![Core 0.5.0](https://img.shields.io/badge/Core-0.5.0-b75d43?style=flat-square)
+![Design 1.1](https://img.shields.io/badge/Design-1.1-7b7265?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3f6b59?style=flat-square)
 ![Spec Kit 1.4.0](https://img.shields.io/badge/Spec_Kit-1.4.0-63598a?style=flat-square)
 
@@ -26,6 +26,7 @@ SpecThread는 사용자 요청을 **Feature**, **Work Item**, **검증 근거**�
 
 | 기능 | 적용 방식 |
 | --- | --- |
+| **위험도에 비례한 개발** | Lightweight·Standard·Strict로 필요한 절차를 선택하고, 기존 검사와 유효한 결과를 재사용합니다. [정책](docs/design/verification-profiles.md) |
 | **Discovery와 기능 확정** | 업무 흐름과 요구사항의 경계를 검토하고 READY / CONDITIONAL / BLOCKED로 판정합니다. |
 | **부분 분석 상태의 개발** | 대상 기능이 READY이고 미분석 영역과 핵심 의존성 위험 없음이 검증되면 개발을 허용합니다. |
 | **지속적인 기능·작업 추적** | Feature UUIDv7과 요청별 Work Item으로 구현 파일·의존관계·변경 이력을 연결합니다. |
@@ -101,7 +102,7 @@ target-project/
 
 ## 제품 구현 완료 기준
 
-설계 기반 구현 요청은 [구현 → 테스트 → 설계 대조 → 누락 보완](docs/design/implementation-standard.md)을 반복하고 실제 근거로 완료를 판단합니다. 최근 결과는 [구현 반복 검증](docs/validation/design-1.0-implementation-cycle.md)에 있습니다.
+설계 기반 구현 요청은 [구현 → 테스트 → 설계 대조 → 누락 보완](docs/design/implementation-standard.md)을 반복하고 실제 근거로 완료를 판단합니다. 최근 결과는 [설계 1.1 구현·검증 대조](docs/validation/risk-profiles-1.1-review.md)에 있습니다.
 
 ## 검증과 운영 기준
 
@@ -125,9 +126,9 @@ HTML은 저장소를 내려받아 브라우저에서 열 수 있습니다. 제�
 
 ## 현재 버전과 확인 범위
 
-**Core 0.4.0 · 설계 1.0 · Baseline schema_version 1**
+**Core 0.5.0 · 설계 1.1 · Baseline schema_version 1**
 
-Core CLI 테스트 **73개**, 문서 예시 계약 **13개**, 실제 0.3.0 설치에서 0.4.0 wheel로 승인 업그레이드한 결과와 자료 보존을 검증했습니다. [두 명령 설치 검증](docs/validation/installation-two-command-review.md)에서는 공식 Spec Kit 1.4.0의 Codex·Claude 설치와 기존 프로젝트 업데이트도 확인했습니다. Codex·Claude Code 각각의 공식 스킬 호출을 포함한 실제 프로젝트 종단간 PoC와 GitHub 운영 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
+Core 테스트 **98개**, 문서 예시 계약 **13개**와 Monitor **23개 통과·Windows 전용 1개 생략**을 확인했습니다. [설계 1.1 검증](docs/validation/risk-profiles-1.1-review.md)에는 공식 Spec Kit 1.4.0의 양쪽 설치·업데이트, 실제 0.4→0.5 변환과 동일 요청 Core 비교 실측을 담았습니다. Codex·Claude Code의 실제 공식 Skill 호출을 포함한 종단간 PoC·토큰 측정과 Windows 네이티브 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
 
 AI와 설계 작업을 시작할 때는 [AGENTS.md](AGENTS.md)를 먼저 읽고 [설계 목차](docs/design/README.md)의 순서로 현재 명세와 결정을 확인합니다.
 

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import time
 import re
+import shlex
 
 from .observe import project_path, safe_file
 
@@ -15,7 +16,7 @@ IDENTIFIER = re.compile(r"[a-zA-Z0-9_-]{1,128}")
 WORK_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
 GATE_COMMAND = re.compile(
     r"^\s*(?:python(?:3(?:\.\d+)?)?|py(?:\s+-3)?)\s+"
-    r"""(?:["']?\.specify[/\\]sdd-core["']?)\s+(stage-check|gates|gate-run|gate-refresh)\s+"""
+    r"""(?:["']?\.specify[/\\]sdd-core["']?)\s+(stage-check|gates|gate-run|gate-refresh|transition|complete|status)\s+"""
     r"([\da-f-]{36})(?=\s|$)"
 )
 GATE_STAGES = {"develop", "verify", "complete"}
@@ -27,9 +28,9 @@ def observed_gate_work(raw):
         work, phase = saved.get("work"), saved.get("phase")
         if isinstance(work, str) and WORK_ID.fullmatch(work) and (phase is None or (isinstance(phase, str) and phase in GATE_STAGES)):
             return {"work": work, "phase": phase}
-    if raw.get("hook_event_name") == "PostToolUse" and raw.get("tool_name") in ("Bash", "PowerShell"):
+    if raw.get("hook_event_name") in ("PreToolUse", "PostToolUse") and raw.get("tool_name") in ("Bash", "PowerShell"):
         detail = raw.get("tool_input")
-    elif raw.get("type") == "item.completed":
+    elif raw.get("type") in ("item.started", "item.completed"):
         detail = raw.get("item")
         if not isinstance(detail, dict) or detail.get("type") != "command_execution":
             return None
@@ -44,6 +45,97 @@ def observed_gate_work(raw):
     args = command[match.end():].split()
     phase = args[0] if match[1] == "stage-check" and args and args[0] in GATE_STAGES else None
     return {"work": match[2], "phase": phase}
+
+
+ACTIVITY_KINDS = {"verification", "build", "editing", "reading", "command", "review"}
+OBSERVED_TOOLS = {"Bash", "PowerShell", "Edit", "Write", "MultiEdit", "Read", "apply_patch", "exec_command"}
+
+
+def observed_activity(root, raw):
+    """Keep categories and validated relative paths, never command/prompt text."""
+    saved = raw.get("activity")
+    if isinstance(saved, dict) and saved.get("kind") in ACTIVITY_KINDS:
+        result = {"kind": saved["kind"]}
+        path = normalized_path(root, saved.get("path"))
+        if path:
+            result["path"] = path
+        gate = saved.get("gate")
+        if isinstance(gate, str) and re.fullmatch(r"[a-zA-Z0-9_.-]{1,100}", gate):
+            result["gate"] = gate
+        return result
+    if raw.get("type") == "item.completed" and isinstance(raw.get("item"), dict) and raw["item"].get("type") == "file_change":
+        paths = [normalized_path(root, entry.get("path")) for entry in raw["item"].get("changes", [])[:30] if isinstance(entry, dict)]
+        paths = [path for path in paths if path]
+        return {"kind": "editing", **({"path": paths[0]} if paths else {})}
+    tool = raw.get("tool_name")
+    detail = raw.get("tool_input")
+    if raw.get("type") in ("item.started", "item.completed"):
+        detail = raw.get("item")
+        if not isinstance(detail, dict) or detail.get("type") != "command_execution":
+            return None
+        tool = "Bash"
+    if tool not in OBSERVED_TOOLS:
+        return None
+    detail = detail if isinstance(detail, dict) else {}
+    result = {"kind": "reading" if tool == "Read" else "editing" if tool in (
+        "Edit", "Write", "MultiEdit", "apply_patch") else "command"}
+    filename = detail.get("file_path")
+    if isinstance(filename, str) and not Path(filename).is_absolute():
+        directory = observed_directory(root, raw)
+        filename = str(root / directory / filename) if directory is not None else None
+    path = normalized_path(root, filename)
+    if path:
+        result["path"] = path
+    command = detail.get("command")
+    if isinstance(command, str) and len(command) <= 4096:
+        match = GATE_COMMAND.match(command)
+        if match and observed_gate_work(raw):
+            result["kind"] = "verification" if match[1] in ("stage-check", "gate-run", "gate-refresh") else "review"
+            args = command[match.end():].split()
+            if match[1] == "gate-run" and args and re.fullmatch(r"[a-zA-Z0-9_.-]{1,100}", args[0]):
+                result["gate"] = args[0]
+        elif re.match(r"^\s*(?:pytest\b|python(?:3(?:\.\d+)?)?\s+-m\s+(?:pytest|unittest)\b|npm\s+(?:test\b|run\s+test\b)|(?:cargo|go|dotnet)\s+test\b|node\s+--test\b)", command):
+            result["kind"] = "verification"
+            try:
+                for token in shlex.split(command):
+                    candidate = token.partition("::")[0]
+                    if token.startswith("-") or "test" not in candidate.lower():
+                        continue
+                    directory = observed_directory(root, raw)
+                    if directory is not None and not Path(candidate).is_absolute():
+                        candidate = str(root / directory / candidate)
+                    path = normalized_path(root, candidate)
+                    if path and project_path(root, path).is_file():
+                        result["path"] = path
+                        break
+            except ValueError:
+                pass
+        elif re.match(r"^\s*(?:npm\s+run\s+build\b|(?:cargo|dotnet)\s+build\b)", command):
+            result["kind"] = "build"
+    return result
+
+
+def observed_directory(root, raw):
+    saved = raw.get("directory")
+    if saved == ".":
+        return "."
+    if saved is not None:
+        return normalized_path(root, saved)
+    cwd = raw.get("cwd")
+    detail = raw.get("tool_input")
+    if isinstance(detail, dict):
+        workdir = detail.get("workdir") or detail.get("cwd")
+        if isinstance(workdir, str) and isinstance(cwd, str):
+            directory = Path(workdir) if Path(workdir).is_absolute() else Path(cwd) / workdir
+            if directory.resolve() == root:
+                return "."
+            return normalized_path(root, str(directory))
+    if isinstance(cwd, str) and Path(cwd).is_absolute():
+        try:
+            return Path(cwd).resolve().relative_to(root).as_posix()
+        except (OSError, ValueError):
+            pass
+    return None
 
 
 def recent_lines(path):
@@ -93,8 +185,10 @@ def codex_event(root, raw, session):
     if kind in ("turn.started", "turn.completed", "turn.failed"):
         return session, kind.replace(".", "_"), []
     item = raw.get("item")
-    if kind != "item.completed" or not isinstance(item, dict):
+    if kind not in ("item.started", "item.completed") or not isinstance(item, dict):
         return session, None, []
+    if kind == "item.started":
+        return session, "tool_started" if item.get("type") == "command_execution" else None, []
     if item.get("type") == "file_change":
         if item.get("status") == "failed":
             return session, "file_change_failed", []
@@ -139,7 +233,7 @@ def hook_event(root, raw, agent):
         return session, "input_requested" if isinstance(tool, str) and (
             tool.rsplit(".", 1)[-1] in ("AskUserQuestion", "ExitPlanMode", "request_user_input")
             or tool.endswith("__request_user_input")
-        ) else None, []
+        ) else ("tool_started" if tool in OBSERVED_TOOLS else None), []
     kind = {"SessionStart": "session_started", "SessionEnd": "session_ended",
             "Stop": "turn_completed", "PostToolUse": "tool_completed", "UserPromptSubmit": "turn_started", "Interrupt": "turn_interrupted",
             "PermissionRequest": "permission_requested"}.get(hook)
@@ -161,6 +255,7 @@ def collect(root, sources, project_rows=(), *, idle_seconds=900, project_configu
     events = deque(maxlen=MAX_EVENTS)
     sessions = {}
     gate_work = {}
+    contexts = {}
     errors = []
     for source_number, (agent, file) in enumerate(sources[:10]):
         try:
@@ -193,8 +288,12 @@ def collect(root, sources, project_rows=(), *, idle_seconds=900, project_configu
                     continue
                 event = {"agent": agent, "session": event_session, "kind": kind, "paths": paths,
                          "id": f"{source_number}:{identity}:{offset}:{event_session}:{kind}"}
+                event["directory"] = observed_directory(root, raw)
+                event["activity"] = observed_activity(root, raw)
                 events.append(event)
                 key = (agent, event_session)
+                context = contexts.setdefault(key, {})
+                context.update({k: v for k, v in {"directory": event["directory"], "activity": event["activity"]}.items() if v is not None})
                 work = observed_gate_work(raw)
                 if work:
                     gate_work[key] = work
@@ -215,8 +314,12 @@ def collect(root, sources, project_rows=(), *, idle_seconds=900, project_configu
             continue
         event = {"agent": agent, "session": session, "kind": kind, "paths": paths,
                  "id": f"project:{identity}", "observed_at": observed_at}
+        event["directory"] = observed_directory(root, raw)
+        event["activity"] = observed_activity(root, raw)
         events.append(event)
         key = (agent, session)
+        context = contexts.setdefault(key, {})
+        context.update({k: v for k, v in {"directory": event["directory"], "activity": event["activity"]}.items() if v is not None})
         work = observed_gate_work(raw)
         if work:
             gate_work[key] = work
@@ -231,10 +334,11 @@ def collect(root, sources, project_rows=(), *, idle_seconds=900, project_configu
             state = "unknown"
         elif current - observed_at > idle_seconds:
             state = "quiet"
-        elif session["kind"] in ("turn_started", "tool_completed", "file_change"):
+        elif session["kind"] in ("turn_started", "tool_started", "tool_completed", "file_change"):
             state = "working"
         else:
             state = "recent"
+        session.update(contexts.get((session["agent"], session["session"]), {}))
         session["state"] = state
         session["gate_work"] = gate_work.get((session["agent"], session["session"]))
     return {"events": list(events), "sessions": recent,

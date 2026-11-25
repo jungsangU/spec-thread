@@ -25,6 +25,10 @@ class LifecycleGateTest(unittest.TestCase):
         install_skills(self.root, "codex")
         scaffold(self.root)
         self.write("basis.md", "Requirement and test selection evidence\n")
+        from sdd_core.verification import empty_registry
+        policy = empty_registry()
+        policy.update(status='configured', reason='Explicit isolated fixture policy', basis=['basis.md'])
+        write_document(self.root, 'verification.yaml', policy)
         self.write("app.py", "value = 1\n")
         for name in ("a", "b"):
             self.write(f"specs/{name}/spec.md", f"# {name}\n[Shared](../../basis.md)\n")
@@ -70,7 +74,10 @@ class LifecycleGateTest(unittest.TestCase):
         self.analyze()
         result = self.cli("start", A)
         self.assertEqual(result[0], 0, result[2])
-        return result[1].strip()
+        identifier = result[1].strip()
+        from verification_fixture import prepare
+        prepare(self.root, identifier)
+        return identifier
 
     def command_gate(self, stage="complete", command=None):
         return {
@@ -373,7 +380,9 @@ class LifecycleGateTest(unittest.TestCase):
         identifier = self.start()
         self.define(identifier, [self.command_gate()])
         filename = self.plan("expand.json", {"features": [B], "reason": "New consumer also changes"})
-        result = self.cli("scope-expand", identifier, filename)
+        preview = self.cli("scope-expand", identifier, filename)
+        self.assertEqual(preview[0], 0, preview[2])
+        result = self.cli("scope-expand", identifier, filename, "--confirm", json.loads(preview[1])["approval_hash"])
         self.assertEqual(result[0], 0, result[2])
         self.assertEqual(self.cli("transition", identifier, "in_progress")[0], 1)
         item = read_document(self.root, "work-items.yaml")["work_items"][0]

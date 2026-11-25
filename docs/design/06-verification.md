@@ -9,13 +9,13 @@
 | 구조 | UUID, 상태, 경로, 참조가 유효한가 | `sdd-core validate` |
 | 사용자 반영 전 검토 | 반영하려는 변경이 검증 입력과 일치하는가 | 사용자 검토와 기존 검사 |
 
-Core 0.4.0의 완료 명령은 저장된 필수 Gate 집합과 실행 결과를 대조한다. 임시 complete 계획의 임의 검사 명령으로 이를 대체할 수 없다. 모든 필수 결과가 현재 유효한 PASS이고 실제 증거·영향 근거가 있어야 completed를 저장한다.
+Core 0.5.0의 완료 명령은 저장된 필수 Gate 집합과 실행 결과를 대조한다. 임시 complete 계획의 임의 검사 명령으로 이를 대체할 수 없다. 모든 필수 결과가 현재 유효한 PASS이고 실제 증거·영향 근거가 있어야 completed를 저장한다.
 
 **사용자 통합 후 검증**은 통합 결과로 검증 입력이 달라지면 기존 검사와 영향 분석을 다시 실행한다. Work Item의 과거 통과 근거는 원래 입력의 이력으로 유지한다.
 
 ## 필수 Gate 정의와 실행 계약
 
-SpecThread Skill은 기존 설계·프로젝트 검증 규칙·Feature와 Work Item 특성을 분석하고 개발·검증 단계 진입 전에 적용할 필수 Gate 집합을 확정한다. 필수 집합의 정의와 실행 결과는 각각 기록한다.
+SpecThread Skill은 [검증 프로파일](verification-profiles.md)에 따라 재사용 정의와 현재 요청의 추가 검증을 선택하고 개발·검증 진입 전에 적용 Gate 집합을 확정한다. 최초 요청 범위의 일반 합성·검사 추가는 자동 경로로 진행하고 기존 필수 정책 변경·완화는 구체적 승인을 받는다. 필수 집합의 정의와 실행 결과는 각각 기록한다.
 
 | 기록 | 최소 내용 |
 | --- | --- |
@@ -36,11 +36,11 @@ Core는 확정된 정의의 구조·일관성·적용 결과의 대응·증거�
 
 코드·공식 산출물·필수 Gate 정의가 바뀌면 관련 PASS의 현재 유효성을 재평가한다. 무효화되면 재검증한다. 과거 `completed` 이력과 당시 결과는 보존하고 후속 작업에서 사용할 현재 근거인지 판단한다. Gate 결과는 Work Item 상태와 독립적이며 별도 Work Item 상태를 추가하지 않는다.
 
-Core 0.4.0은 Gate 정의를 work-items.yaml의 `gate_revisions`, Gate별 실행 이력을 `gate_results`에 저장한다. 정의 변경은 기존 이력을 보존하고 새 정의 해시로 이전 결과를 무효화한다. 완료 이력의 결과는 수정하지 않으며 stage-check에서 현재 유효성만 판단한다. 의미적 검사 충분성은 Skill이 검토한다.
+Core 0.5.0은 Gate 정의를 work-items.yaml의 `gate_revisions`, Gate별 실행 이력을 `gate_results`에 저장한다. 정의 변경은 기존 이력을 보존한다. 정의·적용 근거가 동일하고 현재 유효한 결과만 새 해시에 출처를 남겨 이관하며 나머지는 무효화한다. 완료 이력의 결과는 수정하지 않으며 stage-check에서 현재 유효성만 판단한다. 의미적 검사 충분성은 Skill이 검토한다.
 
-## Core 0.4.0 명령과 입력 예시
+## Core 0.5.0 명령과 입력 예시
 
-`gates ID PLAN.json`으로 집합을 미리 보고 검토한 해시를 `--confirm HASH`로 확정한다. 계획은 아래처럼 작성한다. paths는 실제 검사 입력을 명시하며 신규 구현 예정 파일은 정의 시점에 없어도 실행 시에는 존재해야 한다. basis는 실제 검증 규칙·적용 근거 파일이다.
+`gates ID PLAN.json --compose`으로 집합을 미리 볼 수 있다. 현재 정책의 일반 합성·추가는 `--apply`로 진행하고 기존 필수 정의 변경·축소를 요구하면 실제 동의 후 `--confirm HASH`로 확정한다. 계획은 아래처럼 작성한다. paths는 실제 검사 입력을 명시하며 신규 구현 예정 파일은 정의 시점에 없어도 실행 시에는 존재해야 한다. basis는 실제 검증 규칙·적용 근거 파일이다.
 
 ```json
 {
@@ -74,11 +74,11 @@ Core 0.4.0은 Gate 정의를 work-items.yaml의 `gate_revisions`, Gate별 실행
 
 개발 중에는 영향 분석에 따라 변경 파일, 영향받은 계약과 Feature 관련 소스 및 공식 산출물을 검증 입력으로 선정한다. 검증 통과 시 내용에 기반한 Fingerprint를 기록한다. 영향받은 검증은 재실행하고 동일 입력으로 확인 가능한 통과 결과만 재사용한다. 입력 재구성이 모호하면 해당 결과를 재사용할 수 있는 근거를 추가 확보한다. 완료 시 Work Item의 필수 검증을 모두 만족해야 한다. 사용자 Git 통합으로 검증 입력이 달라지면 기존 필수 검사와 영향 검증을 다시 실행한다.
 
-검증 환경은 변하지 않는다는 운영 전제를 사용자가 보장한다. 런타임 버전 및 설치 환경 수집·감지·환경 Fingerprint는 제외한다. Fingerprint는 검증한 파일의 유효성 확인용이며 브랜치 감시나 Git 기준 확인에 쓰지 않는다. 완료 Work Item의 과거 Fingerprint와 증거를 이후 검증으로 덮어쓰지 않는다. 테스트 결과를 증거로 참조할 때 공식 태스크 체크와 실행 근거를 구분한다. 현재 Gate별 paths·결과·해시로 입력과 증거의 유효성을 추적한다. 삭제와 이름 변경으로 기존 경로가 없어지면 해당 PASS는 STALE이다. Skill이 새 경로와 정의를 검토하고 필요한 Gate를 다시 실행한다. Core 0.4.0의 승인형 gate-refresh는 아래 규칙으로 이름 변경 후보와 재실행 대상을 제시한다.
+검증 환경은 변하지 않는다는 운영 전제를 사용자가 보장한다. 런타임 버전 및 설치 환경 수집·감지·환경 Fingerprint는 제외한다. Fingerprint는 검증한 파일의 유효성 확인용이며 브랜치 감시나 Git 기준 확인에 쓰지 않는다. 완료 Work Item의 과거 Fingerprint와 증거를 이후 검증으로 덮어쓰지 않는다. 테스트 결과를 증거로 참조할 때 공식 태스크 체크와 실행 근거를 구분한다. 현재 Gate별 paths·결과·해시로 입력과 증거의 유효성을 추적한다. 삭제와 이름 변경으로 기존 경로가 없어지면 해당 PASS는 STALE이다. Skill이 새 경로와 정의를 검토하고 필요한 Gate를 다시 실행한다. Core 0.5.0의 승인형 gate-refresh는 아래 규칙으로 이름 변경 후보와 재실행 대상을 제시한다.
 
 Discovery 판정은 [초기 분석](03-analysis-standard.md), 동기화 필수·품질 Gate는 [버전 동기화](version-sync.md), 제품 PR의 CI는 [Git 운영](08-git-integration.md)에 정의한다. 이 문서는 Work Item 검증 집합·실행 결과의 계약을 소유한다.
 
-## Core 0.4.0 필드·단계·결과 재현 계약
+## Core 0.5.0 필드·단계·결과 재현 계약
 
 ### Gate 계획의 필수 제약
 
@@ -92,7 +92,7 @@ Discovery 판정은 [초기 분석](03-analysis-standard.md), 동기화 필수·
 
 required=false Gate는 필수 차단 집합에 넣지 않는다. develop에서는 required_for에 develop이 있는 필수 Gate를, verify에서는 develop 또는 verify가 있는 필수 Gate를, complete에서는 모든 필수 Gate를 확인한다. verify 전용 Gate 실행 전에 develop 조건을, complete 전용 Gate 실행 전에 develop·verify 조건을 검사한다. 완료 단계 Gate만 있는 집합도 개발 진입 전에 집합 자체는 확정돼 있어야 한다.
 
-최신 집합의 무결성·basis 파일 해시·Work Item 범위 일치를 먼저 검사한다. Gate 목록을 바꾸면 revision 전체 해시가 달라져 이전 집합에서 실행한 결과를 현재 PASS로 사용하지 않는다. 실행은 pending/in_progress/suspended 작업에서 기록할 수 있으며 종료 작업에서는 거부한다. 의미상 올바른 단계 진행은 Skill이 안내한다.
+최신 집합의 무결성·basis 파일 해시·Work Item 범위 일치를 먼저 검사한다. Gate 목록 변경 시 revision 해시는 달라진다. 변경된 정의의 이전 결과는 현재 PASS로 쓰지 않으며, 추가 Gate로 인해 유지된 동일 정의의 현재 유효 결과만 출처를 기록해 새 revision으로 이관한다. 실행은 pending/in_progress/suspended 작업에서 기록할 수 있으며 종료 작업에서는 거부한다. 의미상 올바른 단계 진행은 Skill이 안내한다.
 
 ### 저장 필드와 해시
 
@@ -113,9 +113,9 @@ revision.hash는 hash 자체를 제외한 revision 객체의 내용 해시다. d
 
 complete는 검증 명령을 재실행하지 않는다. 현재 진입 조건, 비어 있지 않은 findings, 선언 범위, 최신 필수 Gate와 실제 evidence를 검사하고 inputs가 비어 있지 않을 때만 completed를 저장한다. 테스트를 실행한 사실·파일 존재 검사는 의미상 충분성의 증명이 아니며 Skill이 실제 계약·보고서를 검토한다.
 
-## Core 0.4.0 선택적 재검증
+## Core 0.5.0 선택적 재검증
 
-`gate-refresh ID [--stage develop|verify|complete]`는 읽기 전용으로 현재 action(reuse/run), renames, ambiguous, 새 Gate 정의와 입력 해시·approval_hash를 제시한다. 같은 명령에 승인된 `--confirm HASH`를 주면 현재 미리보기를 재계산하고 일치할 때만 처리한다. 이름 변경 없는 필요한 검사 실행도 승인을 받는다.
+`gate-refresh ID [--stage develop|verify|complete]`는 읽기 전용으로 현재 action(reuse/run), renames, ambiguous, 새 Gate 정의와 입력 해시·approval_hash를 제시한다. 같은 명령에 승인된 `--confirm HASH`를 주면 현재 미리보기를 재계산하고 일치할 때만 처리한다. 이름 변경 없는 필요한 검사 실행은 최초 요청 범위에서 `--apply`로 진행하며 새 동의를 반복하지 않는다.
 
 - 현재 최신 PASS가 정의·입력·증거에 유효하면 실행을 생략한다. 최신 FAIL/UNKNOWN을 건너 과거 PASS를 가져오지 않는다. 무효·미실행 command Gate만 기존 실행기로 다시 실행하고 실패하면 뒤 검사를 멈춘다.
 - 사라진 입력·증거의 마지막 파일 해시와 같은 바이트의 프로젝트 내부 파일을 찾는다. 표준 의존성·Git·에이전트·캐시 폴더는 제외한다. 후보가 정확히 하나인 경우만 이름 변경으로 제안한다. 없음·복수 후보 또는 경로가 명령 문자열 내부에 포함돼 안전하게 바꿀 수 없는 경우 차단한다. 동일 내용 탐지는 의미적 동일성 보장이 아니며 사용자가 제안을 승인한다.
@@ -124,3 +124,14 @@ complete는 검증 명령을 재실행하지 않는다. 현재 진입 조건, �
 - review Gate는 실제 제출이 필요하면 review_required/BLOCKED로 멈춘다. 자동 PASS를 작성하지 않는다. 개발→검증→완료의 기존 선행 Gate를 유지한다. 종료 Work Item은 갱신하지 않는다.
 
 반환은 work_item/results/status(PASS 또는 BLOCKED)이며 각 results에 gate/status/action을 기록한다. 미리보기는 0, 적용 검사 차단은 2, 승인·구조·분석·모호성 오류는 1이다. 이름 변경 승인 후 경로·정의 갱신과 검사 실패가 생겨도 자동 롤백하지 않으며 기존 진행 작업에서 원인을 해결한다. 별도 검증 엔진·자동 감시·세션 관리 계층을 추가하지 않는다.
+
+
+## Core 0.5.0 절차 최적화
+
+재사용 정의의 위치·스키마·프로파일과 승인 경계는 [검증 프로파일 원본](verification-profiles.md)을 따른다. Gate 스냅샷에는 policy_sources와 approval_required를 추가한다. --compose는 기존 공통/Feature 정의와 추가 Gate를 합성하며 --apply는 현재 정책상 일반 진행만 허용한다. 현재 정책의 필수 정의를 누락하거나 다른 정의로 바꾸면 --confirm도 우회 수단이 될 수 없다. 정책 변경을 먼저 구체적으로 검토한다.
+
+gate-run은 같은 Work Item의 최신 유효 PASS를 재사용하고 --force이면 실제 재실행한다. 현재 입력·결과·증거가 변경/실패/누락되면 재실행한다. 같은 목적/공식 절차/대상/방법/입력/증거인 Gate만 한 실행을 공유하며 다른 Work Item의 PASS는 복사하지 않는다. complete는 최종 절차·영향·정합성과 현재 PASS를 검사할 뿐 임의 테스트를 추가 실행하지 않는다.
+
+command 결과에는 실제 started_at과 duration_seconds를 추가한다. 템플릿의 $execution은 Core가 정한 docs/sdd/evidence/Work/Gate.log로 변환해 실제 argv·Exit Code·stdout/stderr·시간을 보존한다. 필수 증거 해시와 실행 사실은 그대로 검증한다. review Gate의 미래 보고서 경로는 정의 단계에 계획할 수 있지만 PASS 제출 시에는 실제 비어 있지 않은 결과·근거가 있어야 한다. 정의를 등록하려고 가짜 보고서를 먼저 만드는 흐름을 요구하지 않는다.
+
+경로 변환 없는 gate-refresh --apply는 유효 결과를 유지하고 필요한 검사만 실행한다. rename/모호한 후보는 기존 구체적 Preview·실제 동의·Hash 경로를 유지한다. 이 최적화는 새 검증 엔진이나 현재 PASS 조건의 완화가 아니다.

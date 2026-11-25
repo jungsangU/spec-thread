@@ -41,8 +41,10 @@ Core 명령은 `sdd-core [--root PROJECT] COMMAND ...`로 호출한다. --root �
 
 uuid/start/feature-register는 UUID 문자열, preflight는 phase/core_version/agent/features/status JSON, discovery-gate/gates 미리보기/gate-run/stage-check/feature-retire 미리보기/version-sync는 JSON을 반환한다. analysis-record·transition·complete·Gate 확정·아카이브 적용은 성공 시 별도 JSON을 출력하지 않는다. 성공 여부와 영속 파일을 확인한다. 명령 오류가 항상 전체 파일 원복을 의미하지는 않는다. 부분 적용 가능성이 있는 작업은 각 원본의 실패 처리 계약을 따른다.
 
-Core 0.4.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출력한다. gate-refresh가 실제 검사·검토 대기로 BLOCKED면 2를 반환한다. 상세 입력·출력·실패 처리는 [Sync](reconciliation.md)와 [선택적 재검증](06-verification.md)에 둔다.
+Core 0.5.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출력한다. gate-refresh가 실제 검사·검토 대기로 BLOCKED면 2를 반환한다. 상세 입력·출력·실패 처리는 [Sync](reconciliation.md)와 [선택적 재검증](06-verification.md)에 둔다.
 
 일반 사용자 설치·업데이트는 [install/update](installation.md)를 사용한다. install-skills·version-sync는 그 내부 API와 고급 진단용이며 설치 가이드에서 사용자 필수 단계로 나열하지 않는다. 네이티브 Skill의 Core 호출은 프로젝트 runner를 통해 전용 환경으로 연결한다.
 
 세 Skill의 공통 대화·표시 지침은 설치 시 `_conversation.md`에서 합성한다. 공개 명령은 세 개를 유지하며 UI가 지원하는 경우에만 질문 선택 기능을 사용한다. 공통 실행·표시 계약은 [대화형 진행](conversation-flow.md)에 둔다.
+
+두 sdd-develop 설치본은 동일한 [위험도 프로파일·일반/예외 승인·절차 기록](verification-profiles.md)을 따른다. Core의 --apply 자동 경로와 --confirm 예외 경로는 에이전트의 명령 실행 권한을 대체하지 않는다. 공식 Skill은 고정 버전 원형을 유지하며 네이티브 Skill에서 필요한 호출만 선택한다.

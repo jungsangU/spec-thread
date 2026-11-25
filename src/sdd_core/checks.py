@@ -1,4 +1,6 @@
 import subprocess
+import time
+from datetime import datetime, timezone
 
 
 class CheckFailure(ValueError):
@@ -21,9 +23,12 @@ def run_checks(root, checks):
     check_commands(checks)
     results = []
     for command in checks:
+        started_at = datetime.now(timezone.utc).isoformat()
+        started = time.perf_counter()
         process = subprocess.run(command, cwd=root, capture_output=True, text=True, errors="replace")
         result = {"command": command, "exit_code": process.returncode,
-                  "stdout": process.stdout, "stderr": process.stderr}
+                  "stdout": process.stdout, "stderr": process.stderr,
+                  "started_at": started_at, "duration_seconds": time.perf_counter() - started}
         results.append(result)
         if process.returncode:
             raise CheckFailure(result)

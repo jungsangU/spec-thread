@@ -17,7 +17,7 @@ from .lifecycle import prepare_retirement, retire
 from .discovery import assess_discovery
 from .version_sync import apply_sync, digest, install_skills, json_bytes, plan_sync, require_project
 from .work_items import check_findings, expand_scope, read_plan, update
-from . import reconciliation, revalidation
+from . import reconciliation, revalidation, verification
 
 
 def uuid7():
@@ -96,14 +96,18 @@ def main(argv=None):
     scope = commands.add_parser("scope-expand")
     scope.add_argument("id")
     scope.add_argument("plan", type=Path)
+    scope.add_argument("--confirm")
     gates = commands.add_parser("gates")
     gates.add_argument("id")
     gates.add_argument("plan", type=Path)
     gates.add_argument("--confirm")
+    gates.add_argument("--apply", action="store_true")
+    gates.add_argument("--compose", action="store_true")
     gate_run = commands.add_parser("gate-run")
     gate_run.add_argument("id")
     gate_run.add_argument("gate")
     gate_run.add_argument("--review", type=Path)
+    gate_run.add_argument("--force", action="store_true")
     stages = commands.add_parser("stage-check")
     stages.add_argument("id")
     stages.add_argument("stage", choices=["develop", "verify", "complete"])
@@ -116,6 +120,20 @@ def main(argv=None):
     refresh.add_argument("id")
     refresh.add_argument("--stage", choices=["develop", "verify", "complete"], default="complete")
     refresh.add_argument("--confirm")
+    refresh.add_argument("--apply", action="store_true")
+    policy = commands.add_parser('verification-policy')
+    policy.add_argument('plan', type=Path)
+    policy.add_argument('--apply', action='store_true')
+    policy.add_argument('--confirm')
+    profile = commands.add_parser('profile')
+    profile.add_argument('id')
+    profile.add_argument('plan', type=Path)
+    profile.add_argument('--apply', action='store_true')
+    profile.add_argument('--confirm')
+    step = commands.add_parser('procedure')
+    step.add_argument('id')
+    step.add_argument('step', choices=sorted(verification.STEPS))
+    step.add_argument('plan', type=Path)
     args = parser.parse_args(argv)
     try:
         root = args.root.resolve(strict=True)
@@ -199,12 +217,26 @@ def main(argv=None):
             if not isinstance(features, list) or any(not isinstance(value, str) for value in features):
                 raise ValueError("범위 확장에는 Feature UUID 목록이 필요합니다")
             require_project(root, scope=work_scope(root, args.id) + features)
-            expand_scope(root, args.id, features, plan.get("reason"))
-        elif args.command == "gates":
-            require_project(root, scope=work_scope(root, args.id))
-            preview = prepare_gate_plan(root, args.id, read_plan(args.plan))
+            _, item = work_item(root, args.id, editable=True)
+            preview = {'work_item': args.id, 'record': content_hash(item), 'features': features,
+                       'reason': plan.get('reason'), 'feature_state': content_hash(read_records(root, 'features.yaml', 'features'))}
             approval = content_hash(preview)
             if args.confirm is None:
+                print(json_bytes({**preview, 'approval_hash': approval}).decode(), end='')
+            elif args.confirm != approval:
+                raise ValueError('승인한 범위 확대 입력이 변경됐습니다')
+            else:
+                expand_scope(root, args.id, features, plan.get('reason'))
+        elif args.command == "gates":
+            require_project(root, scope=work_scope(root, args.id))
+            preview = prepare_gate_plan(root, args.id, read_plan(args.plan), compose_policy=args.compose)
+            approval = content_hash(preview)
+            if args.apply:
+                if args.confirm or preview['approval_required']:
+                    raise ValueError('필수 Gate 변경·완화에는 구체적 사용자 승인이 필요합니다')
+                register_gates(root, args.id, preview)
+                print(json_bytes({'status': 'applied', 'approval_required': False}).decode(), end='')
+            elif args.confirm is None:
                 print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
             elif args.confirm != approval:
                 raise ValueError("승인한 Gate 정의/입력이 변경됐습니다")
@@ -216,7 +248,7 @@ def main(argv=None):
             if current_item.get("kind") != "reconciliation":
                 develop_check(root, work_scope(root, args.id))
             result = execute_gate(root, args.id, args.gate,
-                                  read_plan(args.review) if args.review else None)
+                                  read_plan(args.review) if args.review else None, force=args.force)
             print(json_bytes(result).decode(), end="")
             if result["status"] != "PASS":
                 return 2
@@ -252,15 +284,37 @@ def main(argv=None):
             require_project(root, scope=work_scope(root, args.id), validate_baseline=False)
             preview = revalidation.prepare(root, args.id, args.stage)
             approval = content_hash(preview)
-            if args.confirm is None:
+            if args.apply and (args.confirm or preview['renames'] or preview['ambiguous']):
+                raise ValueError('이름 변경·모호한 검증 입력은 구체적 승인이 필요합니다')
+            if args.confirm is None and not args.apply:
                 print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
-            elif args.confirm != approval:
+            elif args.confirm is not None and args.confirm != approval:
                 raise ValueError("선택적 재검증 입력·이름 변경 후보가 바뀌었습니다. 새 승인이 필요합니다")
             else:
                 result = revalidation.refresh(root, args.id, preview)
                 print(json_bytes(result).decode(), end="")
                 if result["status"] != "PASS":
                     return 2
+        elif args.command in ('verification-policy', 'profile'):
+            require_project(root, scope=work_scope(root, args.id) if args.command == 'profile' else None)
+            config = read_plan(args.plan)
+            preview = verification.profile_preview(root, args.id, config) if args.command == 'profile' else verification.registry_preview(root, config)
+            approval = content_hash(preview)
+            if args.apply and (args.confirm or preview['approval_required']):
+                raise ValueError('이 변경은 자동 적용 대상이 아닙니다. 구체적 사용자 승인을 받으세요')
+            if args.confirm is not None and args.confirm != approval:
+                raise ValueError('승인한 정책·프로파일 입력이 변경됐습니다')
+            if args.apply or args.confirm is not None:
+                if args.command == 'profile':
+                    verification.apply_profile(root, args.id, preview)
+                else:
+                    verification.apply_registry(root, preview)
+                print(json_bytes({'status': 'applied', 'approval_required': preview['approval_required']}).decode(), end='')
+            else:
+                print(json_bytes({**preview, 'approval_hash': approval}).decode(), end='')
+        elif args.command == 'procedure':
+            require_project(root, scope=work_scope(root, args.id))
+            verification.record_step(root, args.id, args.step, read_plan(args.plan))
         elif args.command == "install-skills":
             install_skills(root, args.agent)
         elif args.command == "preflight":

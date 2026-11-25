@@ -25,3 +25,6 @@
 Source Map 경로의 이동·삭제·불일치는 실제 코드와 공식 산출물에서 재분석하여 교정한다. 해결되지 않은 핵심 참조는 Gate에 반영한다. `SAFE`에도 판단 근거를 남긴다. 이 판정은 분석·개발·사용자 통합 검토에 적용하며 Discovery에 필요한 근거로도 참조할 수 있다.
 
 Core 소견 입력은 assessment/evidence와 필요한 critical을 갖는다. UNKNOWN의 critical이 생략됐거나 false 이외이면 핵심 UNKNOWN으로 차단한다. 명시적인 boolean false만 비핵심 경고로 허용한다. evidence는 비어 있지 않은 설명 문자열이며 실제 사실 확인의 책임은 Skill에 있다.
+
+
+프로파일 분류는 이 영향 소견을 재사용한다. 국소 계약 유지 후보는 Lightweight, 관련 계약·Feature 확장은 Standard, 중요 계약/보안/데이터/전이 영향은 Strict 최소다. [정확한 위험 항목](verification-profiles.md)을 사용하며 파일 수나 변경 줄 수는 분류 기준이 아니다. 핵심 UNKNOWN/CONFLICT는 상향이나 승인으로 해소되지 않는다. 새 위험은 현재 Work Item의 필수 절차·검증을 추가하며 기존 필수 의무를 제거하지 않는다.

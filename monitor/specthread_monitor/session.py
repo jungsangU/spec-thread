@@ -9,11 +9,11 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from threading import Thread
+from threading import Event, Thread
 import webbrowser
 
 from sdd_core.version_sync import PROJECT
-from .events import IDENTIFIER, hook_event, observed_gate_work
+from .events import IDENTIFIER, hook_event, observed_gate_work, observed_activity, observed_directory
 from .project_events import configured_agent, record
 
 EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "PermissionRequest", "PreToolUse", "Notification", "Stop", "SessionEnd", "Interrupt")
@@ -57,6 +57,12 @@ def record_event(root=None, agent=None):
             event["notification_type"] = raw.get("notification_type")
         if raw["hook_event_name"] == "PreToolUse":
             event["tool_name"] = raw.get("tool_name")
+        activity = observed_activity(project, raw)
+        directory = observed_directory(project, raw)
+        if activity:
+            event["activity"] = activity
+        if directory is not None:
+            event["directory"] = directory
         work = observed_gate_work(raw)
         if work:
             event["gate_work"] = work
@@ -70,6 +76,14 @@ def record_event(root=None, agent=None):
             with path.open("ab") as stream:
                 stream.write(json.dumps(event, ensure_ascii=True).encode() + b"\n")
     except (OSError, ValueError, TypeError, RecursionError):
+        pass
+
+
+def wait_for_dashboard():
+    """The user, rather than an agent session, owns the dashboard lifetime."""
+    try:
+        Event().wait()
+    except KeyboardInterrupt:
         pass
 
 
@@ -111,7 +125,10 @@ def run_session(root, port, sources, *, browser=True, idle_seconds=900):
                         webbrowser.open(url)
                     except (OSError, webbrowser.Error):
                         pass
-                return subprocess.call(arguments, cwd=root, env=env)
+                result = subprocess.call(arguments, cwd=root, env=env)
+                print("에이전트 세션이 종료됐습니다. 프로젝트 Monitor는 계속 열려 있습니다. 종료하려면 Ctrl+C를 누르세요.", flush=True)
+                wait_for_dashboard()
+                return result
             finally:
                 server.shutdown()
                 thread.join()

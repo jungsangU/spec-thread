@@ -21,7 +21,7 @@ from yaml import YAMLError
 BASELINE = ".specify/baseline/"
 DOCUMENT_LIMIT = 2 * 1024 * 1024
 EVIDENCE_LIMIT = 8 * 1024 * 1024
-STATE_FILES = ("features.yaml", "source-map.yaml", "work-items.yaml")
+STATE_FILES = ("features.yaml", "source-map.yaml", "work-items.yaml", "verification.yaml")
 ERRORS = (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError, YAMLError)
 ARTIFACTS = ("spec.md", "plan.md", "tasks.md", "research.md", "data-model.md", "quickstart.md")
 
@@ -185,19 +185,28 @@ def gates(root, document, item, budget):
         if not isinstance(identifier, str) or type(required) is not bool:
             raise ValueError("잘못된 Gate 기록")
         rows.append({"id": identifier, "required": required,
+                     **{key: definition[key][:1000] for key in ("rationale", "kind", "method") if isinstance(definition.get(key), str)},
                      "recorded": status if isinstance(status, str) else "UNKNOWN",
                      "current": current if isinstance(current, str) else ("UNKNOWN" if current is not None else None),
                      "historical": historical, "runs": len(runs),
+                     "definition_sources": revision.get('policy_sources', {}).get(identifier, []),
+                     "reused_from": saved.get('reused_from') if saved else None,
+                     "duration_seconds": saved.get('execution', {}).get('duration_seconds') if saved else None,
                      "evidence": [ref for ref in definition.get("evidence", []) if isinstance(ref, str)],
                      "stages": [stage for index, stage in enumerate(STAGES)
                                 if required and (stage == "complete" or any(s in STAGES[:index + 1] for s in stages))]})
     return rows, issue
 
 
-def task_summary(root, directory):
+def task_summary(root, directory, budget=None):
     path = safe_file(project_path(root, f"{directory}/tasks.md"), DOCUMENT_LIMIT)
     if not path.is_file():
         return None
+    if budget is not None:
+        size = path.stat().st_size
+        if size > budget["remaining"]:
+            raise ValueError("프로젝트 태스크 읽기 한도")
+        budget["remaining"] -= size
     markers = re.findall(r"^\s*[-*+]\s+\[([ xX])\]\s", path.read_text(encoding="utf-8"), re.M)
     return {"done": sum(value.lower() == "x" for value in markers), "total": len(markers)}
 
@@ -210,6 +219,19 @@ def file_signature(path):
     return info.st_ino, info.st_size, info.st_mtime_ns
 
 
+def profile_summary(item):
+    state = item.get('verification')
+    if not isinstance(state, dict) or not isinstance(state.get('revisions'), list) or not state['revisions']:
+        return None
+    latest = state['revisions'][-1]
+    if not isinstance(latest, dict):
+        return None
+    return {key: latest.get(key) for key in ('profile', 'reason', 'required_steps', 'approval_mode')} | {
+        'revisions': len(state['revisions']),
+        'steps': {name: history[-1].get('status') for name, history in state.get('steps', {}).items() if isinstance(history, list) and history and isinstance(history[-1], dict)},
+    }
+
+
 def project_records(root):
     paths = [safe_file(project_path(root, BASELINE + name), DOCUMENT_LIMIT) for name in STATE_FILES]
     signatures = [file_signature(path) for path in paths]
@@ -217,10 +239,29 @@ def project_records(root):
     if type(document.get("schema_version")) is not int or document["schema_version"] != SCHEMA_VERSION:
         version = document.get("schema_version")
         return {"state": "unsupported", "schema": version if type(version) in (int, str) else None}
-    validate(root)
+    validate(root, legacy=not project_path(root, BASELINE + "verification.yaml").is_file())
     feature_rows = document["features"]
     work_rows = read_document(root, "work-items.yaml")["work_items"]
     features = []
+    task_budget = {"remaining": 8 * 1024 * 1024}
+    task_totals = {"tasks_done": 0, "tasks_total": 0, "features_with_tasks": 0,
+                   "active_features": 0, "tasks_unavailable": 0}
+    task_cache = {}
+    for row in feature_rows:
+        if row["status"] != "active":
+            continue
+        task_totals["active_features"] += 1
+        try:
+            tasks = task_summary(root, row["spec_path"], task_budget)
+        except ERRORS:
+            tasks = None
+        task_cache[row["id"]] = tasks
+        if tasks is None:
+            task_totals["tasks_unavailable"] += 1
+        else:
+            task_totals["features_with_tasks"] += 1
+            task_totals["tasks_done"] += tasks["done"]
+            task_totals["tasks_total"] += tasks["total"]
     for row in feature_rows[:100]:
         feature = {key: row[key] for key in ("id", "name", "status", "spec_path", "dependencies")}
         feature["dependencies"] = [{key: edge[key] for key in ("feature_id", "type")} for edge in row["dependencies"]]
@@ -228,7 +269,7 @@ def project_records(root):
         verdict = discovery.get("verdict") if isinstance(discovery, dict) else None
         feature["discovery"] = verdict if verdict in ("READY", "CONDITIONAL", "BLOCKED") else None
         try:
-            feature["tasks"] = task_summary(root, row["spec_path"])
+            feature["tasks"] = task_cache.get(row["id"]) if row["status"] == "active" else task_summary(root, row["spec_path"], task_budget)
         except ERRORS:
             feature["tasks"] = None
         features.append(feature)
@@ -241,11 +282,40 @@ def project_records(root):
             gates_rows, issue = [], "Gate 기록 형식을 읽을 수 없습니다"
         items.append({**{key: row.get(key) for key in (
             "id", "status", "declared_features", "actual_features", "related_work_items",
-        )}, "gates": gates_rows, "gate_issue": issue})
+        )}, "gates": gates_rows, "gate_issue": issue, "verification": profile_summary(row)})
+    # Project totals include every persisted Work Item, independently of session life
+    # and the detailed list's 100-row limit. Unread open evidence stays UNKNOWN.
+    by_id = {item["id"]: item for item in items}
+    work_counts = {}
+    required_total = required_pass = historical_pass = unknown = without_gates = 0
+    for work in work_rows:
+        work_counts[work["status"]] = work_counts.get(work["status"], 0) + 1
+        history = work["status"] in ("completed", "failed")
+        definitions = work.get("gate_revisions", [])
+        definitions = definitions[-1].get("gates", []) if definitions else []
+        required = [gate for gate in definitions if gate.get("required")]
+        if not history and not required:
+            without_gates += 1
+        detail = {gate["id"]: gate for gate in by_id.get(work["id"], {}).get("gates", [])}
+        for gate in required:
+            required_total += 1
+            saved = work.get("gate_results", {}).get(gate["id"], [])
+            status = saved[-1].get("status") if saved else "NOT_RUN"
+            if history:
+                historical_pass += status == "PASS"
+            else:
+                current = detail.get(gate["id"], {}).get("current", "UNKNOWN")
+                required_pass += current == "PASS"
+                unknown += current == "UNKNOWN"
+    project_totals = {**task_totals, "work_counts": work_counts, "work_total": len(work_rows),
+                      "work_completed": work_counts.get("completed", 0),
+                      "required_total": required_total, "required_pass": required_pass,
+                      "historical_pass": historical_pass, "gate_unknown": unknown,
+                      "items_without_gates": without_gates}
     if signatures != [file_signature(path) for path in paths]:
         raise ValueError("읽는 중 Baseline이 변경되었습니다")
     return {"state": "available", "schema": SCHEMA_VERSION, "analysis": document["analysis"]["status"],
-            "features": features, "items": items, "feature_count": len(feature_rows), "item_count": len(work_rows)}
+            "project_totals": project_totals, "features": features, "items": items, "feature_count": len(feature_rows), "item_count": len(work_rows)}
 
 
 def installation(root):

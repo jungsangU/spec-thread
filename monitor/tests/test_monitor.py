@@ -67,6 +67,8 @@ class MonitorTest(unittest.TestCase):
             self.assertEqual(response.headers["Cache-Control"], "no-store")
         with self.request(server, "/app.js", signed=False) as response:
             self.assertIn(b"createOffice", response.read())
+        with self.request(server, "/details.js", signed=False) as response:
+            self.assertIn(b"renderDetailPages", response.read())
         with self.assertRaises(HTTPError) as error:
             self.request(server, "/api/snapshot", signed=False)
         self.assertEqual(error.exception.code, 403)
@@ -143,6 +145,12 @@ class MonitorTest(unittest.TestCase):
         write_document(self.root, "work-items.yaml", {"work_items": [{
             "id": WORK, "status": "in_progress", "declared_features": [FEATURE], "actual_features": []
         }]})
+        from sdd_core.verification import empty_registry, RISKS, profile_preview, apply_profile
+        policy = empty_registry(); policy.update(status='configured', reason='Existing fixture verification', basis=['specs/a/spec.md'])
+        write_document(self.root, 'verification.yaml', policy)
+        apply_profile(self.root, WORK, profile_preview(self.root, WORK, {'reason': 'Concrete fixture contract',
+            'risks': {key: False for key in RISKS}, 'basis': ['specs/a/spec.md'],
+            'findings': [{'assessment': 'SAFE', 'evidence': 'Fixture source and intent checked'}]}))
         plan = {"reason": "test", "basis": ["specs/a/spec.md"], "gates": [{
             "id": "project-check", "rationale": "test", "required": True,
             "required_for": ["complete"], "targets": [FEATURE], "paths": ["specs/a/plan.md"],
@@ -159,12 +167,43 @@ class MonitorTest(unittest.TestCase):
         self.assertEqual(state["installation"]["record_integrity"], "MATCH")
         self.assertEqual(state["baseline"]["features"][0]["tasks"], {"done": 1, "total": 2})
         self.assertEqual(state["baseline"]["items"][0]["gates"][0]["current"], "PASS")
+        self.assertEqual(state["baseline"]["items"][0]["gates"][0]["rationale"], "test")
+        self.assertEqual(state["baseline"]["items"][0]["gates"][0]["kind"], "command")
         self.assertEqual(hashes, {p: hashlib.sha256(p.read_bytes()).digest() for p in monitored})
         self.write("specs/a/plan.md", "changed after test\n")
         state = snapshot(self.root)
         gate = state["baseline"]["items"][0]["gates"][0]
         self.assertEqual((gate["recorded"], gate["current"]), ("PASS", "STALE"))
         self.assertIn(WORK, [action["ref"] for action in state["next_actions"]])
+
+    def test_project_totals_include_records_outside_detail_limit(self):
+        from specthread_monitor.metrics import dashboard
+        (self.root / '.specify').mkdir()
+        scaffold(self.root)
+        features = []
+        works = []
+        for index in range(105):
+            fid = f'01951d7f-b507-7200-8000-{index + 10:012x}'
+            wid = f'01951d7f-b507-7200-8001-{index + 10:012x}'
+            directory = f'specs/feature-{index}'
+            features.append({'id': fid, 'name': f'Feature {index}', 'status': 'active', 'spec_path': directory, 'dependencies': []})
+            self.write(directory + '/spec.md', '# Spec\n')
+            self.write(directory + '/plan.md', '# Plan\n')
+            self.write(directory + '/tasks.md', '- [x] completed task\n- [ ] remaining task\n')
+            works.append({'id': wid, 'status': 'completed' if index == 0 else 'pending', 'declared_features': [fid], 'actual_features': [],
+                          **({'validation': {'status': 'passed', 'fingerprint': 'sha256:' + '0' * 64, 'evidence': [{'ref': 'evidence.md'}]}} if index == 0 else {})})
+        data = read_document(self.root, 'features.yaml')
+        data['features'] = features
+        write_document(self.root, 'features.yaml', data)
+        write_document(self.root, 'work-items.yaml', {'work_items': works})
+        state = snapshot(self.root)
+        self.assertEqual(state['baseline']['state'], 'available')
+        self.assertEqual(len(state['baseline']['items']), 100)
+        self.assertEqual(len(state['baseline']['features']), 100)
+        metrics = dashboard(state['baseline'], {'state': 'missing'})
+        self.assertEqual((metrics['work_total'], metrics['work_completed']), (105, 1))
+        self.assertEqual((metrics['tasks_done'], metrics['tasks_total']), (105, 210))
+        self.assertFalse(metrics['work_sampled'])
 
     def test_explicit_events_and_privacy(self):
         codex = self.temp / "codex.jsonl"

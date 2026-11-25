@@ -11,7 +11,7 @@ SpecThread는 대상 프로젝트의 공식 Spec Kit 문서를 Feature의 원본
 | `checklists/` | 작성된 요구사항의 품질 검토 | 적용 가능한 공식 스킬 단계 |
 | 앱 코드, 계약, 테스트 | 실제 구현과 실행 근거 | 구현 및 검증 단계 |
 
-## Baseline 여섯 파일
+## Baseline 일곱 파일
 
 | 파일 | 최소 구조와 역할 |
 | --- | --- |
@@ -20,6 +20,7 @@ SpecThread는 대상 프로젝트의 공식 Spec Kit 문서를 Feature의 원본
 | `decisions.md` | 주요 판단, 근거, 승인 및 충돌 해결 기록 |
 | `features.yaml` | `features[]`의 `id`, `name`, `status`, `spec_path`, `dependencies[]`와 Discovery 기록. 최상위 schema_version/analysis/path_redirects. 의존 항목은 `feature_id`, `type` |
 | `source-map.yaml` | `mappings[]`의 `feature_id`, `sources[]`. 주요 구현·계약 파일의 프로젝트 상대 `path`. 폐기 매핑은 이력으로 보존하고 활성 계산에서 제외 |
+| `verification.yaml` | 재사용 검증 정의. schema_version 1, status/reason/basis, project.gates와 features.UUID.gates. [스키마 원본](verification-profiles.md) |
 | `work-items.yaml` | `work_items[]`의 `id`, `status`, `declared_features`, `actual_features`. 선택 참조는 `related_work_items`. 완료 시 `validation.status`, `fingerprint`, `evidence[].ref`; 완료 CLI가 `findings`도 기록 |
 
 Source Map은 확정 Feature를 주요 구현·계약 파일 경로에 연결하는 파생 인덱스다. Greenfield에서 아직 확인할 소스가 없으면 빈 매핑이 가능하다. Core의 Source Map 검증은 과거 파일의 추가 메타데이터를 읽을 수 있다. 구버전 경로 정규화는 [승인된 버전 동기화](version-sync.md)에서 수행한다. 경로가 이동하거나 매핑이 맞지 않으면 실제 코드와 공식 계약으로 다시 분석한다. 활성·폐기 Feature의 참조 보존, 등록·폐기 명령과 아카이브는 [Feature 생명주기](feature-lifecycle.md)를 따른다.
@@ -28,9 +29,9 @@ Source Map은 확정 Feature를 주요 구현·계약 파일 경로에 연결하
 
 `schema_version`은 Baseline 데이터 구조를 식별하며 Core 배포 버전과 독립적이다. 확장 메타데이터는 `.specify/baseline/`에 둔다. Core는 읽을 수 있는 구조와 변환 규칙을 확인한다. 미지원 스키마 또는 필요한 변환 규칙이 없으면 동기화를 차단한다. 기존 Core 누적 마이그레이션 체계를 재사용하고 별도 릴리스·변환 엔진을 만들지 않는다.
 
-Core 0.4.0은 `features.yaml` 최상위에 `schema_version: 1`, `analysis`, `features`, `path_redirects`를 저장한다. `analysis`는 status/unanalysed/inputs/evidence, Feature는 id/name/status/spec_path/dependencies와 `discovery`를 가진다. Discovery에는 plan/verdict/dependencies/analysis_hash/feature_hash/inputs/evidence를 기록한다. Feature 경로·상태·의존성 변경과 근거 파일 변경은 이전 분석을 무효화한다.
+Core 0.5.0은 `features.yaml` 최상위에 `schema_version: 1`, `analysis`, `features`, `path_redirects`를 저장한다. `analysis`는 status/unanalysed/inputs/evidence, Feature는 id/name/status/spec_path/dependencies와 `discovery`를 가진다. Discovery에는 plan/verdict/dependencies/analysis_hash/feature_hash/inputs/evidence를 기록한다. Feature 경로·상태·의존성 변경과 근거 파일 변경은 이전 분석을 무효화한다.
 
-`work-items.yaml`은 기존 필드에 gate_revisions/gate_results를 추가하며 다른 최상위 메타데이터도 보존한다. 새 구조로 변환할 때 기존 UUID와 완료 이력은 유지하고 분석·Gate 결과를 추정해 PASS로 만들지 않는다.
+`work-items.yaml`은 verification.revisions/steps에 프로파일 분류·상향과 공식 절차 수행을, gate_revisions/gate_results에 해당 작업의 정의·실행을 저장하며 다른 최상위 메타데이터도 보존한다. 새 구조로 변환할 때 기존 UUID와 완료 이력은 유지하고 분석·Gate 결과를 추정해 PASS로 만들지 않는다.
 
 ## 식별자와 범위 해석
 
@@ -92,7 +93,7 @@ work_items:
         - ref: specs/001-document-parsing/tasks.md
 ```
 
-## Core 0.4.0 직렬화·쓰기 계약
+## Core 0.5.0 직렬화·쓰기 계약
 
 이 절은 현재 구현의 재현 계약이다. 임의로 새 저장 구조를 추정하지 않고 다음 형식을 사용한다.
 
@@ -109,8 +110,11 @@ JSON 객체 내용 해시는 `json.dumps(value, ensure_ascii=True, sort_keys=Tru
 
 `validate`는 스키마·참조와 필수 파일을 검사한다. 이것만 통과했다고 Discovery·Gate 의미 검토 또는 개발 진입이 완료된 것은 아니다. 활성 Feature의 spec_path에는 spec.md·plan.md가 필요하고 현재 의존성은 활성 Feature만 참조한다. Source Map은 Feature당 한 레코드이며 활성 매핑의 파일은 존재해야 한다. completed의 과거 증거는 현재 트리에 없을 수 있으므로 구조 검사와 새 실행의 증거 검사를 구분한다.
 
-## Core 0.4.0 추가 기록
+## Core 0.5.0 추가 기록
 
-기존 schema_version 1과 여섯 Baseline 파일을 유지한다. 정합화 Work Item은 kind=reconciliation과 reconciliation(approval_hash/base/inputs/reason/findings/changes, 적용 실패 시 error)을 추가한다. Gate 결과 이관은 선택적인 reused_from(work_item/gate/run_index/definition_hash)을 추가한다. [수동 Sync](reconciliation.md)와 [검증](06-verification.md)이 생성·완료·이관 조건의 원본이다. 기존 완료 기록은 변환·재작성하지 않는다.
+features.yaml의 schema_version 1을 유지하며 verification.yaml을 일곱 번째 Baseline 파일로 추가한다. 정합화 Work Item은 kind=reconciliation과 reconciliation(approval_hash/base/inputs/reason/findings/changes, 적용 실패 시 error)을 추가한다. Gate 결과 이관은 선택적인 reused_from(work_item/gate/run_index/definition_hash)을 추가한다. [수동 Sync](reconciliation.md)와 [검증](06-verification.md)이 생성·완료·이관 조건의 원본이다. 기존 완료 기록은 변환·재작성하지 않는다.
 
-통합 설치는 기존 Project 표식에 runner_hash를 추가하고 .specify/sdd-core 및 .specify/spec-thread-install.json을 관리한다. 이는 Baseline 여섯 파일과 별개의 설치 자료이며 [설치 계약](installation.md)이 위치·생성·검증의 원본이다.
+통합 설치는 기존 Project 표식에 runner_hash를 추가하고 .specify/sdd-core 및 .specify/spec-thread-install.json을 관리한다. 이는 Baseline 일곱 파일과 별개의 설치 자료이며 [설치 계약](installation.md)이 위치·생성·검증의 원본이다.
+
+
+Core 0.5.0의 verification.revisions는 profile/reason/risks/conditions/considerations/required_steps/scope/findings/basis/previous/item_hash/approval_required/approval_reasons/approval_mode/preview_hash/hash를 누적한다. steps는 공식 절차 이름별 실제 수행 이력 배열(status/step/conclusion/recorded_at/evidence, 선택 inputs/source/elapsed_seconds)이다. 새 기록은 저장 구조·참조와 단조 상향을 검사하며 과거 완료 Work Item에 이 필드를 추정 삽입하지 않는다. Gate 스냅샷의 policy_sources는 정의의 출처이고 실행 결과의 reused_from은 결과의 원본이다. 직렬화·절차 의미는 [프로파일 계약](verification-profiles.md)을 따른다.

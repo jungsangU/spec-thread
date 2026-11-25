@@ -33,4 +33,15 @@ class DashboardMetricsTest(unittest.TestCase):
         data = dashboard(baseline, {"state": "missing"})
         self.assertEqual((data["tasks_done"], data["tasks_total"]), (2, 3))
         self.assertEqual((data["work_completed"], data["work_total"]), (1, 3))
-        self.assertEqual((data["required_pass"], data["required_total"], data["items_without_gates"]), (1, 2, 1))
+        self.assertEqual((data["required_pass"], data["required_total"], data["items_without_gates"]), (1, 3, 1))
+
+    def test_completed_gate_remains_in_project_progress(self):
+        item = {"status": "in_progress", "gates": [{"required": True, "current": "PASS", "recorded": "PASS"}]}
+        baseline = {"features": [], "items": [item]}
+        before = dashboard(baseline, {"state": "missing"})
+        item.update(status="completed")
+        item['gates'][0]['current'] = None
+        after = dashboard(baseline, {"state": "missing"})
+        self.assertEqual(before['required_total'], after['required_total'])
+        self.assertEqual(after['required_pass'] + after['historical_pass'], 1)
+        self.assertEqual(after['work_completed'], 1)

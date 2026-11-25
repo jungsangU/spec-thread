@@ -1,6 +1,6 @@
-# SpecThread 설계 1.0
+# SpecThread 설계 1.1
 
-설계 1.0 · Core 0.4.0. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
+설계 1.1 · Core 0.5.0. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
 
 ## 주제별 원본 명세
 
@@ -19,13 +19,14 @@
 | 대화·진행 UX | [질문과 단계 연결](conversation-flow.md) | 질문 하나씩, 다음 제안·짧은 동의, 단계별 표시와 에이전트별 한계 |
 | 개발 실행 | [04 Work Item·개발](04-artifact-lifecycle.md) | sdd-develop, 요청별 상태·범위 확대·실패·중단·재개. Feature 자체 상태와 구분 |
 | 영향 판단 | [05 영향 분석·위험도](05-impact-analysis.md) | 의존성 전파·중단, SAFE·UNKNOWN·CONFLICT, 근거와 핵심 위험 차단 |
+| 검증 프로파일 | [위험도 기반 절차·정의 재사용](verification-profiles.md) | 분류·최소 절차·자동/예외 승인·verification.yaml·결과 공유 |
 | 실행 검증 | [06 Gate·증거·Fingerprint](06-verification.md) | 필수 집합 정의·실행·이력·단계 차단·완료·무효화와 재검증 |
 | 외부 변경 | [수동 Sync](reconciliation.md) | inspect→plan→approve→apply→verify, 실패 시 보존, 현행 승인 경계. Core 버전 동기화와 구분 |
 | 로컬 업데이트 | [Core 버전 동기화](version-sync.md) | 취득·버전 일치·누적 메타데이터 변환·승인·필수/품질 Gate·사용자 원복 |
 | Git·협업 | [08 Git·세션 운영](08-git-integration.md) | 대상 Git 반영, 병렬 세션 책임·제외 범위, 제품 브랜치·PR·CI·설계 릴리즈 |
 | 제품 구현 절차 | [구현·설계 대조 반복](implementation-standard.md) | 구현·테스트·원문 재대조·누락 보완의 반복과 완료 증거 |
 | 개발 관측 | [SpecThread Monitor](monitor.md) | 사용자 실행형 읽기 전용 관측, 이벤트·화면 및 입력 한도 |
-| 인수 검증 | [PoC·MVP 인수 기준](acceptance.md) | P01~P12 시나리오, 수집 증거와 통과 기준. 실제 진행 상태는 백로그 |
+| 인수 검증 | [PoC·MVP 인수 기준](acceptance.md) | P01~P18 시나리오, 수집 증거와 통과 기준. 실제 진행 상태는 백로그 |
 
 ## 결정과 진행 상태
 
@@ -33,7 +34,7 @@
 - [OPEN-ISSUES](OPEN-ISSUES.md): 미결정·보류, 구현 경계와 실제 검증 상태. 확정 정책을 미결정으로 되돌리지 않는다.
 - [CHANGELOG](../../CHANGELOG.md): 사용자 선택으로 배포한 설계 버전의 릴리즈 노트.
 
-**설계 정책**, **현행 구현**, **실행 검증**은 각각 합의한 규칙, 코드가 처리하는 범위, 실제로 확인한 결과다. 주제 본문의 Core 0.4.0 절은 구체적 계약을, 백로그는 남은 확인 상태를 담당한다.
+**설계 정책**, **현행 구현**, **실행 검증**은 각각 합의한 규칙, 코드가 처리하는 범위, 실제로 확인한 결과다. 주제 본문의 Core 0.5.0 절은 구체적 계약을, 백로그는 남은 확인 상태를 담당한다.
 
 ## 소개와 사용 안내
 
@@ -54,7 +55,9 @@
 
 ## 구현 재현성 검증
 
-[Core 0.4.0 구현·설계 재대조 결과](../validation/design-1.0-implementation-cycle.md)와 [문서 정리 당시 검토](../validation/design-1.0-implementation-review.md)에 정리 전후 보존 대조, 코드·테스트 대응, 문서 예시 실행과 미완료 범위를 기록한다. 정책 원본을 대체하지 않는 검증 보고서다. 구현 작업은 주제별 입력·출력·저장 필드·명령·Gate·실패 조건까지 읽어야 한다.
+현재 설계 1.1의 D01~D10 구현·검증·비교와 미측정 범위는 [위험도 기반 검증 보고서](../validation/risk-profiles-1.1-review.md)를 따른다. 아래 설계 1.0 보고서는 당시의 보존·기존 구현 근거다.
+
+[Core 0.5.0 구현·설계 재대조 결과](../validation/design-1.0-implementation-cycle.md)와 [문서 정리 당시 검토](../validation/design-1.0-implementation-review.md)에 정리 전후 보존 대조, 코드·테스트 대응, 문서 예시 실행과 미완료 범위를 기록한다. 정책 원본을 대체하지 않는 검증 보고서다. 구현 작업은 주제별 입력·출력·저장 필드·명령·Gate·실패 조건까지 읽어야 한다.
 
 실제 공식 Spec Kit 1.4.0을 사용한 두 명령 설치·업데이트 검증은 [설치 검증 보고서](../validation/installation-two-command-review.md)를 따른다.
 
