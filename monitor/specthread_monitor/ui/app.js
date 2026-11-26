@@ -477,10 +477,13 @@ function createOffice() {
 
   const spriteOrder = ["short", "long", "curly", "robot", "tiger", "lion", "cat", "fox"];
   const sleeves = ["#d68d49", "#a78eb9", "#56867c", "#c6a783", "#595a72", "#dcc1a0", "#b87980", "#708264"];
-  const sessionDesks = [0, 101].flatMap((y) => [76, 149, 223, 297].map((x) => ({ x, y })));
+  // The chair centers and seat height come from the 420 × 263 office background.
+  const chairSeat = 76;
+  const workerSize = 38;
+  const sessionDesks = [0, 101].flatMap((y) => [94, 168, 242, 315].map((x) => ({ x, y })));
   const managers = [
-    { id: "reader-seat", x: 273, index: 8 },
-    { id: "ceo-seat", x: 310, index: 9 },
+    { id: "reader-seat", x: 273, bottom: 234, index: 8 },
+    { id: "ceo-seat", x: 310, bottom: 237, index: 9 },
   ];
   let lastFrame = -Infinity;
 
@@ -525,28 +528,28 @@ function createOffice() {
       const active = moving && now < (pulses.get(key) || 0);
       const alerting = moving && now < (gatePulses.get(key) || 0);
       const cheering = moving && now < (celebrations.get(key) || 0);
-      const bottom = y + 85 - (cheering ? Math.floor(now / 120) % 2 * 3 : 0);
+      const bottom = y + chairSeat - (cheering ? Math.floor(now / 120) % 2 * 3 : 0);
       const sprite = spriteOrder.indexOf(identity(session).appearance);
       if (alerting || cheering) raisedHands(sprite, x, bottom, now, cheering);
-      character(sprite, x, bottom, 38);
+      character(sprite, x, bottom, workerSize);
       if (cheering || gateSignals.has(key)) {
         const color = cheering ? "#9ff2cd" : alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
-        rect(x + 17, y + 48, 10, 11, "#42324e");
+        rect(x + 17, y + 39, 10, 11, "#42324e");
         if (cheering) {
-          rect(x + 19, y + 53, 2, 3, color);
-          rect(x + 21, y + 54, 2, 2, color);
-          rect(x + 23, y + 51, 2, 4, color);
+          rect(x + 19, y + 44, 2, 3, color);
+          rect(x + 21, y + 45, 2, 2, color);
+          rect(x + 23, y + 42, 2, 4, color);
         } else {
-          rect(x + 21, y + 50, 2, 4, color);
-          rect(x + 21, y + 55, 2, 2, color);
+          rect(x + 21, y + 41, 2, 4, color);
+          rect(x + 21, y + 46, 2, 2, color);
         }
       } else if (active) {
         const shift = Math.floor(now / 120) % 2 * 3;
-        rect(x + 14 + shift, y + 80, 4, 2, "#ffe1ac");
+        rect(x + 13 + shift, y + chairSeat - 8, 4, 2, "#ffe1ac");
       }
     }
-    for (const { id, x, index } of managers) {
-      if (byId(id).getAttribute("aria-pressed") === "true") character(index, x, 242, 40);
+    for (const { id, x, bottom, index } of managers) {
+      if (byId(id).getAttribute("aria-pressed") === "true") character(index, x, bottom, 40);
     }
     if (moving && [...pulses.values(), ...gatePulses.values(), ...celebrations.values()].some((end) => now < end)) {
       lastFrame = now;
@@ -588,8 +591,9 @@ function createOffice() {
       const bubbles = seats.map((session, index) => {
         if (!session) return null;
         const bubble = tint(node("div", undefined, "speech-bubble"), session);
-        bubble.style.left = `${(sessionDesks[index].x) / width * 100}%`;
-        bubble.style.top = `${(sessionDesks[index].y + 43) / height * 100}%`;
+        const desk = sessionDesks[index];
+        bubble.style.left = `${desk.x / width * 100}%`;
+        bubble.style.top = `${(desk.y + chairSeat - workerSize - 9) / height * 100}%`;
         const text = activityTitle(session);
         bubble.append(node("strong", sessionTopic(session)), node("span", text));
         bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
