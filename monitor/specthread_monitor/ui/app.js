@@ -459,8 +459,6 @@ function createOffice() {
   ctx.imageSmoothingQuality = "high";
   const sprites = new Image();
   sprites.src = "/office-characters.webp";
-  const room = new Image();
-  room.src = "/office-night.webp";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let seats = [];
   let signals = new Map();
@@ -479,27 +477,20 @@ function createOffice() {
 
   const spriteOrder = ["short", "long", "curly", "robot", "tiger", "lion", "cat", "fox"];
   const sleeves = ["#d68d49", "#a78eb9", "#56867c", "#c6a783", "#595a72", "#dcc1a0", "#b87980", "#708264"];
-  // The chair centers and seat height come from the 420 × 263 office background.
-  const chairSeat = 78;
-  const workerSize = 40;
-  const sessionDesks = [0, 101].flatMap((y) => [94, 168, 242, 315].map((x) => ({ x, y })));
+  const workstationSize = 72;
+  const managerSize = 57;
+  const sessionDesks = [97, 198].flatMap((bottom) => [84, 160, 236, 312].map((x) => ({ x, bottom })));
   const managers = [
-    { id: "reader-seat", x: 266, bottom: 242, index: 8 },
-    { id: "ceo-seat", x: 315, bottom: 250, index: 9 },
+    { id: "reader-seat", x: 245, bottom: 238, index: 8 },
+    { id: "ceo-seat", x: 287, bottom: 247, index: 9 },
   ];
   let lastFrame = -Infinity;
 
-  function character(index, x, bottom, size) {
+  function drawSprite(index, x, bottom, size) {
     if (!sprites.naturalWidth) return;
-    ctx.drawImage(sprites, index % 4 * 128, Math.floor(index / 4) * 128, 128, 128,
+    const cell = 192;
+    ctx.drawImage(sprites, index % 4 * cell, Math.floor(index / 4) * cell, cell, cell,
       x - size / 2, bottom - size, size, size);
-  }
-
-  function roomDetail(x, y, w, h) {
-    if (!room.naturalWidth) return;
-    const sx = room.naturalWidth / width;
-    const sy = room.naturalHeight / height;
-    ctx.drawImage(room, x * sx, y * sy, w * sx, h * sy, x, y, w, h);
   }
 
   function statusBadge(x, y, cheering, flashing) {
@@ -553,29 +544,26 @@ function createOffice() {
   function draw(now = 0) {
     const moving = canAnimate();
     ctx.clearRect(0, 0, width, height);
-    for (const [index, { x, y }] of sessionDesks.entries()) {
+    for (const [index, { x, bottom }] of sessionDesks.entries()) {
       const session = seats[index];
       if (!session) continue;
       const key = seatKey(session);
       const active = moving && now < (pulses.get(key) || 0);
       const alerting = moving && now < (gatePulses.get(key) || 0);
       const cheering = moving && now < (celebrations.get(key) || 0);
-      const bottom = y + chairSeat - (cheering ? Math.floor(now / 120) % 2 * 3 : 0);
       const sprite = spriteOrder.indexOf(identity(session).appearance);
-      const workerX = x - 4;
-      if (alerting || cheering) raisedHands(sprite, workerX, bottom, now, cheering);
-      character(sprite, workerX, bottom, workerSize);
-      // Restore the near edge of the chair across the lower part of the sprite.
-      roomDetail(x - 7, y + 73, 14, 6);
+      drawSprite(sprite, x, bottom, workstationSize);
+      const workerX = x - 14;
+      if (alerting || cheering) raisedHands(sprite, workerX, bottom - 26, now, cheering);
       if (cheering || gateSignals.has(key)) {
-        statusBadge(x + 18, y + 42, cheering, alerting && Math.floor(now / 135) % 2 === 1);
+        statusBadge(x + 7, bottom - 63, cheering, alerting && Math.floor(now / 135) % 2 === 1);
       } else if (active) {
         const shift = Math.floor(now / 120) % 2 * 3;
-        rect(x + 12 + shift, y + chairSeat - 9, 3, 2, "#ffe1ac");
+        rect(x + 13 + shift, bottom - 37, 3, 1, "#ffe1ac");
       }
     }
     for (const { id, x, bottom, index } of managers) {
-      if (byId(id).getAttribute("aria-pressed") === "true") character(index, x, bottom, 40);
+      if (byId(id).getAttribute("aria-pressed") === "true") drawSprite(index, x, bottom, managerSize);
     }
     if (moving && [...pulses.values(), ...gatePulses.values(), ...celebrations.values()].some((end) => now < end)) {
       lastFrame = now;
@@ -594,7 +582,6 @@ function createOffice() {
     draw(performance.now());
   }
   sprites.addEventListener("load", redraw);
-  room.addEventListener("load", redraw);
 
   return {
     update(sessions, gates, items) {
@@ -620,8 +607,8 @@ function createOffice() {
         if (!session) return null;
         const bubble = tint(node("div", undefined, "speech-bubble"), session);
         const desk = sessionDesks[index];
-        bubble.style.left = `${desk.x / width * 100}%`;
-        bubble.style.top = `${(desk.y + chairSeat - workerSize - 9) / height * 100}%`;
+        bubble.style.left = `${(desk.x - 12) / width * 100}%`;
+        bubble.style.top = `${(desk.bottom - workstationSize) / height * 100}%`;
         const text = activityTitle(session);
         bubble.append(node("strong", sessionTopic(session)), node("span", text));
         bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
