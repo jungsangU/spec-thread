@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import UUID
 
 from . import __version__
+from .office import active_role
 from .baseline import project_path, read_records, scaffold, validate
 from .analysis import develop_check, record_analysis, register_feature
 from .evidence import content_hash, verify_evidence
@@ -48,6 +49,18 @@ def work_scope(root, identifier):
     raise ValueError(f"Work Item을 찾을 수 없습니다: {identifier}")
 
 
+def gate_confirmation(root, args, approval, mismatch):
+    if args.ceo_confirm is not None:
+        if args.ceo_confirm != approval:
+            raise ValueError(mismatch)
+        if not active_role(root, "ceo"):
+            raise ValueError("현재 프로젝트의 CEO 승인이 꺼져 있거나 만료되었습니다")
+        return True
+    if args.confirm is not None and args.confirm != approval:
+        raise ValueError(mismatch)
+    return args.confirm is not None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sdd-core")
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -55,6 +68,7 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("uuid")
     commands.add_parser("validate")
+    commands.add_parser("office-approval")
     commands.add_parser("scaffold")
     discovery = commands.add_parser("discovery-gate")
     discovery.add_argument("plan", type=Path)
@@ -130,6 +144,8 @@ def main(argv=None):
     profile.add_argument('plan', type=Path)
     profile.add_argument('--apply', action='store_true')
     profile.add_argument('--confirm')
+    for delegated in (gates, refresh, policy, profile):
+        delegated.add_argument("--ceo-confirm", metavar="APPROVAL_HASH")
     step = commands.add_parser('procedure')
     step.add_argument('id')
     step.add_argument('step', choices=sorted(verification.STEPS))
@@ -139,7 +155,11 @@ def main(argv=None):
         root = args.root.resolve(strict=True)
         if not root.is_dir():
             raise ValueError(f"프로젝트 폴더가 아닙니다: {root}")
-        if args.command == "uuid":
+        if getattr(args, "ceo_confirm", None) is not None and (args.confirm is not None or args.apply):
+            raise ValueError("--ceo-confirm은 --confirm 또는 --apply와 함께 사용할 수 없습니다")
+        if args.command == "office-approval":
+            print(json.dumps({"ceo_gate_approval": active_role(root, "ceo")}))
+        elif args.command == "uuid":
             print(uuid7())
         elif args.command == "scaffold":
             require_project(root)
@@ -236,12 +256,10 @@ def main(argv=None):
                     raise ValueError('필수 Gate 변경·완화에는 구체적 사용자 승인이 필요합니다')
                 register_gates(root, args.id, preview)
                 print(json_bytes({'status': 'applied', 'approval_required': False}).decode(), end='')
-            elif args.confirm is None:
-                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
-            elif args.confirm != approval:
-                raise ValueError("승인한 Gate 정의/입력이 변경됐습니다")
-            else:
+            elif gate_confirmation(root, args, approval, "승인한 Gate 정의/입력이 변경됐습니다"):
                 register_gates(root, args.id, preview)
+            else:
+                print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
         elif args.command == "gate-run":
             require_project(root, scope=work_scope(root, args.id))
             _, current_item = work_item(root, args.id)
@@ -286,10 +304,9 @@ def main(argv=None):
             approval = content_hash(preview)
             if args.apply and (args.confirm or preview['renames'] or preview['ambiguous']):
                 raise ValueError('이름 변경·모호한 검증 입력은 구체적 승인이 필요합니다')
-            if args.confirm is None and not args.apply:
+            confirmed = gate_confirmation(root, args, approval, "선택적 재검증 입력·이름 변경 후보가 바뀌었습니다. 새 승인이 필요합니다")
+            if not confirmed and not args.apply:
                 print(json_bytes({**preview, "approval_hash": approval}).decode(), end="")
-            elif args.confirm is not None and args.confirm != approval:
-                raise ValueError("선택적 재검증 입력·이름 변경 후보가 바뀌었습니다. 새 승인이 필요합니다")
             else:
                 result = revalidation.refresh(root, args.id, preview)
                 print(json_bytes(result).decode(), end="")
@@ -302,11 +319,10 @@ def main(argv=None):
             approval = content_hash(preview)
             if args.apply and (args.confirm or preview['approval_required']):
                 raise ValueError('이 변경은 자동 적용 대상이 아닙니다. 구체적 사용자 승인을 받으세요')
-            if args.confirm is not None and args.confirm != approval:
-                raise ValueError('승인한 정책·프로파일 입력이 변경됐습니다')
-            if args.apply or args.confirm is not None:
+            confirmed = gate_confirmation(root, args, approval, '승인한 정책·프로파일 입력이 변경됐습니다')
+            if args.apply or confirmed:
                 if args.command == 'profile':
-                    verification.apply_profile(root, args.id, preview)
+                    verification.apply_profile(root, args.id, preview, delegated=args.ceo_confirm is not None)
                 else:
                     verification.apply_registry(root, preview)
                 print(json_bytes({'status': 'applied', 'approval_required': preview['approval_required']}).decode(), end='')

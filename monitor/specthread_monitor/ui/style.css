@@ -219,3 +219,14 @@ select { font: inherit; color: inherit; background: #26223a; border: 1px solid v
 .entity-card progress::-webkit-progress-value, .feature-progress progress::-webkit-progress-value { background: linear-gradient(90deg, #946cde, #d5adff); border-radius: 99px; }
 .entity-card progress::-moz-progress-bar, .feature-progress progress::-moz-progress-bar { background: #bb92ef; border-radius: 99px; }
 .diff-tab[aria-pressed="true"] { border-color: var(--accent); color: #eadcff; background: #463058; }
+
+.office { margin-bottom: .85rem; }
+.office-scroll { overflow-x: auto; border-radius: 9px; }
+.office-stage { min-width: 620px; }
+.office-controls { display: flex; align-items: center; gap: .55rem; margin-top: .68rem; flex-wrap: wrap; }
+.office-controls > span { margin-right: auto; }
+.office-controls button { color: #c5bcd8; }
+#reader-seat[aria-pressed="true"] { border-color: #63bfaf; color: #9ee9db; background: #233835; }
+#ceo-seat[aria-pressed="true"] { border-color: #e9ae6d; color: #ffcb95; background: #392c34; }
+.speech-bubble { width: 8.5%; transform: translateX(-31%); }
+.speech-bubble:first-child { transform: translateX(-22%); }

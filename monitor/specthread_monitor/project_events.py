@@ -1,21 +1,14 @@
 """Local observation history shared by independently opened project sessions."""
 import base64
-import hashlib
 import json
 import os
-from pathlib import Path
 import secrets
 import time
 
+from sdd_core.office import location
+
 LIMIT = 256
 RETENTION = 7 * 24 * 60 * 60
-
-
-def location(root):
-    key = hashlib.sha256(os.path.normcase(str(root)).encode("utf-8")).hexdigest()
-    base = (Path(os.environ["LOCALAPPDATA"]) if os.name == "nt" and os.environ.get("LOCALAPPDATA")
-            else Path.home() / ".cache")
-    return base / "spec-thread" / "observations" / key
 
 
 def event_paths(folder):

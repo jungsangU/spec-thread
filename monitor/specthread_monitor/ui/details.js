@@ -222,7 +222,7 @@ function renderWorkDetails(data) {
       return [detailHeader(workTitle(work, data), "Work Item · 검증을 확인한 뒤 다음 단계를 판단하세요", [chip(label(work.status), statusTone(work.status))]),
         ...linked.map((session) => tint(routeButton(sessionTitle(session), "sessions", identity(session).key), session)),
         ...(work.verification ? [sectionBlock("검증 프로파일", [chip(work.verification.profile), line(work.verification.reason),
-          fieldGrid([["분류·확장 이력", `${work.verification.revisions}회`], ["진행 권한", work.verification.approval_mode === "explicit_user" ? "구체적 승인 기록" : "최초 요청 범위"]]),
+          fieldGrid([["분류·확장 이력", `${work.verification.revisions}회`], ["진행 권한", ({ explicit_user: "구체적 승인 기록", office_ceo: "CEO 위임" })[work.verification.approval_mode] || "최초 요청 범위"]]),
           ...(work.verification.required_steps || []).map((step) => line(`${step} · ${work.verification.steps?.[step] || "미완료"}`))])] : []),
         fieldGrid([["요청 범위", names(work.declared_features)], ["실제 영향 범위", names(work.actual_features)]]),
         ...(work.gate_issue ? [node("p", work.gate_issue, "notice")] : []),

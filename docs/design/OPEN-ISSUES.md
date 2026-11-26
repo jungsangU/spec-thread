@@ -29,6 +29,8 @@ Core 0.5.0의 구현 근거는 analysis/discovery, work_items/gates/evidence, li
 
 ## Monitor 실행 확인
 
+Reader는 프로젝트에서 켠 동안 등록된 조회 명령만 네이티브 에이전트 Hook으로 승인한다. CEO는 프로젝트의 네이티브 실행 권한 Hook을 처리한다. SpecThread의 정책·프로파일·Gate 승인 위임은 Monitor 명세에 기록했다. 개별 세션별 역할 설정과 다른 Core 승인 경로의 위임은 미적용이다.
+
 | ID | 구분 | 내용 |
 | --- | --- | --- |
 | ST-O17 | 실행 검증 | [Monitor](monitor.md)의 실제 대화형 Codex·Claude Code 개별 이벤트와 파일 귀속, 사용자 운영 환경의 종단간 검증. Codex 로컬 저장 기록 18개·종료 세션 2개의 실제 API/브라우저 조회는 [검증 보고서](../validation/monitor-design-review.md)에 확인했다. 신규 이벤트 자연 수신, Windows 네이티브 설치·Hook 실행 결과와 기존 세션의 설정 반영 시점은 확인 필요 |

@@ -500,36 +500,63 @@ function createOffice() {
     if (appearance !== "plant") rect(x + 3, y + 20, 14, 6, color);
   }
 
+  const sessionDesks = [13, 56, 99, 142, 185, 228, 271, 314];
+  const managers = [
+    { name: "Reader", id: "reader-seat", x: 379, color: "#63bfaf" },
+    { name: "CEO", id: "ceo-seat", x: 431, color: "#e9ae6d" },
+  ];
+
+  function managerDesk(role) {
+    const { name, id, x, color } = role;
+    const occupied = byId(id).getAttribute("aria-pressed") === "true";
+    rect(x - 7, 43, 46, 87, "#29283e");
+    rect(x - 7, 43, 46, 2, occupied ? color : "#555570");
+    ctx.font = "bold 6px monospace";
+    ctx.fillStyle = occupied ? color : "#bbb4cc";
+    ctx.fillText(name.toUpperCase(), x + 1, 56);
+    rect(x + 5, 73, 20, 30, "#3c3854");
+    if (occupied) {
+      rect(x + 8, 75, 15, 15, "#e9bc9a");
+      rect(x + 7, 72, 17, 7, "#32283b");
+      rect(x + 11, 82, 2, 2, "#292138");
+      rect(x + 18, 82, 2, 2, "#292138");
+      rect(x + 2, 91, 28, 13, color);
+      ctx.fillStyle = "#211929";
+      ctx.fillText(name.toUpperCase(), x + (name === "CEO" ? 10 : 4), 100);
+    }
+    rect(x - 3, 105, 39, 5, "#b2897c");
+    rect(x, 110, 33, 9, "#655269");
+  }
+
   function draw(now = 0) {
-    rect(0, 0, 360, 124, "#272138");
-    rect(0, 82, 360, 42, "#503648");
-    rect(0, 78, 360, 4, "#86637c");
-    for (let x = 0; x < 360; x += 21) {
-      rect(x, 101, 19, 1, "#755061");
-      rect(x + 7, 117, 19, 1, "#755061");
+    rect(0, 0, 480, 154, "#201d31");
+    rect(0, 103, 480, 51, "#362b43");
+    rect(0, 100, 480, 3, "#6e5571");
+    rect(0, 145, 480, 2, "#514060");
+    for (let x = 0; x < 480; x += 24) {
+      rect(x, 128, 21, 1, "#58465f");
+      rect(x + 8, 141, 21, 1, "#58465f");
     }
-    for (const x of [14, 133, 252]) {
-      rect(x, 8, 94, 50, "#765775");
-      rect(x + 3, 11, 88, 44, "#131c39");
-      rect(x + 70, 17, 7, 7, "#f2d59d");
-      for (let i = 0; i < 7; i++) {
-        const h = 10 + (i * 11) % 19;
-        rect(x + 5 + i * 12, 54 - h, 9, h, "#2b3764");
-        rect(x + 7 + i * 12, 57 - h, 3, 2, i % 2 ? "#a68ee2" : "#d3a779");
+    for (const x of [13, 98, 183, 268]) {
+      rect(x, 26, 75, 47, "#665774");
+      rect(x + 2, 28, 71, 42, "#121d33");
+      rect(x + 54, 33, 5, 5, "#ebc698");
+      for (let n = 0; n < 7; n++) {
+        const height = 8 + (n * 13) % 24;
+        rect(x + 4 + n * 10, 70 - height, 7, height, "#30385b");
+        rect(x + 6 + n * 10, 73 - height, 2, 2, n % 2 ? "#a09ed5" : "#d8a184");
       }
-      rect(x + 47, 10, 2, 47, "#765775");
-      rect(x - 2, 56, 98, 4, "#9c7288");
+      rect(x + 38, 27, 1, 45, "#73647d");
+      rect(x - 2, 72, 79, 3, "#9b7386");
     }
-    for (const x of [5, 339]) {
-      rect(x + 4, 76, 12, 13, "#c18b70");
-      rect(x, 68, 7, 6, "#7bb592");
-      rect(x + 11, 64, 7, 10, "#519a85");
-      rect(x + 8, 68, 3, 9, "#4a8d76");
-    }
-    for (const [index, x] of [23, 87, 151, 215, 279].entries()) {
+    rect(358, 19, 2, 119, "#66536f");
+    managers.forEach(managerDesk);
+    for (const [index, x] of sessionDesks.entries()) {
+      ctx.save();
+      ctx.translate(0, 12);
       const colors = ["#829aff", "#6bc8b3", "#b78ef4", "#e290ad", "#d2ac83"];
       rect(x + 23, 66, 20, 15, "#16192f");
-      rect(x + 25, 68, 16, 9, seats[index] ? identity(seats[index]).color : colors[index]);
+      rect(x + 25, 68, 16, 9, seats[index] ? identity(seats[index]).color : colors[index % colors.length]);
       rect(x + 27, 70, 8, 1, "#f8e8ff");
       rect(x + 29, 82, 6, 5, "#17172c");
       const session = seats[index];
@@ -549,10 +576,11 @@ function createOffice() {
           rect(x + 12, 57 - bounce, 2, 6, "#ffe1ac");
         }
       }
-      rect(x - 3, 87, 54, 5, "#d38c67");
-      rect(x, 92, 49, 5, "#844f51");
+      rect(x - 3, 87, 42, 5, "#d38c67");
+      rect(x, 92, 37, 5, "#844f51");
       rect(x + 2, 97, 4, 14, "#613748");
-      rect(x + 42, 97, 4, 14, "#613748");
+      rect(x + 34, 97, 4, 14, "#613748");
+      ctx.restore();
     }
     if ([...pulses.values(), ...gatePulses.values()].some((end) => now < end) && !reduced.matches && !document.hidden) {
       frame = requestAnimationFrame(draw);
@@ -564,9 +592,9 @@ function createOffice() {
       const nextGates = new Map(gates.map((entry) => [seatKey(entry), JSON.stringify(entry.gates)]));
       const present = sessions.filter((session) => session.state !== "ended" &&
         (session.state !== "quiet" || nextGates.has(seatKey(session))));
-      const flagged = present.filter((session) => nextGates.has(seatKey(session))).slice(-5);
+      const flagged = present.filter((session) => nextGates.has(seatKey(session))).slice(-sessionDesks.length);
       const others = present.filter((session) => !nextGates.has(seatKey(session)));
-      const extra = 5 - flagged.length;
+      const extra = sessionDesks.length - flagged.length;
       const visible = [...(extra ? others.slice(-extra) : []), ...flagged];
       const byKey = new Map(visible.map((session) => [seatKey(session), session]));
       seats = seats.map((session) => session && byKey.get(seatKey(session)));
@@ -581,7 +609,7 @@ function createOffice() {
       const bubbles = seats.map((session, index) => {
         if (!session) return null;
         const bubble = tint(node("div", undefined, "speech-bubble"), session);
-        bubble.style.left = `${(index * 64 + 24) / 360 * 100}%`;
+        bubble.style.left = `${(sessionDesks[index] + 12) / canvas.width * 100}%`;
         const text = activityTitle(session);
         bubble.append(node("strong", sessionTopic(session)), node("span", text));
         bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
@@ -609,6 +637,7 @@ function createOffice() {
       cancelAnimationFrame(frame);
       draw(now);
     },
+    redraw() { cancelAnimationFrame(frame); draw(performance.now()); },
     pause() {
       pulses.clear();
       gatePulses.clear();
@@ -620,6 +649,43 @@ function createOffice() {
 
 const office = createOffice();
 office.pause();
+for (const role of ["reader", "ceo"]) {
+  const seat = byId(`${role}-seat`);
+  let enabled = false;
+  let queue = Promise.resolve();
+  function update(requested, clicked = false) {
+    queue = queue.then(async () => {
+      if (!clicked && !enabled) return;
+      try {
+        const response = await fetch(`/api/${role}`, {
+          method: "POST", headers: { "X-Monitor-Token": token }, body: JSON.stringify(requested),
+          signal: AbortSignal.timeout(3000),
+        });
+        const state = await response.json();
+        if (!response.ok) throw new Error(state.error);
+        enabled = state.enabled;
+        if (clicked) {
+          const name = role === "ceo" ? "CEO" : "Reader";
+          byId("reader-status").textContent = enabled ? `${name} 켜짐 · 에이전트 실행 승인` : `${name} 꺼짐`;
+        }
+      } catch (error) {
+        enabled = false;
+        byId("reader-status").textContent = error.message;
+      }
+      if (seat.getAttribute("aria-pressed") !== String(enabled)) {
+        seat.setAttribute("aria-pressed", String(enabled));
+        office.redraw();
+      }
+    });
+  }
+  seat.addEventListener("click", async () => {
+    seat.disabled = true;
+    update(!enabled, true);
+    await queue;
+    seat.disabled = false;
+  });
+  setInterval(() => { if (enabled) update(true); }, 3000);
+}
 for (const [id, focus] of [["focus-mode", true], ["living-mode", false]]) {
   byId(id).addEventListener("click", () => {
     document.body.classList.toggle("focus-mode", focus);

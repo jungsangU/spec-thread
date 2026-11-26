@@ -15,6 +15,7 @@ import webbrowser
 from sdd_core.version_sync import PROJECT
 from .events import IDENTIFIER, hook_event, observed_gate_work, observed_activity, observed_directory
 from .project_events import configured_agent, record
+from .reader import reader_response
 
 EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "PermissionRequest", "PreToolUse", "Notification", "Stop", "SessionEnd", "Interrupt")
 EVENT_FILE = "SPECTHREAD_MONITOR_EVENTS"
@@ -70,6 +71,9 @@ def record_event(root=None, agent=None):
             event.update(tool_name="Edit", tool_input={"file_path": paths[0]})
         if root is not None:
             record(project, agent, event)
+            decision = reader_response(project, raw)
+            if decision:
+                print(json.dumps(decision), flush=True)
             return
         path = Path(destination)
         if path.stat().st_size < FILE_LIMIT:

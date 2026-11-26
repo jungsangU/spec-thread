@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from .events import collect
 from .metrics import dashboard, test_report
+from .reader import set_office_role
 from .observe import diff, project_path, snapshot
 from .project_events import configured_agent, read as read_project_events
 
@@ -167,6 +168,32 @@ class Handler(BaseHTTPRequestHandler):
 
     def send_json(self, code, data):
         self.send_bytes(code, json.dumps(data, ensure_ascii=True).encode(), "application/json")
+
+    def do_POST(self):
+        if self.path not in ("/api/reader", "/api/ceo"):
+            self.send_json(405, {"error": "지원하지 않는 요청"})
+            return
+        supplied = self.headers.get("X-Monitor-Token", "").encode()
+        if (self.headers.get("Host") != self.server.authority
+                or self.headers.get("Origin") != f"http://{self.server.authority}"
+                or not hmac.compare_digest(supplied, self.server.token.encode())):
+            self.send_json(403, {"error": "관리자 모드 변경 권한이 없습니다"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 16:
+                raise ValueError
+            enabled = json.loads(self.rfile.read(length))
+            if type(enabled) is not bool:
+                raise ValueError
+            if enabled and not configured_agent(self.server.root):
+                self.send_json(409, {"error": "프로젝트 Monitor Hook을 먼저 설치하세요"})
+                return
+            set_office_role(self.server.root, self.path.rsplit("/", 1)[1], enabled)
+        except (OSError, ValueError):
+            self.send_json(400, {"error": "관리자 모드를 변경할 수 없습니다"})
+            return
+        self.send_json(200, {"enabled": enabled})
 
     def do_GET(self):
         if self.headers.get("Host") != self.server.authority:

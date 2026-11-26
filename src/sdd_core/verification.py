@@ -183,7 +183,7 @@ def profile_preview(root, identifier, plan):
             'approval_reasons': (['Strict 최초 분류·상향 또는 새 고위험'] if strict_approval else []) + (['중요 판단 불확실성'] if uncertain else [])}
 
 
-def apply_profile(root, identifier, preview):
+def apply_profile(root, identifier, preview, *, delegated=False):
     from .gates import work_item
     document, item = work_item(root, identifier, editable=True)
     state = item.get('verification', {'revisions': [], 'steps': {}})
@@ -191,7 +191,8 @@ def apply_profile(root, identifier, preview):
         raise ValueError('프로파일 입력 또는 이력이 변경됐습니다')
     item['verification'] = state
     record = deepcopy(preview)
-    record['approval_mode'] = 'explicit_user' if preview['approval_required'] else 'request_scope'
+    record['approval_mode'] = ('office_ceo' if delegated else
+                               'explicit_user' if preview['approval_required'] else 'request_scope')
     record['preview_hash'] = content_hash(preview)
     record['hash'] = content_hash(record)
     state['revisions'].append(record)
@@ -343,7 +344,7 @@ def validate_work_record(root, item, feature_ids, work_ids):
                          any(previous['risks'][key] and not risks[key] for key in RISKS) or
                          not set(previous['required_steps']).issubset(steps)):
             raise ValueError('프로파일 이력에서 위험·필수 절차를 낮출 수 없습니다')
-        if record.get('approval_required') and record.get('approval_mode') != 'explicit_user':
+        if record.get('approval_required') and record.get('approval_mode') not in ('explicit_user', 'office_ceo'):
             raise ValueError('구체적 승인 경로 기록이 없습니다')
         previous = record
     for step, history in mapping(state.get('steps'), '절차 이력').items():

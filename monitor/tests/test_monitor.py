@@ -77,7 +77,7 @@ class MonitorTest(unittest.TestCase):
         self.assertEqual(error.exception.code, 403)
         with self.assertRaises(HTTPError) as error:
             self.request(server, "/api/snapshot", method="POST")
-        self.assertEqual(error.exception.code, 501)
+        self.assertEqual(error.exception.code, 405)
         with self.request(server, "/api/snapshot") as response:
             state = json.load(response)
         self.assertEqual(state["baseline"]["state"], "missing")

@@ -25,7 +25,7 @@ This section is included in each installed sdd-init, sdd-develop and sdd-sync Sk
 
 - Use the agent's project file tools for inspection when available. Run the Core preflight once for its scope; a successful result already includes the phase's checks. Recheck after material input or scope changes and at the documented Gate boundaries.
 - Within the user's accepted scope, run routine file reads, local edits and authorized verification directly through standard project tools. Do not add a separate conversation confirmation, custom shell wrapper or an elevated execution request for ordinary steps. Avoid combining unrelated commands in a shell call.
-- If the host requires permission, use its normal approval prompt for the actual operation. Explain the concrete blocker if denied and preserve it. Read-only inspection cannot replace evidence that requires execution. Keep explicit approval for Gate definitions and refresh plans, scope expansion, retirement, Sync and version synchronization. Do not broaden permissions or reinterpret a host authorization as approval of an SDD decision.
+- If the host requires permission, use its normal approval prompt for the actual operation. Explain the concrete blocker if denied and preserve it. Read-only inspection cannot replace evidence that requires execution. Keep explicit approval for Gate definitions and refresh plans, scope expansion, retirement, Sync and version synchronization. For the Office CEO delegation explicitly documented in sdd-develop, use the separate Core delegation command and current preview hash. Do not reinterpret a host authorization as approval of an SDD decision.
 
 ### Present a calm, consistent interface
 

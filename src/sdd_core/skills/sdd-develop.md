@@ -27,6 +27,10 @@ conditions may contain spec_changed/clarify/discovery booleans; additional_steps
 
 Use --apply for clear Lightweight/Standard classification within scope. Strict first classification/escalation/new high-risk facts or important uncertainty requires showing the exact risk/scope/verification preview, waiting for actual user consent, then --confirm HASH. Never fabricate consent or treat computing a hash as approval. Host execution permissions still apply.
 
+### Office CEO delegation
+
+For `verification-policy`, `profile`, `gates` and `gate-refresh` only, ask Core for the exact read-only preview first. If concrete approval is required, run `python3 .specify/sdd-core office-approval`. When it reports `ceo_gate_approval: true`, announce the specific approval and submit the same preview hash with `--ceo-confirm HASH` instead of asking again. Core checks the active project delegation and recomputes the hash. If the delegation expires, use the documented user approval flow; if the plan changed, re-preview it. Reader does not delegate Core approvals. Scope expansion, retirement, reconciliation and version synchronization still use their normal approval paths. Keep mandatory policy, evidence and stage checks. Never report a failed Gate as passed.
+
 ## Select and perform official steps
 
 - All profiles need plan review/reuse, scoped tasks and implementation. Lightweight reuses an adequate plan and updates only change-related tasks; new checklist/analyze/converge are excluded by default, not prohibited. Standard performs formal tasks and changes other artifacts when needed. Strict reviews plan and explicitly evaluates the three optional reviews, adding those required by risk/policy.

@@ -6,6 +6,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from sdd_core.baseline import scaffold, validate
 from sdd_core.cli import main
@@ -105,6 +106,22 @@ class LifecycleGateTest(unittest.TestCase):
             "findings": [{"assessment": "SAFE", "evidence": "basis.md"}],
             "evidence": [{"ref": "test-result.txt"}],
         })
+
+    def test_ceo_gate_confirmation_requires_live_project_role_and_exact_hash(self):
+        identifier = self.start()
+        filename = self.plan("gates.json", {"reason": "Project checks", "basis": ["basis.md"],
+                                            "gates": [self.command_gate()]})
+        approval = json.loads(self.cli("gates", identifier, filename)[1])["approval_hash"]
+        command = ("gates", identifier, filename, "--ceo-confirm")
+        with patch("sdd_core.cli.active_role", return_value=False):
+            self.assertEqual(self.cli(*command, approval)[0], 1)
+        with patch("sdd_core.cli.active_role", return_value=True):
+            self.assertEqual(self.cli(*command, "wrong")[0], 1)
+            result = self.cli(*command, approval)
+            self.assertEqual(result[0], 0, result[2])
+        item = read_document(self.root, "work-items.yaml")["work_items"][0]
+        self.assertEqual(len(item["gate_revisions"]), 1)
+        self.assertEqual(self.cli("stage-check", identifier, "complete")[0], 1)
 
     def test_not_started_rejects_start(self):
         self.assertEqual(self.cli("start", A)[0], 1)
