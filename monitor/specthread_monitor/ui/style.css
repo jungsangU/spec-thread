@@ -222,11 +222,22 @@ select { font: inherit; color: inherit; background: #26223a; border: 1px solid v
 
 .office { margin-bottom: .85rem; }
 .office-scroll { overflow-x: auto; border-radius: 9px; }
-.office-stage { min-width: 620px; }
+.office-stage { min-width: 490px; }
 .office-controls { display: flex; align-items: center; gap: .55rem; margin-top: .68rem; flex-wrap: wrap; }
 .office-controls > span { margin-right: auto; }
 .office-controls button { color: #c5bcd8; }
 #reader-seat[aria-pressed="true"] { border-color: #63bfaf; color: #9ee9db; background: #233835; }
 #ceo-seat[aria-pressed="true"] { border-color: #e9ae6d; color: #ffcb95; background: #392c34; }
-.speech-bubble { width: 8.5%; transform: translateX(-31%); }
+.speech-bubble { width: 15%; transform: translateX(-38%); }
 .speech-bubble:first-child { transform: translateX(-22%); }
+
+.office-roles { position: absolute; inset: 0; pointer-events: none; }
+.office-roles span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: #231b2e;
+  font: 800 clamp(7px, .82vw, 11px)/1 system-ui, sans-serif;
+  letter-spacing: .015em;
+  white-space: nowrap;
+}
+.office-roles span[hidden] { display: none; }

@@ -465,8 +465,7 @@ function createOffice() {
     ctx.fillRect(x, y, w, h);
   }
 
-  function character(x, y, session) {
-    const { appearance, color } = identity(session);
+  function character(x, y, { appearance, color }, walking = false) {
     if (["cat", "fox"].includes(appearance)) {
       const fur = appearance === "fox" ? "#e89e63" : "#c5b8ed";
       rect(x + 2, y + 1, 4, 7, fur); rect(x + 13, y + 1, 4, 7, fur);
@@ -497,63 +496,92 @@ function createOffice() {
       rect(x + 6, y + 11, 2, 2, "#24203a"); rect(x + 12, y + 11, 2, 2, "#24203a");
       if (appearance === "short") { rect(x + 5, y + 10, 5, 4, "#596484"); rect(x + 11, y + 10, 5, 4, "#596484"); }
     }
-    if (appearance !== "plant") rect(x + 3, y + 20, 14, 6, color);
+    if (appearance !== "plant") {
+      rect(x + 3, y + 20, 14, 6, color);
+      if (walking) {
+        rect(x + 1, y + 21, 18, 6, color);
+        rect(x + 4, y + 25, 12, 2, "#34283e");
+      }
+    }
   }
 
-  const sessionDesks = [13, 56, 99, 142, 185, 228, 271, 314];
+  const sessionDesks = [-10, 85].flatMap((y) => [36, 114, 192, 270].map((x) => ({ x, y })));
   const managers = [
-    { name: "Reader", id: "reader-seat", x: 379, color: "#63bfaf" },
-    { name: "CEO", id: "ceo-seat", x: 431, color: "#e9ae6d" },
+    { id: "reader-seat", label: byId("office-reader"), color: "#63bfaf", appearance: "curly", offset: 0 },
+    { id: "ceo-seat", label: byId("office-ceo"), color: "#e9ae6d", appearance: "short", offset: 0.53 },
   ];
+  const route = [[9, 77], [367, 77], [367, 173], [9, 173], [9, 77]];
+  const routeLength = 2 * (367 - 9 + 173 - 77);
+  let lastFrame = -Infinity;
 
-  function managerDesk(role) {
-    const { name, id, x, color } = role;
-    const occupied = byId(id).getAttribute("aria-pressed") === "true";
-    rect(x - 7, 43, 46, 87, "#29283e");
-    rect(x - 7, 43, 46, 2, occupied ? color : "#555570");
-    ctx.font = "bold 6px monospace";
-    ctx.fillStyle = occupied ? color : "#bbb4cc";
-    ctx.fillText(name.toUpperCase(), x + 1, 56);
-    rect(x + 5, 73, 20, 30, "#3c3854");
-    if (occupied) {
-      rect(x + 8, 75, 15, 15, "#e9bc9a");
-      rect(x + 7, 72, 17, 7, "#32283b");
-      rect(x + 11, 82, 2, 2, "#292138");
-      rect(x + 18, 82, 2, 2, "#292138");
-      rect(x + 2, 91, 28, 13, color);
-      ctx.fillStyle = "#211929";
-      ctx.fillText(name.toUpperCase(), x + (name === "CEO" ? 10 : 4), 100);
+  function manager(role, now, moving) {
+    const occupied = byId(role.id).getAttribute("aria-pressed") === "true";
+    role.label.hidden = !occupied;
+    if (!occupied) return false;
+    const distance = ((moving ? now / 48 : 0) + role.offset * routeLength) % routeLength;
+    let remaining = distance;
+    let x = route[0][0];
+    let y = route[0][1];
+    let facing = 1;
+    for (let index = 1; index < route.length; index++) {
+      const [fromX, fromY] = route[index - 1];
+      const [toX, toY] = route[index];
+      const length = Math.abs(toX - fromX) + Math.abs(toY - fromY);
+      const progress = Math.min(1, remaining / length);
+      facing = toX < fromX ? -1 : 1;
+      x = Math.round(fromX + (toX - fromX) * progress);
+      y = Math.round(fromY + (toY - fromY) * progress);
+      if (remaining <= length) break;
+      remaining -= length;
     }
-    rect(x - 3, 105, 39, 5, "#b2897c");
-    rect(x, 110, 33, 9, "#655269");
+    const stride = moving ? Math.sin(now / 125) : 0;
+    const lift = Math.round(Math.abs(stride));
+    rect(x + 2, y + 31, 16, 2, "#28263a");
+    rect(x + 4, y + 26, 5, 5 - Math.max(0, Math.round(stride * 3)), "#4b3c54");
+    rect(x + 11, y + 26, 5, 5 - Math.max(0, -Math.round(stride * 3)), "#4b3c54");
+    ctx.save();
+    ctx.translate(facing < 0 ? x + 20 : x, y - lift);
+    ctx.scale(facing, 1);
+    character(0, 0, role, true);
+    ctx.restore();
+    role.label.style.left = `${(x + 10) / canvas.width * 100}%`;
+    role.label.style.top = `${(y - lift + 23) / canvas.height * 100}%`;
+    return moving;
+  }
+
+  function canAnimate() {
+    return !reduced.matches && !document.hidden && !byId("overview").hidden &&
+      !document.body.classList.contains("focus-mode");
   }
 
   function draw(now = 0) {
-    rect(0, 0, 480, 154, "#201d31");
-    rect(0, 103, 480, 51, "#362b43");
-    rect(0, 100, 480, 3, "#6e5571");
-    rect(0, 145, 480, 2, "#514060");
-    for (let x = 0; x < 480; x += 24) {
-      rect(x, 128, 21, 1, "#58465f");
-      rect(x + 8, 141, 21, 1, "#58465f");
-    }
-    for (const x of [13, 98, 183, 268]) {
-      rect(x, 26, 75, 47, "#665774");
-      rect(x + 2, 28, 71, 42, "#121d33");
-      rect(x + 54, 33, 5, 5, "#ebc698");
-      for (let n = 0; n < 7; n++) {
-        const height = 8 + (n * 13) % 24;
-        rect(x + 4 + n * 10, 70 - height, 7, height, "#30385b");
-        rect(x + 6 + n * 10, 73 - height, 2, 2, n % 2 ? "#a09ed5" : "#d8a184");
+    const moving = canAnimate();
+    rect(0, 0, 420, 225, "#211e31");
+    for (const y of [16, 112]) {
+      rect(10, y, 332, 76, "#302940");
+      rect(10, y, 332, 2, "#64536f");
+      for (const x of [31, 109, 187, 265]) {
+        rect(x, y + 5, 48, 20, "#514364");
+        rect(x + 2, y + 7, 44, 16, "#17233c");
+        for (let n = 0; n < 4; n++) {
+          rect(x + 5 + n * 10, y + 15, 6, 8, "#303d61");
+          rect(x + 7 + n * 10, y + 17, 2, 1, n % 2 ? "#ac9ad0" : "#dfa67d");
+        }
       }
-      rect(x + 38, 27, 1, 45, "#73647d");
-      rect(x - 2, 72, 79, 3, "#9b7386");
     }
-    rect(358, 19, 2, 119, "#66536f");
-    managers.forEach(managerDesk);
-    for (const [index, x] of sessionDesks.entries()) {
+    rect(12, 94, 390, 16, "#433550");
+    rect(12, 190, 390, 16, "#433550");
+    rect(355, 71, 46, 135, "#433550");
+    rect(6, 91, 22, 115, "#433550");
+    for (let x = 18; x < 400; x += 18) {
+      rect(x, 105, 12, 1, "#6a5373");
+      rect(x, 201, 12, 1, "#6a5373");
+    }
+    rect(376, 26, 18, 24, "#6b4a55");
+    rect(373, 23, 24, 8, "#6fa786");
+    for (const [index, { x, y }] of sessionDesks.entries()) {
       ctx.save();
-      ctx.translate(0, 12);
+      ctx.translate(0, y);
       const colors = ["#829aff", "#6bc8b3", "#b78ef4", "#e290ad", "#d2ac83"];
       rect(x + 23, 66, 20, 15, "#16192f");
       rect(x + 25, 68, 16, 9, seats[index] ? identity(seats[index]).color : colors[index % colors.length]);
@@ -565,7 +593,7 @@ function createOffice() {
         const active = now < (pulses.get(key) || 0);
         const alerting = now < (gatePulses.get(key) || 0);
         const bounce = alerting ? Math.floor(now / 90) % 2 * 5 : active ? Math.floor(now / 100) % 2 * 3 : 0;
-        character(x, 61 - bounce, session);
+        character(x, 61 - bounce, identity(session));
         if (gateSignals.has(key)) {
           const color = alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
           rect(x + 10, 53 - bounce, 8, 9, "#583451");
@@ -582,9 +610,17 @@ function createOffice() {
       rect(x + 34, 97, 4, 14, "#613748");
       ctx.restore();
     }
-    if ([...pulses.values(), ...gatePulses.values()].some((end) => now < end) && !reduced.matches && !document.hidden) {
-      frame = requestAnimationFrame(draw);
+    const patrolling = managers.map((role) => manager(role, now, moving)).some(Boolean);
+    if (moving && (patrolling || [...pulses.values(), ...gatePulses.values()].some((end) => now < end))) {
+      lastFrame = now;
+      frame = requestAnimationFrame(animateFrame);
     }
+  }
+
+  function animateFrame(now) {
+    if (!canAnimate()) return;
+    if (now - lastFrame >= 45) draw(now);
+    else frame = requestAnimationFrame(animateFrame);
   }
 
   return {
@@ -609,7 +645,8 @@ function createOffice() {
       const bubbles = seats.map((session, index) => {
         if (!session) return null;
         const bubble = tint(node("div", undefined, "speech-bubble"), session);
-        bubble.style.left = `${(sessionDesks[index] + 12) / canvas.width * 100}%`;
+        bubble.style.left = `${(sessionDesks[index].x + 12) / canvas.width * 100}%`;
+        bubble.style.top = `${(sessionDesks[index].y + 25) / canvas.height * 100}%`;
         const text = activityTitle(session);
         bubble.append(node("strong", sessionTopic(session)), node("span", text));
         bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
@@ -617,8 +654,7 @@ function createOffice() {
       }).filter(Boolean);
       byId("office-bubbles").replaceChildren(...bubbles);
       const now = performance.now();
-      const animate = !reduced.matches && !document.hidden && !byId("overview").hidden &&
-        !document.body.classList.contains("focus-mode");
+      const animate = canAnimate();
       const nextPulses = new Map();
       for (const session of visible) {
         const key = seatKey(session);
@@ -642,7 +678,7 @@ function createOffice() {
       pulses.clear();
       gatePulses.clear();
       cancelAnimationFrame(frame);
-      draw();
+      draw(performance.now());
     },
   };
 }
