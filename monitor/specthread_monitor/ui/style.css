@@ -145,10 +145,10 @@ details[open] > summary { margin-bottom: .45rem; }
 .session-card .muted { font-size: .72rem; overflow-wrap: anywhere; margin-top: .25rem; }
 .office-stage { position: relative; }
 #office-bubbles { position: absolute; inset: 0; pointer-events: none; }
-.speech-bubble { position: absolute; top: 4%; transform: translateX(-35%); width: 19%; max-width: 130px; padding: .28rem .32rem; border: 1px solid var(--session-color); border-radius: 7px; background: #181627f0; box-shadow: 0 3px 9px #0005; line-height: 1.3; }
-.speech-bubble::after { content: ""; position: absolute; top: 100%; left: 30%; border: 5px solid transparent; border-top-color: var(--session-color); }
+.speech-bubble { position: absolute; top: 4%; transform: translate(-50%, -100%); width: 16%; max-width: 130px; padding: .28rem .32rem; border: 1px solid var(--session-color); border-radius: 7px; background: #181627f0; box-shadow: 0 3px 9px #0005; line-height: 1.3; }
+.speech-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: var(--session-color); }
 .speech-bubble strong { display: block; color: var(--session-color); font: 600 .63rem ui-monospace, monospace; }
-.speech-bubble span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .64rem; overflow-wrap: anywhere; }
+.speech-bubble span { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: .64rem; overflow-wrap: anywhere; }
 .office-note { margin-bottom: 0; font-size: .72rem; }
 .session-toolbar { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
 .session-toolbar label { font-size: .8rem; color: var(--muted); }
@@ -228,16 +228,20 @@ select { font: inherit; color: inherit; background: #26223a; border: 1px solid v
 .office-controls button { color: #c5bcd8; }
 #reader-seat[aria-pressed="true"] { border-color: #63bfaf; color: #9ee9db; background: #233835; }
 #ceo-seat[aria-pressed="true"] { border-color: #e9ae6d; color: #ffcb95; background: #392c34; }
-.speech-bubble { width: 15%; transform: translateX(-38%); }
-.speech-bubble:first-child { transform: translateX(-22%); }
-
-.office-roles { position: absolute; inset: 0; pointer-events: none; }
-.office-roles span {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  color: #231b2e;
-  font: 800 clamp(7px, .82vw, 11px)/1 system-ui, sans-serif;
-  letter-spacing: .015em;
-  white-space: nowrap;
+/* The locally packaged office art stays still while actual session sprites animate above it. */
+.office-showcase { display: grid; grid-template-columns: minmax(0, 2.35fr) minmax(230px, .9fr); gap: .85rem; align-items: start; margin-bottom: .85rem; }
+.office-showcase .office { margin: 0; }
+.office-stage { min-width: 0; background: #20192e url("/office-night.webp") center / 100% 100% no-repeat; }
+.office-stage canvas { background: transparent; image-rendering: auto; }
+.office-showcase .activity { background: linear-gradient(155deg, #2c213c, #21192f); }
+.office-showcase .session-cards { grid-template-columns: 1fr; }
+.office-showcase .speech-bubble { background: #1a1228f5; width: 16%; border-radius: 10px; }
+.office-summary { grid-template-columns: minmax(0, 1fr); }
+.office-summary > .stack { grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); }
+@media (max-width: 930px) {
+  .office-showcase { grid-template-columns: minmax(0, 1fr); }
+  .office-showcase .session-cards { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 }
-.office-roles span[hidden] { display: none; }
+@media (max-width: 510px) {
+  .office-stage { min-width: 465px; }
+}

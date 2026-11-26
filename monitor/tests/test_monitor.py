@@ -67,6 +67,10 @@ class MonitorTest(unittest.TestCase):
             self.assertEqual(response.headers["Cache-Control"], "no-store")
         with self.request(server, "/app.js", signed=False) as response:
             self.assertIn(b"createOffice", response.read())
+        for path in ("/office-night.webp", "/office-characters.webp"):
+            with self.subTest(path=path), self.request(server, path, signed=False) as response:
+                self.assertEqual(response.headers["Content-Type"], "image/webp")
+                self.assertEqual(response.read(12)[8:], b"WEBP")
         with self.request(server, "/details.js", signed=False) as response:
             self.assertIn(b"renderDetailPages", response.read())
         with self.assertRaises(HTTPError) as error:

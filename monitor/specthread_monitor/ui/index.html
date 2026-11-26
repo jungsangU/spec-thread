@@ -34,31 +34,30 @@
       </header>
       <div id="overview" data-page>
         <div id="metrics" class="metrics" aria-label="진행 및 검증 지표"></div>
-        <section class="panel office" aria-labelledby="office-heading">
-          <div class="panel-heading">
-            <div><h2 id="office-heading">SDD Office</h2><span id="office-signal" class="muted">세션 이벤트 대기</span></div>
-            <a class="jump" href="#sessions">세션 보기 ↗</a>
-          </div>
-          <div class="office-scroll">
-            <div class="office-stage">
-              <canvas id="office" width="420" height="225" aria-hidden="true"></canvas>
-              <div id="office-bubbles" aria-label="캐릭터별 최근 작업"></div>
-              <div class="office-roles" aria-hidden="true"><span id="office-reader" hidden>Reader</span><span id="office-ceo" hidden>CEO</span></div>
+        <div class="office-showcase">
+          <section class="panel office" aria-labelledby="office-heading">
+            <div class="panel-heading">
+              <div><h2 id="office-heading">SDD Office</h2><span id="office-signal" class="muted">세션 이벤트 대기</span></div>
+              <a class="jump" href="#sessions">세션 보기 ↗</a>
             </div>
-          </div>
-          <div class="office-controls" aria-label="관리자 캐릭터">
-            <span class="muted"><span id="reader-status" role="status">자동 승인 꺼짐</span></span>
-            <button type="button" id="reader-seat" aria-pressed="false">Reader</button>
-            <button type="button" id="ceo-seat" aria-pressed="false">CEO</button>
-          </div>
-        </section>
-        <div class="dashboard">
-          <div class="stack">
-            <section class="panel activity" aria-labelledby="activity-heading">
-              <div class="panel-heading"><h2 id="activity-heading">세션 활동</h2><span id="session-scope" class="muted"></span></div>
-              <div id="session-cards" class="session-cards"></div>
-            </section>
-          </div>
+            <div class="office-scroll">
+              <div class="office-stage">
+                <canvas id="office" width="420" height="263" aria-hidden="true"></canvas>
+                <div id="office-bubbles" aria-label="캐릭터별 최근 작업"></div>
+              </div>
+            </div>
+            <div class="office-controls" aria-label="관리자 캐릭터">
+              <span class="muted"><span id="reader-status" role="status">자동 승인 꺼짐</span></span>
+              <button type="button" id="reader-seat" aria-pressed="false">Reader</button>
+              <button type="button" id="ceo-seat" aria-pressed="false">CEO</button>
+            </div>
+          </section>
+          <section class="panel activity" aria-labelledby="activity-heading">
+            <div class="panel-heading"><h2 id="activity-heading">세션 활동</h2><span id="session-scope" class="muted"></span></div>
+            <div id="session-cards" class="session-cards"></div>
+          </section>
+        </div>
+        <div class="dashboard office-summary">
           <div class="stack">
             <section class="panel distribution" aria-labelledby="distribution-heading">
               <div class="panel-heading"><h2 id="distribution-heading">작업 상태</h2><a class="jump" href="#work-items">작업 보기 ↗</a></div>

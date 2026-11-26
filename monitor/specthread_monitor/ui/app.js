@@ -30,7 +30,7 @@ const eventLabel = (event) => `${event.agent === "codex" ? "Codex" : "Claude Cod
 
 const personas = [
   ["👨🏻‍💻", "short"], ["👩🏽‍💻", "long"], ["🧑🏿‍💻", "curly"], ["🤖", "robot"],
-  ["🐱", "cat"], ["🦊", "fox"], ["🌱", "plant"], ["👽", "alien"],
+  ["🐱", "cat"], ["🦊", "fox"], ["🐯", "tiger"], ["🦁", "lion"],
 ];
 const sessionColors = new Map();
 const sessionPalette = ["#bda1ff", "#66d5c5", "#ffbb78", "#f58db8", "#81baff", "#e8d879", "#a8db87", "#df9ef2", "#8bdeea", "#f3958e"];
@@ -423,7 +423,7 @@ function render(data) {
   seenEvents = new Set(activity.sessions.map((event) => event.id));
   lastSignal = activity.sessions.some((event) => event.id === latest?.id) ? latest : activity.events.at(-1);
   byId("office-signal").textContent = lastSignal ? eventLabel(lastSignal) : "세션 이벤트 대기";
-  office.update(activity.sessions, sessionGates);
+  office.update(activity.sessions, sessionGates, items);
 }
 
 async function api(path) {
@@ -450,13 +450,23 @@ async function loadDiff(path, staged, title) {
 
 function createOffice() {
   const canvas = byId("office");
+  const width = canvas.width;
+  const height = canvas.height;
+  canvas.width = width * 3;
+  canvas.height = height * 3;
   const ctx = canvas.getContext("2d");
+  ctx.scale(3, 3);
+  ctx.imageSmoothingQuality = "high";
+  const sprites = new Image();
+  sprites.src = "/office-characters.webp";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let seats = [];
   let signals = new Map();
   let pulses = new Map();
   let gateSignals = new Map();
   let gatePulses = new Map();
+  let celebrations = new Map();
+  let completedWork = new Set();
   const seatKey = (session) => `${session.agent}:${session.session}`;
   let frame;
 
@@ -465,88 +475,39 @@ function createOffice() {
     ctx.fillRect(x, y, w, h);
   }
 
-  function character(x, y, { appearance, color }, walking = false) {
-    if (["cat", "fox"].includes(appearance)) {
-      const fur = appearance === "fox" ? "#e89e63" : "#c5b8ed";
-      rect(x + 2, y + 1, 4, 7, fur); rect(x + 13, y + 1, 4, 7, fur);
-      rect(x + 2, y + 6, 15, 13, fur); rect(x + 5, y + 14, 9, 5, "#fff0d5");
-      rect(x + 5, y + 10, 2, 3, "#252136"); rect(x + 12, y + 10, 2, 3, "#252136");
-      rect(x + 8, y + 15, 3, 2, "#654154");
-    } else if (appearance === "robot") {
-      rect(x + 9, y, 2, 4, color); rect(x + 8, y, 4, 2, "#f7dd94");
-      rect(x + 1, y + 5, 17, 14, "#b4c5d5"); rect(x + 4, y + 8, 11, 6, "#25354e");
-      rect(x + 5, y + 10, 3, 2, color); rect(x + 11, y + 10, 3, 2, color);
-      rect(x + 6, y + 16, 7, 1, "#57667e");
-    } else if (appearance === "plant") {
-      rect(x + 8, y + 3, 3, 12, "#6dbb92");
-      rect(x + 2, y + 2, 7, 5, "#a1d899"); rect(x + 11, y, 7, 5, "#6fbfa3");
-      rect(x + 3, y + 12, 14, 9, "#d99679");
-      rect(x + 6, y + 15, 2, 2, "#403142"); rect(x + 12, y + 15, 2, 2, "#403142");
-    } else if (appearance === "alien") {
-      rect(x + 4, y + 2, 12, 15, "#90d3b3"); rect(x + 1, y + 6, 18, 7, "#90d3b3");
-      rect(x + 4, y + 8, 4, 5, "#22263d"); rect(x + 12, y + 8, 4, 5, "#22263d");
-      rect(x + 8, y + 15, 4, 1, "#416d6a");
-    } else {
-      const skin = appearance === "curly" ? "#91634f" : appearance === "long" ? "#c48b67" : "#efbf99";
-      const hair = appearance === "long" ? "#6e3d46" : "#302c40";
-      rect(x + 2, y + 2, 16, appearance === "long" ? 22 : 14, hair);
-      rect(x + 4, y + 7, 12, 13, skin);
-      rect(x + 4, y + 4, 12, 5, hair);
-      if (appearance === "curly") { rect(x, y + 2, 20, 5, hair); rect(x + 3, y, 14, 3, hair); }
-      rect(x + 6, y + 11, 2, 2, "#24203a"); rect(x + 12, y + 11, 2, 2, "#24203a");
-      if (appearance === "short") { rect(x + 5, y + 10, 5, 4, "#596484"); rect(x + 11, y + 10, 5, 4, "#596484"); }
-    }
-    if (appearance !== "plant") {
-      rect(x + 3, y + 20, 14, 6, color);
-      if (walking) {
-        rect(x + 1, y + 21, 18, 6, color);
-        rect(x + 4, y + 25, 12, 2, "#34283e");
-      }
-    }
-  }
-
-  const sessionDesks = [-10, 85].flatMap((y) => [36, 114, 192, 270].map((x) => ({ x, y })));
+  const spriteOrder = ["short", "long", "curly", "robot", "tiger", "lion", "cat", "fox"];
+  const sleeves = ["#d68d49", "#a78eb9", "#56867c", "#c6a783", "#595a72", "#dcc1a0", "#b87980", "#708264"];
+  const sessionDesks = [0, 101].flatMap((y) => [76, 149, 223, 297].map((x) => ({ x, y })));
   const managers = [
-    { id: "reader-seat", label: byId("office-reader"), color: "#63bfaf", appearance: "curly", offset: 0 },
-    { id: "ceo-seat", label: byId("office-ceo"), color: "#e9ae6d", appearance: "short", offset: 0.53 },
+    { id: "reader-seat", x: 273, index: 8 },
+    { id: "ceo-seat", x: 310, index: 9 },
   ];
-  const route = [[9, 77], [367, 77], [367, 173], [9, 173], [9, 77]];
-  const routeLength = 2 * (367 - 9 + 173 - 77);
   let lastFrame = -Infinity;
 
-  function manager(role, now, moving) {
-    const occupied = byId(role.id).getAttribute("aria-pressed") === "true";
-    role.label.hidden = !occupied;
-    if (!occupied) return false;
-    const distance = ((moving ? now / 48 : 0) + role.offset * routeLength) % routeLength;
-    let remaining = distance;
-    let x = route[0][0];
-    let y = route[0][1];
-    let facing = 1;
-    for (let index = 1; index < route.length; index++) {
-      const [fromX, fromY] = route[index - 1];
-      const [toX, toY] = route[index];
-      const length = Math.abs(toX - fromX) + Math.abs(toY - fromY);
-      const progress = Math.min(1, remaining / length);
-      facing = toX < fromX ? -1 : 1;
-      x = Math.round(fromX + (toX - fromX) * progress);
-      y = Math.round(fromY + (toY - fromY) * progress);
-      if (remaining <= length) break;
-      remaining -= length;
+  function character(index, x, bottom, size) {
+    if (!sprites.naturalWidth) return;
+    ctx.drawImage(sprites, index % 4 * 128, Math.floor(index / 4) * 128, 128, 128,
+      x - size / 2, bottom - size, size, size);
+  }
+
+  function raisedHands(index, x, bottom, now, both) {
+    const swing = Math.sin(now / 95) * 2;
+    for (const side of both ? [-1, 1] : [-1]) {
+      const handX = x + side * (18 + swing);
+      const handY = bottom - 29 - swing;
+      ctx.beginPath();
+      ctx.moveTo(x + side * 8, bottom - 12);
+      ctx.lineTo(x + side * 16, bottom - 18);
+      ctx.lineTo(handX, handY);
+      ctx.lineCap = "round";
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#362538";
+      ctx.stroke();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = sleeves[index];
+      ctx.stroke();
+      rect(handX - 2, handY - 3, 4, 4, "#ffd4aa");
     }
-    const stride = moving ? Math.sin(now / 125) : 0;
-    const lift = Math.round(Math.abs(stride));
-    rect(x + 2, y + 31, 16, 2, "#28263a");
-    rect(x + 4, y + 26, 5, 5 - Math.max(0, Math.round(stride * 3)), "#4b3c54");
-    rect(x + 11, y + 26, 5, 5 - Math.max(0, -Math.round(stride * 3)), "#4b3c54");
-    ctx.save();
-    ctx.translate(facing < 0 ? x + 20 : x, y - lift);
-    ctx.scale(facing, 1);
-    character(0, 0, role, true);
-    ctx.restore();
-    role.label.style.left = `${(x + 10) / canvas.width * 100}%`;
-    role.label.style.top = `${(y - lift + 23) / canvas.height * 100}%`;
-    return moving;
   }
 
   function canAnimate() {
@@ -556,62 +517,38 @@ function createOffice() {
 
   function draw(now = 0) {
     const moving = canAnimate();
-    rect(0, 0, 420, 225, "#211e31");
-    for (const y of [16, 112]) {
-      rect(10, y, 332, 76, "#302940");
-      rect(10, y, 332, 2, "#64536f");
-      for (const x of [31, 109, 187, 265]) {
-        rect(x, y + 5, 48, 20, "#514364");
-        rect(x + 2, y + 7, 44, 16, "#17233c");
-        for (let n = 0; n < 4; n++) {
-          rect(x + 5 + n * 10, y + 15, 6, 8, "#303d61");
-          rect(x + 7 + n * 10, y + 17, 2, 1, n % 2 ? "#ac9ad0" : "#dfa67d");
-        }
-      }
-    }
-    rect(12, 94, 390, 16, "#433550");
-    rect(12, 190, 390, 16, "#433550");
-    rect(355, 71, 46, 135, "#433550");
-    rect(6, 91, 22, 115, "#433550");
-    for (let x = 18; x < 400; x += 18) {
-      rect(x, 105, 12, 1, "#6a5373");
-      rect(x, 201, 12, 1, "#6a5373");
-    }
-    rect(376, 26, 18, 24, "#6b4a55");
-    rect(373, 23, 24, 8, "#6fa786");
+    ctx.clearRect(0, 0, width, height);
     for (const [index, { x, y }] of sessionDesks.entries()) {
-      ctx.save();
-      ctx.translate(0, y);
-      const colors = ["#829aff", "#6bc8b3", "#b78ef4", "#e290ad", "#d2ac83"];
-      rect(x + 23, 66, 20, 15, "#16192f");
-      rect(x + 25, 68, 16, 9, seats[index] ? identity(seats[index]).color : colors[index % colors.length]);
-      rect(x + 27, 70, 8, 1, "#f8e8ff");
-      rect(x + 29, 82, 6, 5, "#17172c");
       const session = seats[index];
-      if (session) {
-        const key = seatKey(session);
-        const active = now < (pulses.get(key) || 0);
-        const alerting = now < (gatePulses.get(key) || 0);
-        const bounce = alerting ? Math.floor(now / 90) % 2 * 5 : active ? Math.floor(now / 100) % 2 * 3 : 0;
-        character(x, 61 - bounce, identity(session));
-        if (gateSignals.has(key)) {
-          const color = alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
-          rect(x + 10, 53 - bounce, 8, 9, "#583451");
-          rect(x + 13, 54 - bounce, 2, 4, color);
-          rect(x + 13, 59 - bounce, 2, 2, color);
-        } else if (active) {
-          rect(x + 10, 59 - bounce, 6, 2, "#ffe1ac");
-          rect(x + 12, 57 - bounce, 2, 6, "#ffe1ac");
+      if (!session) continue;
+      const key = seatKey(session);
+      const active = moving && now < (pulses.get(key) || 0);
+      const alerting = moving && now < (gatePulses.get(key) || 0);
+      const cheering = moving && now < (celebrations.get(key) || 0);
+      const bottom = y + 85 - (cheering ? Math.floor(now / 120) % 2 * 3 : 0);
+      const sprite = spriteOrder.indexOf(identity(session).appearance);
+      if (alerting || cheering) raisedHands(sprite, x, bottom, now, cheering);
+      character(sprite, x, bottom, 38);
+      if (cheering || gateSignals.has(key)) {
+        const color = cheering ? "#9ff2cd" : alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
+        rect(x + 17, y + 48, 10, 11, "#42324e");
+        if (cheering) {
+          rect(x + 19, y + 53, 2, 3, color);
+          rect(x + 21, y + 54, 2, 2, color);
+          rect(x + 23, y + 51, 2, 4, color);
+        } else {
+          rect(x + 21, y + 50, 2, 4, color);
+          rect(x + 21, y + 55, 2, 2, color);
         }
+      } else if (active) {
+        const shift = Math.floor(now / 120) % 2 * 3;
+        rect(x + 14 + shift, y + 80, 4, 2, "#ffe1ac");
       }
-      rect(x - 3, 87, 42, 5, "#d38c67");
-      rect(x, 92, 37, 5, "#844f51");
-      rect(x + 2, 97, 4, 14, "#613748");
-      rect(x + 34, 97, 4, 14, "#613748");
-      ctx.restore();
     }
-    const patrolling = managers.map((role) => manager(role, now, moving)).some(Boolean);
-    if (moving && (patrolling || [...pulses.values(), ...gatePulses.values()].some((end) => now < end))) {
+    for (const { id, x, index } of managers) {
+      if (byId(id).getAttribute("aria-pressed") === "true") character(index, x, 242, 40);
+    }
+    if (moving && [...pulses.values(), ...gatePulses.values(), ...celebrations.values()].some((end) => now < end)) {
       lastFrame = now;
       frame = requestAnimationFrame(animateFrame);
     }
@@ -623,8 +560,14 @@ function createOffice() {
     else frame = requestAnimationFrame(animateFrame);
   }
 
+  sprites.addEventListener("load", () => {
+    cancelAnimationFrame(frame);
+    draw(performance.now());
+  });
+
   return {
-    update(sessions, gates) {
+    update(sessions, gates, items) {
+      const nextCompleted = new Set(items.filter((item) => item.status === "completed").map((item) => item.id));
       const nextGates = new Map(gates.map((entry) => [seatKey(entry), JSON.stringify(entry.gates)]));
       const present = sessions.filter((session) => session.state !== "ended" &&
         (session.state !== "quiet" || nextGates.has(seatKey(session))));
@@ -645,8 +588,8 @@ function createOffice() {
       const bubbles = seats.map((session, index) => {
         if (!session) return null;
         const bubble = tint(node("div", undefined, "speech-bubble"), session);
-        bubble.style.left = `${(sessionDesks[index].x + 12) / canvas.width * 100}%`;
-        bubble.style.top = `${(sessionDesks[index].y + 25) / canvas.height * 100}%`;
+        bubble.style.left = `${(sessionDesks[index].x) / width * 100}%`;
+        bubble.style.top = `${(sessionDesks[index].y + 43) / height * 100}%`;
         const text = activityTitle(session);
         bubble.append(node("strong", sessionTopic(session)), node("span", text));
         bubble.title = [sessionTitle(session), text, ...contextLines(session)].join("\n");
@@ -662,6 +605,18 @@ function createOffice() {
         if (end > now) nextPulses.set(key, end);
       }
       pulses = nextPulses;
+      const nextCelebrations = new Map();
+      for (const session of visible) {
+        const key = seatKey(session);
+        const previous = signals.get(key);
+        const work = session.context?.work;
+        const turned = previous !== session.id && session.kind === "turn_completed";
+        const finished = nextCompleted.has(work) && !completedWork.has(work);
+        const end = animate && previous && (turned || finished) ? now + 1700 : celebrations.get(key);
+        if (end > now) nextCelebrations.set(key, end);
+      }
+      celebrations = nextCelebrations;
+      completedWork = nextCompleted;
       const nextGatePulses = new Map();
       for (const [key, signature] of nextGates) {
         const end = animate && signature !== gateSignals.get(key) ? now + 1500 : gatePulses.get(key);
@@ -677,6 +632,7 @@ function createOffice() {
     pause() {
       pulses.clear();
       gatePulses.clear();
+      celebrations.clear();
       cancelAnimationFrame(frame);
       draw(performance.now());
     },

@@ -25,6 +25,8 @@ ASSETS = {
     "/details.js": ("details.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
+    "/office-characters.webp": ("office-characters.webp", "image/webp"),
+    "/office-night.webp": ("office-night.webp", "image/webp"),
 }
 
 
@@ -162,7 +164,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; "
-                         "style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+                         "style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
         self.end_headers()
         self.wfile.write(body)
 
