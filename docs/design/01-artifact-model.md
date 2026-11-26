@@ -118,3 +118,19 @@ features.yaml의 schema_version 1을 유지하며 verification.yaml을 일곱 �
 
 
 Core 0.5.0의 verification.revisions는 profile/reason/risks/conditions/considerations/required_steps/scope/findings/basis/previous/item_hash/approval_required/approval_reasons/approval_mode/preview_hash/hash를 누적한다. steps는 공식 절차 이름별 실제 수행 이력 배열(status/step/conclusion/recorded_at/evidence, 선택 inputs/source/elapsed_seconds)이다. 새 기록은 저장 구조·참조와 단조 상향을 검사하며 과거 완료 Work Item에 이 필드를 추정 삽입하지 않는다. Gate 스냅샷의 policy_sources는 정의의 출처이고 실행 결과의 reused_from은 결과의 원본이다. 직렬화·절차 의미는 [프로파일 계약](verification-profiles.md)을 따른다.
+
+## 산출물 재사용과 최소 수정
+
+No Change No Write, Reuse First, Single Source of Truth, Minimal Edit, No Extra Report를 적용한다. 공식 필수 생성·수정 계약이 우선이며 기존 구조·요구사항 식별 체계를 보존하고 관련 절·참조만 갱신한다.
+
+| 산출물 | 생성·수정이 필요한 정보 변화 |
+| --- | --- |
+| spec.md / plan.md | 신규 Feature·요구사항 / 신규 Feature·기술 설계 |
+| tasks.md | 현재 구현 작업·필수 선행 관계·완료 체크 |
+| research.md / data-model.md / contracts | 새 조사·기술 결정 / 데이터 모델 / 인터페이스 계약 |
+| quickstart.md | 실행·검증 방법 |
+| checklists / Discovery | 기존 공식·검증 정책 / Discovery 적용 조건 |
+| architecture.md / project.md / decisions.md | 전역 구조 / 프로젝트 정보 / 기록할 설계 결정 |
+| Baseline | 실제 관리정보 변경. 상태·범위·관계 등은 필요한 시점에 즉시 반영 |
+
+기존 Work Item·findings·Evidence·공식 산출물로 충분하면 별도 구현 완료·테스트 요약·영향·요구 충족·변경 요약 보고서나 Plan 중복 문서를 생성하지 않는다. 공식 절차·프로젝트 정책·사용자가 별도 보고서를 요구하면 예외다. 무관한 문구 정리·스타일 변경·전체 재작성·형식적 파일 수정도 하지 않는다. [분석 사실 재사용](05-impact-analysis.md)과 현재 Gate PASS 재사용은 구분한다.

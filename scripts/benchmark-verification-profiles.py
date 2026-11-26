@@ -15,7 +15,7 @@ from sdd_core.version_sync import install_skills
 from sdd_core.records import read_document,write_document
 from sdd_core.analysis import record_analysis
 A='01951d7f-b507-7200-8000-000000000001'
-new=__version__=='0.5.0'
+new=tuple(map(int,__version__.split('.'))) >= (0,5,0)
 def sample(agent):
  with TemporaryDirectory(prefix='specthread-profile-compare-') as folder:
   root=Path(folder);(root/'.specify').mkdir();install_skills(root,agent);scaffold(root)

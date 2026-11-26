@@ -48,3 +48,5 @@ Core 0.5.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출�
 세 Skill의 공통 대화·표시 지침은 설치 시 `_conversation.md`에서 합성한다. 공개 명령은 세 개를 유지하며 UI가 지원하는 경우에만 질문 선택 기능을 사용한다. 공통 실행·표시 계약은 [대화형 진행](conversation-flow.md)에 둔다.
 
 두 sdd-develop 설치본은 동일한 [위험도 프로파일·일반/예외 승인·절차 기록](verification-profiles.md)을 따른다. Core의 --apply 자동 경로와 --confirm 예외 경로는 에이전트의 명령 실행 권한을 대체하지 않는다. 공식 Skill은 고정 버전 원형을 유지하며 네이티브 Skill에서 필요한 호출만 선택한다.
+
+Core 0.5.1의 공통 sdd-develop 본문은 양쪽 네이티브 설치에 동일하게 배포된다. 분석 깊이와 테스트 수준·문서 수정 선택은 의미 판단이며 별도 에이전트 제어·관측·캐시 기능을 추가하지 않는다. [변경 중심 실행](04-artifact-lifecycle.md)을 따르되 호스트 권한과 공식 Skill 계약을 유지한다.

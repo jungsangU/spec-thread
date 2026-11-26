@@ -1,6 +1,6 @@
 # 04 Work Item과 개발 흐름
 
-설계 1.1. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
+설계 1.2. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
 
 ## 입력과 결과
 
@@ -61,3 +61,31 @@ Core 0.5.0의 kind=reconciliation 작업은 [정합화 승인 계약](reconcilia
 새 요청은 기존 Feature 매칭·Preflight·pending 생성 뒤 [프로파일](verification-profiles.md)을 확정하고 공통/Feature 정의와 추가 Gate를 합성한다. Lightweight/Standard의 명확한 분류와 기존 정책 재사용은 최초 요청 범위에서 진행한다. Strict·중요 불확실성은 구체적 승인 후 진행한다. 필요한 공식 절차 수행과 근거를 같은 Work Item에 기록하며 완료 시 프로파일 최소·동적 의무도 검사한다. 상태 간선·UUID·failed 종료·suspended 재개는 바뀌지 않는다.
 
 scope-expand의 기본 호출은 이제 Preview다. features/reason과 현재 Work Item/Feature 입력에 대한 실제 사용자 승인을 받은 뒤 --confirm HASH로 범위를 반영하고 프로파일·Gate 집합을 재평가한다. 일반 테스트 실패 수정은 승인 범위 안에서 같은 in_progress를 유지하며 별도 진행 동의를 반복하지 않는다. Baseline은 변경된 관리정보만 즉시/선택 반영하고 마지막 구조·참조 검사도 유지한다.
+
+## 변경 중심 실행의 연결
+
+[분석 종료·재사용](05-impact-analysis.md), [테스트·변경분 정합성](06-verification.md), [문서 쓰기 조건](01-artifact-model.md)을 기존 상태·승인·Gate에 적용한다. 다음 그림은 절차 선택이며 상태 머신을 추가하지 않는다.
+
+```mermaid
+flowchart TD
+  A[Feature 매칭 · Preflight · Work Item] --> B[대상 중심 분석 · 유효 사실 재사용]
+  B --> C[프로파일 · 영향 · 필요 승인 · 필수 Gate]
+  C --> D[필요한 산출물 부분 수정 · Tasks]
+  D --> E{공식 Analyze 의무·필요?}
+  E -->|예| F[공식 전체 계약 수행 또는 유효 결과]
+  E -->|아니오| G[구현 · 검증 공백의 테스트 작성]
+  F --> G
+  G --> H[충분한 최소 테스트 · 변경분 정합성]
+  H --> I{공식 Converge 의무·필요?}
+  I -->|예| J[공식 수행 또는 유효 결과]
+  I -->|아니오| K[변경 Baseline · 전체 구조 · 필수 Gate]
+  J --> L{보완 작업?}
+  L -->|있음| G
+  L -->|없음| K
+  K --> M{완료 조건 충족?}
+  M -->|예| N[completed]
+  M -->|관련 검사 실패| H
+  M -->|요구·계약·범위 변경| B
+```
+
+공식 절차의 선행 조건과 develop/verify 단계 Gate는 해당 단계 진입 전에 충족한다. 복구 가능한 오류는 같은 작업에서 수리하고 영향을 받은 검증만 재실행한다. 재개 시 기존 근거의 현재성을 점검해 필요한 부분만 다시 판단하며 failed/completed 종료와 버전 변환 실패 후 처음부터 재시도 규칙은 유지한다.

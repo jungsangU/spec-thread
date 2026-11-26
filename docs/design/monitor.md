@@ -1,6 +1,6 @@
 # SpecThread Monitor
 
-설계 1.1 · 사용자 승인 2026-11-23. 선택 설치 모듈은 지정한 프로젝트를 읽어 화면을 제공한다. [사전 검토와 사용자 제공 시각 레퍼런스](../validation/monitor-design-review.md)
+설계 1.2 · 사용자 승인 2026-11-23. 선택 설치 모듈은 지정한 프로젝트를 읽어 화면을 제공한다. [사전 검토와 사용자 제공 시각 레퍼런스](../validation/monitor-design-review.md)
 
 ## 요구사항과 경계
 

@@ -1,6 +1,6 @@
-# SpecThread 설계 1.1
+# SpecThread 설계 1.2
 
-설계 1.1 · Core 0.5.0. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
+설계 1.2 · Core 0.5.1. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
 
 ## 주제별 원본 명세
 
@@ -26,7 +26,7 @@
 | Git·협업 | [08 Git·세션 운영](08-git-integration.md) | 대상 Git 반영, 병렬 세션 책임·제외 범위, 제품 브랜치·PR·CI·설계 릴리즈 |
 | 제품 구현 절차 | [구현·설계 대조 반복](implementation-standard.md) | 구현·테스트·원문 재대조·누락 보완의 반복과 완료 증거 |
 | 개발 관측 | [SpecThread Monitor](monitor.md) | 사용자 실행형 읽기 전용 관측, 이벤트·화면 및 입력 한도 |
-| 인수 검증 | [PoC·MVP 인수 기준](acceptance.md) | P01~P18 시나리오, 수집 증거와 통과 기준. 실제 진행 상태는 백로그 |
+| 인수 검증 | [PoC·MVP 인수 기준](acceptance.md) | P01~P24 시나리오, 수집 증거와 통과 기준. 실제 진행 상태는 백로그 |
 
 ## 결정과 진행 상태
 
@@ -55,7 +55,9 @@
 
 ## 구현 재현성 검증
 
-현재 설계 1.1의 D01~D10 구현·검증·비교와 미측정 범위는 [위험도 기반 검증 보고서](../validation/risk-profiles-1.1-review.md)를 따른다. 아래 설계 1.0 보고서는 당시의 보존·기존 구현 근거다.
+설계 1.2의 정책 11~17 반영·실제 검증 범위와 미측정 지표는 [2차 효율화 검증](../validation/scoped-development-review.md)에 기록한다. 기존 1.1 기록은 당시 구현 근거로 유지한다.
+
+설계 1.1의 D01~D10 구현·검증·비교와 미측정 범위는 [위험도 기반 검증 보고서](../validation/risk-profiles-1.1-review.md)를 따른다. 아래 설계 1.0 보고서는 당시의 보존·기존 구현 근거다.
 
 [Core 0.5.0 구현·설계 재대조 결과](../validation/design-1.0-implementation-cycle.md)와 [문서 정리 당시 검토](../validation/design-1.0-implementation-review.md)에 정리 전후 보존 대조, 코드·테스트 대응, 문서 예시 실행과 미완료 범위를 기록한다. 정책 원본을 대체하지 않는 검증 보고서다. 구현 작업은 주제별 입력·출력·저장 필드·명령·Gate·실패 조건까지 읽어야 한다.
 

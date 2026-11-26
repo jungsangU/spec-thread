@@ -1,6 +1,6 @@
 # 대화형 질문과 단계 연결
 
-설계 1.1. 사용자는 시작 명령이나 자연어 요청으로 작업을 시작하고, 그 뒤에는 현재 단계 안내와 구체적인 다음 제안에 답하며 이어간다. 이 문서는 대화 UX와 표시 방식의 원본이다. Core의 [분석](03-analysis-standard.md)·[개발 상태](04-artifact-lifecycle.md)·[Gate](06-verification.md)·[승인형 Sync](reconciliation.md) 계약은 그대로 유지한다.
+설계 1.2. 사용자는 시작 명령이나 자연어 요청으로 작업을 시작하고, 그 뒤에는 현재 단계 안내와 구체적인 다음 제안에 답하며 이어간다. 이 문서는 대화 UX와 표시 방식의 원본이다. Core의 [분석](03-analysis-standard.md)·[개발 상태](04-artifact-lifecycle.md)·[Gate](06-verification.md)·[승인형 Sync](reconciliation.md) 계약은 그대로 유지한다.
 
 ## 초기 질문
 

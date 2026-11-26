@@ -32,6 +32,7 @@ LEGACY_HASHES = {
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "c5e4509e85dd35aa20e4e7fd5ba4d50fb71b9871324b3388f41efc44d17eb78c",
         "22af0785c02b4d460053386a6cfc5e542360f5c3b2bd0b0cbac00f8331ba298d",
         "6d61ce1ed74dd7712b2b9041e054e1e77d542e0b6ec0a25fcf9402da05791cad",
         "7aef15211c743d34dafb63b867aa908b99cbfa3a3cdbfd40bfa68b2ba2ab3baf",
@@ -60,6 +61,7 @@ MIGRATIONS = {
     "0.2.0": ("0.3.0", "feature-lifecycle-and-gates"),
     "0.3.0": ("0.4.0", "approved-reconciliation-and-selective-revalidation"),
     "0.4.0": ("0.5.0", "risk-profiles-and-reusable-verification"),
+    "0.5.0": ("0.5.1", "scoped-development-skill-policy"),
 }
 
 

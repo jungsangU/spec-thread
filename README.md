@@ -7,8 +7,8 @@
 공식 **GitHub Spec Kit**와 함께 사용하는 개발 하네스.<br>
 **Codex · Claude Code**의 개발 흐름에 기능 추적과 검증 기준을 연결합니다.
 
-![Core 0.5.0](https://img.shields.io/badge/Core-0.5.0-b75d43?style=flat-square)
-![Design 1.1](https://img.shields.io/badge/Design-1.1-7b7265?style=flat-square)
+![Core 0.5.1](https://img.shields.io/badge/Core-0.5.1-b75d43?style=flat-square)
+![Design 1.2](https://img.shields.io/badge/Design-1.2-7b7265?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3f6b59?style=flat-square)
 ![Spec Kit 1.4.0](https://img.shields.io/badge/Spec_Kit-1.4.0-63598a?style=flat-square)
 
@@ -102,7 +102,7 @@ target-project/
 
 ## 제품 구현 완료 기준
 
-설계 기반 구현 요청은 [구현 → 테스트 → 설계 대조 → 누락 보완](docs/design/implementation-standard.md)을 반복하고 실제 근거로 완료를 판단합니다. 최근 결과는 [설계 1.1 구현·검증 대조](docs/validation/risk-profiles-1.1-review.md)에 있습니다.
+설계 기반 구현 요청은 [구현 → 테스트 → 설계 대조 → 누락 보완](docs/design/implementation-standard.md)을 반복하고 실제 근거로 완료를 판단합니다. 최근 결과는 [2차 효율화 구현·검증](docs/validation/scoped-development-review.md)에 있습니다.
 
 ## 검증과 운영 기준
 
@@ -126,12 +126,14 @@ HTML은 저장소를 내려받아 브라우저에서 열 수 있습니다. 제�
 
 ## 현재 버전과 확인 범위
 
-**Core 0.5.0 · 설계 1.1 · Baseline schema_version 1**
+**Core 0.5.1 · 설계 1.2 · Baseline schema_version 1**
 
-Core 테스트 **98개**, 문서 예시 계약 **13개**와 Monitor **23개 통과·Windows 전용 1개 생략**을 확인했습니다. [설계 1.1 검증](docs/validation/risk-profiles-1.1-review.md)에는 공식 Spec Kit 1.4.0의 양쪽 설치·업데이트, 실제 0.4→0.5 변환과 동일 요청 Core 비교 실측을 담았습니다. Codex·Claude Code의 실제 공식 Skill 호출을 포함한 종단간 PoC·토큰 측정과 Windows 네이티브 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
+Core 테스트 **100개**, 문서 예시 계약 **13개**와 Monitor **25개 통과·Windows 전용 1개 생략**을 확인했습니다. [설계 1.1 검증](docs/validation/risk-profiles-1.1-review.md)에는 공식 Spec Kit 1.4.0의 양쪽 설치·업데이트, 실제 0.4→0.5 변환과 동일 요청 Core 비교 실측을 담았습니다. Codex·Claude Code의 실제 공식 Skill 호출을 포함한 종단간 PoC·토큰 측정과 Windows 네이티브 검증은 [백로그](docs/design/OPEN-ISSUES.md)에서 추적합니다.
 
 AI와 설계 작업을 시작할 때는 [AGENTS.md](AGENTS.md)를 먼저 읽고 [설계 목차](docs/design/README.md)의 순서로 현재 명세와 결정을 확인합니다.
 
 ## 선택 기능
 
 [SpecThread Monitor](monitor/README.md)는 지정한 Worktree의 작업, Gate, 산출물과 연결한 에이전트 이벤트를 로컬에서 관측합니다.
+
+설계 1.2의 대상 중심 분석·최소 충분 테스트·변경분 정합성·문서 최소 수정과 실제 검증 한계는 [2차 효율화 검증](docs/validation/scoped-development-review.md)을 참고하세요.

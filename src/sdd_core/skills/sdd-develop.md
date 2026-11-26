@@ -15,6 +15,12 @@ If versions block entry, Core replacement is a user action. For requested synchr
 
 Create pending work with `start FEATURE_UUID ...`. A failed retry is a NEW Work Item with --related FAILED_UUID. Resume only the same suspended ID after checking current scope/artifacts/profile/Gates; preserve unrelated edits. completed/failed never reopen.
 
+## Bound the work before expanding
+
+Use features/source-map/verification/current work records to locate the target. Analysis scope L1=target requirement/artifacts/code/tests; L2=direct dependencies/contracts; L3=propagating indirect impact; L4=whole project. Start L1 and expand on actual contract/consumer/global-constraint uncertainty, not profile name or file count. Inspect headings/search/related sections first: spec acceptance/common constraints, relevant plan/tasks/predecessors, affected contracts/data/research and project/architecture/decisions policies. Stop when target requirements, applicable constraints, direct effects and a justified unchanged boundary are known, with no important uncertainty/conflict. Do not omit common exceptions or required official scope.
+
+Within this Work Item reuse supported facts, findings, contracts and test methods from current context/existing records. Revisit only judgments affected by changed requirements/contracts/implementation/dependencies/environment, uncertainty or resume validity checks. After context loss reconstruct from existing Work Item/Baseline/evidence; add no cache, intermediate analysis report or context DB. Fact reuse is not PASS reuse.
+
 ## Risk profile and reusable policy
 
 Read `.specify/baseline/verification.yaml` once for applicable project/Feature rules. It stores definitions, not PASS. If unconfigured, discover real methods through the sdd-init verification contract; unknown methods do not mean no verification. Never duplicate test/CI configuration or reanalyze unchanged project scope.
@@ -40,6 +46,16 @@ For `verification-policy`, `profile`, `gates` and `gate-refresh` only, ask Core 
 - Traverse related/reverse dependencies when contracts are affected; stop only at a verified unchanged boundary. Use local/related/transitive depth appropriate to risk. Investigate before UNKNOWN; resolve critical UNKNOWN/CONFLICT before advancing. Record scope and findings as facts change.
 - Scope expansion uses `scope-expand ID PLAN.json` with features/reason. Preview, obtain actual approval, apply with --confirm, then reassess profile and compose Gates for the expanded scope. Ordinary repair within approved scope does not need another approval.
 
+## Choose sufficient tests and consistency checks
+
+Test levels are independent of analysis depth and risk: L1 in-process/unit/component/TestClient; L2 real dependency integration (DB/Redis); L3 live app server; L4 system/user E2E. Choose the minimum sufficient combination, not an obligatory ladder. Live networking, TLS/streaming, startup/shutdown, multi-worker/process/deployment behavior or mandatory project policy can require L3/L4 even for Lightweight; Strict does not imply L4. Record why live execution is needed in existing rationale/findings. Reuse repeatable project scripts, avoid needless restarts, handle port/timeout/cleanup, stop only owned processes and never use production resources without authorization. Dependency startup is not app-server startup.
+
+Reuse existing tests; add coverage for new behavior and regression tests for fixes (reproduce first when feasible), API error/boundary/compatibility or affected data behavior. Refactors favor existing regression checks; copy/docs-only edits default to no new functional test. Keep the framework/layout/strength, follow mandatory project TDD but do not impose universal TDD. Do not substitute curl/manual probes for feasible automated checks; record a concrete reason and real alternative when tests are impractical. Do not reassess whole-project coverage for every local change.
+
+Choose needed consistency relations: request↔spec, spec↔plan/code/test, plan↔code, tasks↔code, contract↔code, changed Baseline↔code. Cover affected unchanged requirements, consumers, compatibility and invariants as well as edited lines. Diff is a locator, not the impact boundary; distinguish user edits from this request. Expand on shared interfaces/global architecture/widespread dependencies, discovered mismatch, unreliable scope, mandatory policy or a user full-review request. Never rewrite approved intent to fit code.
+
+Analyze/Converge are optional by default for ordinary bug fixes/contract-preserving refactors; assess local extensions, new Features and multiple requirement/design changes; actively assess cross-Feature contracts/architecture. Mandatory policy and the requested whole-review purpose override these defaults. When selected, execute the actual installed official Skill over its full required scope, reuse its valid result instead of repeating equivalent semantic review, and never mark a required official step done using only a delta review. No official fork/edit, preset override or extra extension command.
+
 ## Gate execution and selective evidence
 
 Before develop/verify entry, compose project + target Feature + extra Work Item Gates with `gates ID PLAN.json --compose`. PLAN has reason/basis and gates (empty allowed only when existing policy covers the scope). Without --compose a full explicit set is allowed, but mandatory policy definitions still cannot be omitted/changed. Use --apply for normal composition/additions. Changed/removed existing required checks need concrete approval before --confirm; consent cannot override current mandatory policy or completion invariants.
@@ -53,6 +69,8 @@ For review Gates preserve the actual official findings, then --review REVIEW.jso
 Use gate-refresh ID [--stage ...] --apply for unchanged-path selective verification: valid latest PASS stays, only failed/stale/missing checks run. Actual rename/ambiguous candidates require the concrete preview and user approval before --confirm. Review Gates still need actual review submissions. Unchanged valid definitions may carry results with provenance when adding a Gate; changed definitions require current verification. No watchers or separate verification engine.
 
 ## Management and completion
+
+Reuse First, No Change No Write, Minimal Edit, Single Source of Truth, No Extra Report. Preserve document structure/requirement IDs and edit only affected sections/references. Spec changes only for new/changed intent; plan for changed design; tasks for current work; research/data/contracts/quickstart for their actual changes; checklists/Discovery only under existing conditions. Official required writes still apply. Use existing Work Item/findings/evidence/artifacts rather than separate completion/test/impact/coverage/change summaries or a duplicate plan, unless official/project/user requirements ask for one.
 
 Update only changed management facts: source additions/moves/deletions in Source Map, Feature/contract relationships, actual architecture facts and verification methods. Keep state/scope/lifecycle changes current immediately; leave unrelated Baseline files untouched. Run final structural/reference validation. Never adjust approved intent automatically to match code.
 

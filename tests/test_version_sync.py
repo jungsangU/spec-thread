@@ -196,9 +196,28 @@ class VersionSyncTest(unittest.TestCase):
         preview = self.cli('version-sync', str(self.root / 'sync-v04.json'))
         self.assertEqual(preview[0], 0, preview[2])
         plan = json.loads(preview[1])
-        self.assertEqual(plan['migrations'][-1]['migration'], 'risk-profiles-and-reusable-verification')
+        self.assertIn('risk-profiles-and-reusable-verification', [step['migration'] for step in plan['migrations']])
         result = self.cli('version-sync', str(self.root / 'sync-v04.json'), '--confirm', plan['approval_hash'])
         self.assertEqual(result[0], 0, result[2])
         self.assertEqual(read_document(self.root, 'verification.yaml')['status'], 'unconfigured')
         self.assertEqual((self.root / '.specify/baseline/work-items.yaml').read_bytes(), history)
         self.assertEqual((self.root / 'app.py').read_text(), 'value = 1\n')
+
+    def test_v05_policy_patch_keeps_every_baseline_byte_and_requires_version_match(self):
+        from sdd_core.version_sync import skill_marker
+        install_skills(self.root, 'codex'); scaffold(self.root)
+        self.write('quality-input.txt', 'Existing test input\n')
+        before = {p.name:p.read_bytes() for p in (self.root/'.specify/baseline').iterdir()}
+        project=json.loads((self.root/PROJECT).read_text());project['core_version']='0.5.0'
+        self.write(PROJECT,json.dumps(project))
+        marker=skill_marker('codex');record=json.loads((self.root/marker).read_text());record['core_version']='0.5.0'
+        self.write(marker,json.dumps(record))
+        self.assertEqual(self.cli('version-check')[0],1)
+        path=str(self.root/'policy-patch.json')
+        self.write('policy-patch.json',json.dumps({'agent':'codex','quality':[
+            {'features':[],'paths':['quality-input.txt'],'command':[sys.executable,'-c','pass']}]}))
+        preview=json.loads(self.cli('version-sync',path)[1])
+        self.assertEqual(preview['migrations'],[{'from':'0.5.0','to':'0.5.1','migration':'scoped-development-skill-policy'}])
+        self.assertEqual(self.cli('version-sync',path,'--confirm',preview['approval_hash'])[0],0)
+        self.assertEqual(before,{p.name:p.read_bytes() for p in (self.root/'.specify/baseline').iterdir()})
+        self.assertEqual(self.cli('version-check')[0],0)

@@ -29,9 +29,9 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 @media print { nav { display: none; } .layout { display: block; padding: 0; } main { padding: 0; border: 0; } pre { background: white; color: black; white-space: pre-wrap; } tr, .diagram { break-inside: avoid; } .diagram svg { min-width: 0; } }
 </style>
 </head>
-<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">작업 중 실행 확인</a></li><li><a href="#section-8">Monitor 선택 설치 및 실행</a></li><li><a href="#section-9">변경 위험에 비례해 개발하기</a></li></ul></nav><main>
+<body><div class="layout"><nav aria-label="목차"><strong>목차</strong><ul><li><a href="#section-1">작업에 맞는 문서 찾기</a></li><li><a href="#section-2">사례로 보는 문서와 코드의 의존 관계</a></li><li><a href="#section-3">검증 운영 예시</a></li><li><a href="#section-4">구현 범위와 후속 검증</a></li><li><a href="#section-5">SpecThread 제품을 구현할 때</a></li><li><a href="#section-6">질문과 단계 안내</a></li><li><a href="#section-7">작업 중 실행 확인</a></li><li><a href="#section-8">Monitor 선택 설치 및 실행</a></li><li><a href="#section-9">변경 위험에 비례해 개발하기</a></li><li><a href="#section-10">작은 변경을 이어서 개발할 때</a></li></ul></nav><main>
 <h1>SpecThread 설계와 실행 가이드</h1>
-<p>설계 1.1 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 <a href="README.md">주제별 설계 문서</a>에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 <a href="DECISIONS.md">결정 기록</a>에서 확인한다.</p>
+<p>설계 1.2 · 공식 Spec Kit v1.4.0 재현 기준. 이 문서는 사용 순서와 사례를 설명한다. 정책·스키마·Gate의 원본은 <a href="README.md">주제별 설계 문서</a>에 있으며 이 가이드에 재수록하지 않는다. 설계 선택의 이유는 <a href="DECISIONS.md">결정 기록</a>에서 확인한다.</p>
 <h2 id="section-1">작업에 맞는 문서 찾기</h2>
 <table>
 <thead>
@@ -103,5 +103,8 @@ code { font-family: ui-monospace, monospace; font-size: .9em; }
 <h2 id="section-9">변경 위험에 비례해 개발하기</h2>
 <p>sdd-develop은 요청·계약·의존성에 따라 Lightweight/Standard/Strict를 선택한다. 경량은 유효한 기존 계획과 변경 태스크를 활용하며, 일반 기능·신규 Feature는 필요한 공식 절차를, 고위험 계약은 구체적 확인과 확대 검증을 사용한다. 단순 파일 수로 위험을 정하지 않는다.</p>
 <p>검증 정의는 verification.yaml에서 재사용하고 같은 Work Item의 유효 PASS는 완료 직전에 무조건 다시 실행하지 않는다. 바뀐 검사·실패·누락 증거만 재검증한다. 일반 과정은 최초 요청 범위에서 이어가며 Strict·범위 확대·필수 정책 완화는 실제 사용자 판단을 받는다. 모든 프로파일의 완료 조건은 동일하다. <a href="verification-profiles.md">상세 정책·Core 예시</a></p>
+<h2 id="section-10">작은 변경을 이어서 개발할 때</h2>
+<p>대상 Feature·관련 요구와 공통 제약부터 확인하고 근거가 있는 의존 경계만 넓힌다. 유효한 기존 plan·테스트·판단을 활용하고 바뀐 정보만 수정한다. 테스트 수준 L1(in-process)·L2(실제 의존)·L3(live 서버)·L4(E2E)는 프로파일과 독립적으로 충분한 조합을 선택한다. 실제 서버가 필요하면 기존 판단 기록에 이유를 남긴다. 결함은 가능한 회귀 검사를 추가하고 불필요한 전체 문서 읽기·추가 보고서는 만들지 않는다.</p>
+<p>필수 Analyze/Converge는 공식 원형대로 수행한다. 선택적 호출 여부와 문서 수정 조건은 <a href="spec-kit-integration.md">공식 연동</a>·<a href="01-artifact-model.md">산출물</a>, 완료 차단과 현재 결과는 <a href="06-verification.md">검증</a>을 따른다. 기존 사용자 변경과 필수 전체 검사는 보존한다.</p>
 </main></div></body>
 </html>
