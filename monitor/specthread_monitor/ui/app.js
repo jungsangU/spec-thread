@@ -459,6 +459,8 @@ function createOffice() {
   ctx.imageSmoothingQuality = "high";
   const sprites = new Image();
   sprites.src = "/office-characters.webp";
+  const room = new Image();
+  room.src = "/office-night.webp";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let seats = [];
   let signals = new Map();
@@ -478,12 +480,12 @@ function createOffice() {
   const spriteOrder = ["short", "long", "curly", "robot", "tiger", "lion", "cat", "fox"];
   const sleeves = ["#d68d49", "#a78eb9", "#56867c", "#c6a783", "#595a72", "#dcc1a0", "#b87980", "#708264"];
   // The chair centers and seat height come from the 420 × 263 office background.
-  const chairSeat = 76;
-  const workerSize = 38;
+  const chairSeat = 78;
+  const workerSize = 40;
   const sessionDesks = [0, 101].flatMap((y) => [94, 168, 242, 315].map((x) => ({ x, y })));
   const managers = [
-    { id: "reader-seat", x: 273, bottom: 234, index: 8 },
-    { id: "ceo-seat", x: 310, bottom: 237, index: 9 },
+    { id: "reader-seat", x: 266, bottom: 242, index: 8 },
+    { id: "ceo-seat", x: 315, bottom: 250, index: 9 },
   ];
   let lastFrame = -Infinity;
 
@@ -491,6 +493,36 @@ function createOffice() {
     if (!sprites.naturalWidth) return;
     ctx.drawImage(sprites, index % 4 * 128, Math.floor(index / 4) * 128, 128, 128,
       x - size / 2, bottom - size, size, size);
+  }
+
+  function roomDetail(x, y, w, h) {
+    if (!room.naturalWidth) return;
+    const sx = room.naturalWidth / width;
+    const sy = room.naturalHeight / height;
+    ctx.drawImage(room, x * sx, y * sy, w * sx, h * sy, x, y, w, h);
+  }
+
+  function statusBadge(x, y, cheering, flashing) {
+    const color = cheering ? "#9ff2cd" : flashing ? "#ffe7a1" : "#ffd36a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = "#352437";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    if (cheering) {
+      rect(x - 3, y, 2, 2, "#352437");
+      rect(x - 1, y + 1, 2, 2, "#352437");
+      rect(x + 1, y - 2, 2, 4, "#352437");
+    } else {
+      rect(x - 1, y - 3, 2, 4, "#352437");
+      rect(x - 1, y + 2, 2, 2, "#352437");
+      if (flashing) {
+        rect(x + 8, y - 4, 3, 1.5, color);
+        rect(x + 9, y, 3, 1.5, color);
+      }
+    }
   }
 
   function raisedHands(index, x, bottom, now, both) {
@@ -530,22 +562,16 @@ function createOffice() {
       const cheering = moving && now < (celebrations.get(key) || 0);
       const bottom = y + chairSeat - (cheering ? Math.floor(now / 120) % 2 * 3 : 0);
       const sprite = spriteOrder.indexOf(identity(session).appearance);
-      if (alerting || cheering) raisedHands(sprite, x, bottom, now, cheering);
-      character(sprite, x, bottom, workerSize);
+      const workerX = x - 4;
+      if (alerting || cheering) raisedHands(sprite, workerX, bottom, now, cheering);
+      character(sprite, workerX, bottom, workerSize);
+      // Restore the near edge of the chair across the lower part of the sprite.
+      roomDetail(x - 7, y + 73, 14, 6);
       if (cheering || gateSignals.has(key)) {
-        const color = cheering ? "#9ff2cd" : alerting && Math.floor(now / 135) % 2 ? "#ff9da9" : "#ffd078";
-        rect(x + 17, y + 39, 10, 11, "#42324e");
-        if (cheering) {
-          rect(x + 19, y + 44, 2, 3, color);
-          rect(x + 21, y + 45, 2, 2, color);
-          rect(x + 23, y + 42, 2, 4, color);
-        } else {
-          rect(x + 21, y + 41, 2, 4, color);
-          rect(x + 21, y + 46, 2, 2, color);
-        }
+        statusBadge(x + 18, y + 42, cheering, alerting && Math.floor(now / 135) % 2 === 1);
       } else if (active) {
         const shift = Math.floor(now / 120) % 2 * 3;
-        rect(x + 13 + shift, y + chairSeat - 8, 4, 2, "#ffe1ac");
+        rect(x + 12 + shift, y + chairSeat - 9, 3, 2, "#ffe1ac");
       }
     }
     for (const { id, x, bottom, index } of managers) {
@@ -563,10 +589,12 @@ function createOffice() {
     else frame = requestAnimationFrame(animateFrame);
   }
 
-  sprites.addEventListener("load", () => {
+  function redraw() {
     cancelAnimationFrame(frame);
     draw(performance.now());
-  });
+  }
+  sprites.addEventListener("load", redraw);
+  room.addEventListener("load", redraw);
 
   return {
     update(sessions, gates, items) {
@@ -632,7 +660,7 @@ function createOffice() {
       cancelAnimationFrame(frame);
       draw(now);
     },
-    redraw() { cancelAnimationFrame(frame); draw(performance.now()); },
+    redraw,
     pause() {
       pulses.clear();
       gatePulses.clear();
