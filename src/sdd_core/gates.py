@@ -1,3 +1,4 @@
+from .concurrency import metadata_transaction
 from copy import deepcopy
 
 from .baseline import mapping, nonempty, sequence, validate
@@ -91,6 +92,7 @@ def prepare_gate_plan(root, identifier, plan, *, compose_policy=False):
     return preview
 
 
+@metadata_transaction
 def register_gates(root, identifier, preview):
     document, item = work_item(root, identifier, editable=True)
     if content_hash(item.get("gate_revisions", [])) != preview["previous"]:
@@ -195,10 +197,16 @@ def execute_gate(root, identifier, gate_id, review=None, *, force=False):
                 item.setdefault('gate_results', {}).setdefault(gate_id, []).append(result)
                 write_document(root, 'work-items.yaml', document)
                 return {**result, 'action': 'reuse'}
-    history_hash = content_hash(document)
+    history_hash = content_hash(item)
+    management_hash = content_hash({k:v for k,v in document.items() if k != "work_items"})
     before = input_files(root, gate["paths"])
+    from .evidence import input_modes
+    before_modes=input_modes(root,gate["paths"])
     bound = {**gate, "revision": revision["hash"]}
-    result = {"status": "UNKNOWN", "definition_hash": content_hash(bound), "inputs": before}
+    result = {"status": "UNKNOWN", "definition_hash": content_hash(bound), "inputs": before,"input_modes":before_modes}
+    from .workspaces import execution_context
+    context=execution_context(root)
+    if context is not None:result["execution_context"]=context
     try:
         if gate["kind"] == "command":
             if review is not None:
@@ -223,8 +231,7 @@ def execute_gate(root, identifier, gate_id, review=None, *, force=False):
         result["error"] = str(error)
         if isinstance(error, CheckFailure):
             result["execution"] = error.result
-    if content_hash(read_document(root, "work-items.yaml")) != history_hash:
-        raise ValueError("검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요")
+
     if gate.get('capture_log'):
         from .version_sync import write_file, json_bytes
         expected = f'docs/sdd/evidence/{identifier}/{gate_id}.log'
@@ -241,6 +248,24 @@ def execute_gate(root, identifier, gate_id, review=None, *, force=False):
                 result.update(status='FAIL', error=str(error))
         else:
             raise ValueError('자동 실행 로그는 Core가 정한 경로에만 기록합니다')
-    item.setdefault("gate_results", {}).setdefault(gate_id, []).append(result)
-    write_document(root, "work-items.yaml", document)
+    from .concurrency import project_lock
+    with project_lock(root):
+        current_document, current_item = work_item(root, identifier, editable=True)
+        if content_hash({k:v for k,v in current_document.items() if k != "work_items"}) != management_hash:
+            raise ValueError("검증 중 관리 구조가 변경됐습니다")
+        if content_hash(current_item) != history_hash:
+            raise ValueError('검증 중 동일 Work Item/Gate 기록이 변경됐습니다')
+        current_revision = latest_revision(root, current_item)
+        if current_revision['hash'] != revision['hash']:
+            raise ValueError('검증 정책이 변경됐습니다')
+        try:
+            changed=input_files(root,gate['paths'])!=before or input_modes(root,gate['paths'])!=before_modes or execution_context(root)!=context
+        except (OSError,ValueError):changed=True
+        if changed:result['status']='STALE'
+        if result['status'] == 'PASS' and verify_evidence(root, gate['evidence']) != result.get('evidence'):
+            result['status'] = 'STALE'
+        from .workspaces import retain_evidence
+        retain_evidence(root,identifier,result)
+        current_item.setdefault('gate_results', {}).setdefault(gate_id, []).append(result)
+        write_document(root, 'work-items.yaml', current_document)
     return result

@@ -268,6 +268,27 @@ class SetupTest(unittest.TestCase):
         self.assertEqual(self.run_setup('update')['status'], 'complete')
 
 
+    def test_mode_defaults_and_selected_mode_survive_update(self):
+        from sdd_core.workspaces import config,mode
+        self.run_setup()
+        self.assertEqual(config(self.root)['mode'],'direct')
+        mode(self.root,'isolated')
+        self.run_setup('update')
+        self.assertEqual(config(self.root)['mode'],'isolated')
+
+    def test_new_install_can_select_isolated_without_extra_commands(self):
+        from sdd_core.workspaces import config
+        self.run_setup(development_mode='isolated')
+        self.assertEqual(config(self.root)['mode'],'isolated')
+
+
+    def test_invalid_mode_blocks_before_any_official_write(self):
+        with self.assertRaisesRegex(ValueError,'개발 모드'):
+            self.run_setup(development_mode='unsupported')
+        self.assertEqual(self.calls,[])
+        self.assertFalse((self.root/PROJECT).exists())
+
+
 class SetupEncodingTest(unittest.TestCase):
     def test_official_child_uses_utf8_even_with_cp949_environment(self):
         import os

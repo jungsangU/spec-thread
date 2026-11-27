@@ -175,7 +175,7 @@ function renderSessionDetails(data) {
         ...(changedPaths.length ? [sectionBlock("이 세션에서 관측한 변경", changedPaths.slice(0, 8).map((path) =>
           data.git?.files.some((change) => change.path === path) ? routeButton(path, "changes", path) : node("code", path)),
           `${changedPaths.length}개 경로 · 세션 이벤트 기준`)] : []),
-        renameTopic(session), fieldGrid([["현재 관측", activityTitle(session)], ["작업 폴더", linked.directory || session.directory], ["연결 Feature", linked.features?.join(" · ") || "미확인"], ["변경 파일", `${files}개`]]),
+        renameTopic(session), fieldGrid([["현재 관측", activityTitle(session)], ["작업 폴더", linked.directory || session.directory], ["독립 Workspace", data.workspaces?.find((row)=>row.id===session.workspace)?.title || (session.workspace ? "등록 Workspace" : "원본 또는 미확인")], ["연결 Feature", linked.features?.join(" · ") || "미확인"], ["변경 파일", `${files}개`]]),
         sectionBlock("연결 작업과 검증", [...(linked.work ? [routeButton("연결된 Work Item 보기 →", "work-items", linked.work)] : [line("명시적으로 연결된 Work Item이 없습니다.")]), ...gates]),
         sectionBlock("최근 활동", [timeline], `${events.length}개 관측 · 최신순`),
         details("원본 식별 정보", `identity:${identity(session).key}`, contextLines(session, true).map(line))];

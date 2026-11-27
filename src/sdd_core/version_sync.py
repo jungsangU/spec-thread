@@ -17,10 +17,12 @@ PROJECT = ".specify/spec-thread.json"
 RUNNER = ".specify/sdd-core"
 BASELINE = ".specify/baseline/"
 FOLDERS = {"codex": ".agents", "claude": ".claude"}
-ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync")
+ACTIVE = ("sdd-init", "sdd-develop", "sdd-sync", "sdd-mode")
 RETIRED = "sdd-commit"
 LEGACY_HASHES = {
+    "sdd-mode": set(),
     "sdd-init": {
+        "a702f48ca9634570d08e7e1f7ab0ed0e6d9f930fec0fe86cce2b0717e9942705",
         "3ad4eb0792b88eafd07d7c7d5a5288664268b562ae05a79c2634b5e40d5fc865",
         "93c4dbae17c47ef3d19d8adc6e82908285695108c8dffe13b57d9bf14a097e34",
         "9d1985ff03e94b7b74a316e15207b6f7c3e5b3e46b249ca00d6ba438c4921eb0",
@@ -32,6 +34,7 @@ LEGACY_HASHES = {
         "8aed08fb376b14dbd36a52ad1d01a080254383f5955520165fbb328b3465b2e2",
     },
     "sdd-develop": {
+        "5c1c09e08e3a84684936f5e22ec114746206d550308d3d00c24977d38c69a68e",
         "c5e4509e85dd35aa20e4e7fd5ba4d50fb71b9871324b3388f41efc44d17eb78c",
         "22af0785c02b4d460053386a6cfc5e542360f5c3b2bd0b0cbac00f8331ba298d",
         "6d61ce1ed74dd7712b2b9041e054e1e77d542e0b6ec0a25fcf9402da05791cad",
@@ -44,6 +47,7 @@ LEGACY_HASHES = {
         "73f439156645c2ee0b36f703b58256653e00634f6a7e145dc13d3fee4fa7b3bc",
     },
     "sdd-sync": {
+        "9e1ec8a78aee383badc524307d0cd8e2b14e7397442065aae6e2dc5c493785ae",
         "a6ea26b5d0d16617a94742ed48df4370cb72444bdbe301f5e280e07fbb49782d",
         "bc873b8d758c60091da732accbee7c773b2b29a1a6e21ec0369bc8132ba687c2",
         "fdf79f730c3a29af08c15f6576f160ccf4a269656902aac5a3ab251ea71819bd",
@@ -62,6 +66,7 @@ MIGRATIONS = {
     "0.3.0": ("0.4.0", "approved-reconciliation-and-selective-revalidation"),
     "0.4.0": ("0.5.0", "risk-profiles-and-reusable-verification"),
     "0.5.0": ("0.5.1", "scoped-development-skill-policy"),
+    "0.5.1": ("0.6.0", "isolated-work-items-and-cooperative-concurrency"),
 }
 
 
@@ -289,6 +294,9 @@ def snapshot(root, paths):
 
 
 def plan_sync(root, config):
+    from .workspaces import update_blockers
+    blockers=update_blockers(root)
+    if blockers:raise ValueError(f"활성 Workspace/트랜잭션으로 업데이트 차단: {blockers}")
     validate(root, legacy=True)
     if read_file(root, BASELINE + "verification.yaml") is not None:
         from .verification import registry
@@ -440,7 +448,9 @@ def apply_sync(root, plan, outputs, features):
     try:
         validate(root)
         require_skills(root, plan["agent"])
+        old_record=read_marker(root,PROJECT) or {}
         record = project_record(plan["agent"], global_blocked, sorted(restricted))
+        if 'development' in old_record:record['development']=old_record['development']
         write_file(root, PROJECT, json_bytes(record))
     except (OSError, ValueError) as error:
         raise ValueError(f"동기화 확정 실패. 사용자 원복 후 처음부터 재시도: {error}") from error

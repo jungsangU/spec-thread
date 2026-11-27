@@ -6,6 +6,7 @@
 | 초기화 | `$sdd-init` | `/sdd-init` |
 | 개발 | `$sdd-develop` | `/sdd-develop` |
 | 외부 변경 정합화 | `$sdd-sync` | `/sdd-sync` |
+| 모드 조회·변경 | `$sdd-mode` | `/sdd-mode` |
 
 공식 GitHub Spec Kit의 원형·설치 경로를 유지하며 [통합 설치](installation.md)가 공식 설치·연동 명령을 내부 호출한다. 문서 재현 기준은 v1.4.0이다. `sdd-core install-skills codex|claude`는 공통 절차를 각 폴더에 설치하고 같은 위치에 내용이 다른 스킬과 충돌하면 오류를 보고한다. 기존 공식 설치를 교체할 필요가 없다.
 
@@ -45,8 +46,12 @@ Core 0.5.0의 reconcile/gate-refresh 미리보기·적용은 JSON 결과를 출�
 
 일반 사용자 설치·업데이트는 [install/update](installation.md)를 사용한다. install-skills·version-sync는 그 내부 API와 고급 진단용이며 설치 가이드에서 사용자 필수 단계로 나열하지 않는다. 네이티브 Skill의 Core 호출은 프로젝트 runner를 통해 전용 환경으로 연결한다.
 
-세 Skill의 공통 대화·표시 지침은 설치 시 `_conversation.md`에서 합성한다. 공개 명령은 세 개를 유지하며 UI가 지원하는 경우에만 질문 선택 기능을 사용한다. 공통 실행·표시 계약은 [대화형 진행](conversation-flow.md)에 둔다.
+네 Skill의 공통 대화·표시 지침은 설치 시 `_conversation.md`에서 합성한다. 공개 명령은 네 개이며 UI가 지원하는 경우에만 질문 선택 기능을 사용한다. 공통 실행·표시 계약은 [대화형 진행](conversation-flow.md)에 둔다.
 
 두 sdd-develop 설치본은 동일한 [위험도 프로파일·일반/예외 승인·절차 기록](verification-profiles.md)을 따른다. Core의 --apply 자동 경로와 --confirm 예외 경로는 에이전트의 명령 실행 권한을 대체하지 않는다. 공식 Skill은 고정 버전 원형을 유지하며 네이티브 Skill에서 필요한 호출만 선택한다.
 
 Core 0.5.1의 공통 sdd-develop 본문은 양쪽 네이티브 설치에 동일하게 배포된다. 분석 깊이와 테스트 수준·문서 수정 선택은 의미 판단이며 별도 에이전트 제어·관측·캐시 기능을 추가하지 않는다. [변경 중심 실행](04-artifact-lifecycle.md)을 따르되 호스트 권한과 공식 Skill 계약을 유지한다.
+
+## Direct·Isolated 공통 Adapter
+
+Core 0.6.0은 네 Skill(sdd-init/develop/sync/mode)을 같은 공통 원문·대화 지침에서 배포한다. `$sdd-mode` 또는 `/sdd-mode`는 모드 조회·명시적 변경이다. 실제 같은 세션에서 절대 편집 경로·명령 cwd·권한·원본 변경 차단·자연 Hook 연결을 확인한 경우만 Isolated에 진입한다. Claude와 Codex 각각의 도구 차이 및 미확인 차단은 [병렬 개발](parallel-development.md)을 따른다. 공개 Skill 수 증가 외 공식 Spec Kit 명령은 변경하지 않는다.

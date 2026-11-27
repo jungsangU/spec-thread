@@ -1,6 +1,6 @@
 # SpecThread 통합 상세 설계서
 
-설계 1.2. 이 파일은 주제별 상세 명세를 연결하는 통합 진입점이다. 상세 규칙을 복사하지 않고 아래 원본 문서를 참조한다. 문서별 책임과 전체 읽기 순서는 [설계 목차](README.md), 실제 사용 예시는 [실행 가이드](SpecThread-설계와-실행-가이드.md)에 있다.
+설계 2.0. 이 파일은 주제별 상세 명세를 연결하는 통합 진입점이다. 상세 규칙을 복사하지 않고 아래 원본 문서를 참조한다. 문서별 책임과 전체 읽기 순서는 [설계 목차](README.md), 실제 사용 예시는 [실행 가이드](SpecThread-설계와-실행-가이드.md)에 있다.
 
 ## 1. 목적과 권위
 
@@ -24,7 +24,7 @@
 
 ## 6. 상태 전이 및 병렬 실행
 
-[Work Item 상태와 재개](04-artifact-lifecycle.md). 초기 분석 상태는 [Discovery](03-analysis-standard.md), 병렬 운영은 [Git·세션 운영](08-git-integration.md)에서 정의한다.
+[Work Item 상태와 재개](04-artifact-lifecycle.md). 초기 분석 상태는 [Discovery](03-analysis-standard.md), 작업 격리·통합은 [병렬 개발](parallel-development.md), Git·세션 분배는 [Git·세션 운영](08-git-integration.md)에서 정의한다.
 
 ## 7. 영향 분석과 위험도 게이트
 

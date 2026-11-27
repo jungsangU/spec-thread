@@ -1,0 +1,378 @@
+{
+  "before": {
+    "core": "0.5.1",
+    "samples": [
+      {
+        "parallel": false,
+        "seconds": 0.05539558397140354,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": false,
+        "seconds": 0.053557417006231844,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": false,
+        "seconds": 0.04913816699991003,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.264821040967945,
+        "results": [
+          {
+            "id": "01a21d15-d72c-7f3c-8f47-bb3f5bc59843",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.08733587502501905
+          },
+          {
+            "id": "01a21d15-d773-79db-ace9-bdb095e6aef3",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.0882094589760527
+          }
+        ],
+        "false_invalidations": 2,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.23396987502928823,
+        "results": [
+          {
+            "id": "01a21d15-d92a-7822-90f7-6a1af76e5470",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.06456570798764005
+          },
+          {
+            "id": "01a21d15-d8e2-7414-9086-ab40c55f296f",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.06473129196092486
+          }
+        ],
+        "false_invalidations": 2,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.22557399998186156,
+        "results": [
+          {
+            "id": "01a21d15-dac5-7e81-a136-a9fda6cd610c",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.07509958394803107
+          },
+          {
+            "id": "01a21d15-da7b-7fb7-a39b-aba248ca2a52",
+            "status": "ERROR",
+            "error": "검증 중 Work Item/Gate 기록이 변경됐습니다. 결과를 다시 검토하세요",
+            "seconds": 0.07536995899863541
+          }
+        ],
+        "false_invalidations": 2,
+        "native_agent": false
+      }
+    ],
+    "single_median_seconds": 0.053557417006231844,
+    "parallel_median_seconds": 0.23396987502928823,
+    "false_invalidations": 6
+  },
+  "after": {
+    "core": "0.6.0",
+    "samples": [
+      {
+        "parallel": false,
+        "seconds": 0.0487724170088768,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": false,
+        "seconds": 0.04827770800329745,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": false,
+        "seconds": 0.04917300003580749,
+        "results": [
+          {
+            "status": "PASS"
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.2614444579812698,
+        "results": [
+          {
+            "id": "01a21d16-01f0-750b-9150-bd280566b882",
+            "status": "PASS",
+            "seconds": 0.07140808296389878
+          },
+          {
+            "id": "01a21d16-023a-70cf-a31f-a61ca6053a5d",
+            "status": "PASS",
+            "seconds": 0.10179066704586148
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.26678162498865277,
+        "results": [
+          {
+            "id": "01a21d16-03f6-7a5a-b54a-9cfd2677ea33",
+            "status": "PASS",
+            "seconds": 0.0823688330128789
+          },
+          {
+            "id": "01a21d16-03ad-7de4-98ce-2df67cb2dc75",
+            "status": "PASS",
+            "seconds": 0.11962662497535348
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      },
+      {
+        "parallel": true,
+        "seconds": 0.26624825003091246,
+        "results": [
+          {
+            "id": "01a21d16-0567-7c77-9032-07174439d202",
+            "status": "PASS",
+            "seconds": 0.08794129197485745
+          },
+          {
+            "id": "01a21d16-05b7-7e7a-a162-4d06a068ba27",
+            "status": "PASS",
+            "seconds": 0.11827874998562038
+          }
+        ],
+        "false_invalidations": 0,
+        "native_agent": false
+      }
+    ],
+    "single_median_seconds": 0.0487724170088768,
+    "parallel_median_seconds": 0.26624825003091246,
+    "false_invalidations": 0
+  },
+  "isolated": {
+    "native_agent": false,
+    "samples": [
+      {
+        "snapshot_seconds": 0.02932104200590402,
+        "files": 21,
+        "copy_methods": {
+          "copy": 0,
+          "cow": 21
+        },
+        "integration_seconds": 0.18883916700724512,
+        "result": "integrated",
+        "usage": {
+          "logical_bytes": 147660,
+          "reported_allocated_bytes": 290816,
+          "physical_unique_bytes": null
+        }
+      },
+      {
+        "snapshot_seconds": 0.028866290987934917,
+        "files": 21,
+        "copy_methods": {
+          "copy": 0,
+          "cow": 21
+        },
+        "integration_seconds": 0.20701033296063542,
+        "result": "integrated",
+        "usage": {
+          "logical_bytes": 147661,
+          "reported_allocated_bytes": 290816,
+          "physical_unique_bytes": null
+        }
+      },
+      {
+        "snapshot_seconds": 0.02923166600521654,
+        "files": 21,
+        "copy_methods": {
+          "copy": 0,
+          "cow": 21
+        },
+        "integration_seconds": 0.19233975000679493,
+        "result": "integrated",
+        "usage": {
+          "logical_bytes": 147660,
+          "reported_allocated_bytes": 290816,
+          "physical_unique_bytes": null
+        }
+      }
+    ]
+  },
+  "official_install": [
+    {
+      "agent": "codex",
+      "install": "complete",
+      "update": "complete",
+      "official_spec_kit": "ok",
+      "core_version": "0.6.0",
+      "verification_state": "unconfigured",
+      "baseline_files": 7,
+      "skill_bytes": 28088
+    },
+    {
+      "agent": "claude",
+      "install": "complete",
+      "update": "complete",
+      "official_spec_kit": "ok",
+      "core_version": "0.6.0",
+      "verification_state": "unconfigured",
+      "baseline_files": 7,
+      "skill_bytes": 28088
+    }
+  ],
+  "upgrade_051": {
+    "status": "complete",
+    "agent": "claude",
+    "core_version": "0.6.0",
+    "spec_kit_version": "1.4.0",
+    "runner": ".specify/sdd-core",
+    "application_preserved": true,
+    "baseline_bytes_preserved": true,
+    "mode": "direct"
+  },
+  "gitless_spec_kit": {
+    "status": "passed",
+    "no_git_directory": true,
+    "actual_official_scripts": [
+      {
+        "args": [
+          "bash",
+          ".specify/scripts/bash/create-new-feature.sh",
+          "--json",
+          "--short-name",
+          "isolation-poc",
+          "Independent feature with no Git"
+        ],
+        "exit": 0,
+        "stdout": "{\"BRANCH_NAME\":\"001-isolation-poc\",\"SPEC_FILE\":\"/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc/spec.md\",\"FEATURE_NUM\":\"001\"}\n",
+        "stderr": "# To persist: export SPECIFY_FEATURE=001-isolation-poc\n#              export SPECIFY_FEATURE_DIRECTORY=/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc\n"
+      },
+      {
+        "args": [
+          "bash",
+          ".specify/scripts/bash/setup-plan.sh",
+          "--json"
+        ],
+        "exit": 0,
+        "stdout": "{\"FEATURE_SPEC\":\"/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc/spec.md\",\"IMPL_PLAN\":\"/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc/plan.md\",\"FEATURE_DIR\":\"/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc\",\"BRANCH\":\"001-isolation-poc\"}\n",
+        "stderr": "Copied plan template to /var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc/plan.md\n"
+      },
+      {
+        "args": [
+          "bash",
+          ".specify/scripts/bash/check-prerequisites.sh",
+          "--json",
+          "--require-spec",
+          "--require-tasks",
+          "--include-tasks"
+        ],
+        "exit": 0,
+        "stdout": "{\"FEATURE_DIR\":\"/var/folders/t5/7xkpj9kx4ds1dpbv5n2y_0s40000gn/T/specthread-no-git-poc-aqlevt7a/specs/001-isolation-poc\",\"AVAILABLE_DOCS\":[\"tasks.md\"]}\n",
+        "stderr": ""
+      }
+    ],
+    "native_model_execution": false
+  },
+  "native_codex": {
+    "session": "same active Codex session (identifier omitted)",
+    "observed_checks": {
+      "same_session": true,
+      "absolute_edit_target": true,
+      "command_cwd": true,
+      "sandbox_access": true,
+      "origin_write_guard": true,
+      "hook_origin_link": false
+    },
+    "origin_unchanged": true,
+    "entry": "blocked",
+    "limit": "The existing host session has not naturally delivered a Hook from this new fixture project. No fabricated native event or new agent process used."
+  },
+  "html": [
+    {
+      "file": "SpecThread-설계-소개.html",
+      "title": "SpecThread — 요청에서 검증까지, 하나의 흐름으로",
+      "horizontalOverflow": false,
+      "headings": 8,
+      "rows": 0,
+      "errors": []
+    },
+    {
+      "file": "SpecThread-전체-기능목록.html",
+      "title": "SpecThread · 전체 기능 목록",
+      "horizontalOverflow": false,
+      "headings": 15,
+      "rows": 119,
+      "filteredRows": 17,
+      "errors": []
+    },
+    {
+      "file": "SpecThread-설계와-실행-가이드.html",
+      "title": "SpecThread 설계와 실행 가이드",
+      "horizontalOverflow": false,
+      "headings": 11,
+      "rows": 6,
+      "errors": []
+    }
+  ],
+  "final_tests": {
+    "core": {
+      "run": 134,
+      "passed": 134
+    },
+    "monitor": {
+      "run": 29,
+      "passed": 28,
+      "skipped": 1,
+      "skip_reason": "Windows-only native hook execution"
+    },
+    "design_markdown": 30,
+    "document_examples": 13
+  }
+}

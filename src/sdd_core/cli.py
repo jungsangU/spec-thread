@@ -61,6 +61,43 @@ def gate_confirmation(root, args, approval, mismatch):
     return args.confirm is not None
 
 
+from .concurrency import metadata_transaction
+
+
+@metadata_transaction
+def complete_work(root, identifier, filename):
+    plan = read_plan(filename)
+    actual = plan["actual_features"]
+    if not isinstance(actual, list) or any(not isinstance(item, str) for item in actual):
+        raise ValueError("actual_features에는 Feature UUID 목록이 필요합니다")
+    require_project(root, scope=work_scope(root, identifier) + actual)
+    _, current_item = work_item(root, identifier)
+    if current_item.get("kind") != "reconciliation":
+        develop_check(root, work_scope(root, identifier) + actual)
+    check_findings(plan.get("findings"))
+    if not plan["findings"]:
+        raise ValueError("완료 영향 판정 근거가 필요합니다")
+    _, item = work_item(root, identifier, editable=True)
+    if set(actual) - set(item["declared_features"]):
+        raise ValueError("실제 변경 범위를 선언 범위에 반영하고 Gate 집합을 재검토하세요")
+    statuses = require_gates(root, item, "complete")
+    evidence = verify_evidence(root, [row["ref"] for row in plan["evidence"]])
+    inputs = {}
+    for status in statuses:
+        runs = item["gate_results"][status["id"]]
+        inputs.update(runs[-1]["inputs"])
+    if not inputs:
+        raise ValueError("Gate 검증 입력 기록이 필요합니다")
+    update(root, identifier, "completed", {
+        "actual_features": actual, "findings": plan["findings"],
+        "validation": {
+            "status": "passed", "fingerprint": content_hash(inputs),
+            "evidence": [{"ref": ref} for ref in evidence],
+            "gate_status": statuses,
+        },
+    })
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sdd-core")
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -76,7 +113,8 @@ def main(argv=None):
     hash_command = commands.add_parser("fingerprint")
     hash_command.add_argument("paths", nargs="+")
     start = commands.add_parser("start")
-    start.add_argument("features", nargs="+")
+    start.add_argument("features", nargs="*")
+    start.add_argument("--discovery",action="store_true")
     start.add_argument("--related", action="append", default=[])
     transition = commands.add_parser("transition")
     transition.add_argument("id")
@@ -111,6 +149,7 @@ def main(argv=None):
     scope.add_argument("id")
     scope.add_argument("plan", type=Path)
     scope.add_argument("--confirm")
+    scope.add_argument('--apply',action='store_true')
     gates = commands.add_parser("gates")
     gates.add_argument("id")
     gates.add_argument("plan", type=Path)
@@ -150,6 +189,22 @@ def main(argv=None):
     step.add_argument('id')
     step.add_argument('step', choices=sorted(verification.STEPS))
     step.add_argument('plan', type=Path)
+    baseline_write=commands.add_parser('baseline-write')
+    baseline_write.add_argument('name',choices=['project.md','architecture.md','decisions.md'])
+    baseline_write.add_argument('plan',type=Path)
+    commands.add_parser('source-map').add_argument('plan',type=Path)
+    mode_parser=commands.add_parser('mode')
+    mode_parser.add_argument('mode',nargs='?',choices=['direct','isolated'])
+    mode_parser.add_argument('--runtime-root',type=Path)
+    mode_parser.add_argument('--resolution-attempts',type=int)
+    mode_parser.add_argument('--resolution-seconds',type=int)
+    mode_parser.add_argument('--exclude',action='append')
+    workspace=commands.add_parser('workspace')
+    workspace.add_argument('action',choices=['list','create','enter','preview','queue','integrate','recover','discard','usage','cleanup'])
+    workspace.add_argument('id',nargs='?')
+    workspace.add_argument('--plan',type=Path)
+    workspace.add_argument('--confirm')
+    workspace.add_argument('--wait',action='store_true')
     args = parser.parse_args(argv)
     try:
         root = args.root.resolve(strict=True)
@@ -157,6 +212,37 @@ def main(argv=None):
             raise ValueError(f"프로젝트 폴더가 아닙니다: {root}")
         if getattr(args, "ceo_confirm", None) is not None and (args.confirm is not None or args.apply):
             raise ValueError("--ceo-confirm은 --confirm 또는 --apply와 함께 사용할 수 없습니다")
+        from . import workspaces
+        if (workspaces.runtime_path(root)/'transaction.json').exists() and not(args.command=='workspace' and args.action=='recover'):
+            workspaces.recover(root)
+        if (workspaces.runtime_path(root)/'workspaces.json').exists():workspaces.prune_dead_workers(root)
+        if args.command == 'mode':
+            require_project(root)
+            print(json.dumps(workspaces.mode(root,args.mode,runtime_root=args.runtime_root,limits={key:value for key,value in {'resolution_attempts':args.resolution_attempts,'resolution_seconds':args.resolution_seconds}.items() if value is not None} or None,exclude=args.exclude)));return 0
+        if args.command == 'workspace':
+            require_project(root,allow_quality_block=True)
+            action=args.action
+            if action=='list':result=workspaces.registry(root)
+            elif action=='create':result=workspaces.create(root,args.id)
+            elif action=='enter':result=workspaces.enter(root,args.id,read_plan(args.plan))
+            elif action=='preview':
+                with workspaces.project_lock(root,'integration'):result=workspaces.candidate(root,args.id,read_plan(args.plan) if args.plan else None)
+            elif action=='queue':result=workspaces.queue(root,args.id)
+            elif action=='integrate':result=workspaces.integrate(root,args.id,read_plan(args.plan) if args.plan else None,wait=args.wait)
+            elif action=='recover':result=workspaces.recover(root)
+            elif action=='discard':result=workspaces.discard(root,args.id,args.confirm)
+            elif action=='usage':result=workspaces.inspect_runtime(root)
+            elif action=='cleanup':result=workspaces.cleanup(root,args.confirm)
+            print(json.dumps(result,ensure_ascii=False,indent=2));return 0
+        workspaces.guard(root,args.command,getattr(args,'id',None))
+        if args.command=='baseline-write':
+            require_project(root)
+            from .records import write_markdown
+            plan=read_plan(args.plan);write_markdown(root,args.name,plan['expected_hash'],plan['text']);return 0
+        if args.command=='source-map':
+            require_project(root)
+            from .records import update_sources
+            plan=read_plan(args.plan);update_sources(root,plan['base'],plan['updated']);return 0
         if args.command == "office-approval":
             print(json.dumps({"ceo_gate_approval": active_role(root, "ceo")}))
         elif args.command == "uuid":
@@ -181,9 +267,16 @@ def main(argv=None):
         elif args.command == "start":
             require_project(root, scope=args.features)
             identifier = str(uuid7())
-            develop_check(root, args.features)
-            update(root, identifier, "pending", args.features, related=args.related)
-            print(identifier)
+            if args.discovery:
+                if args.features:raise ValueError('--discovery는 확정 Feature 없이 시작합니다')
+                workspaces.start_discovery(root,identifier)
+            else:
+                develop_check(root, args.features)
+                update(root, identifier, "pending", args.features, related=args.related)
+            if workspaces.config(root)['mode']=='isolated':
+                workspace=workspaces.create(root,identifier)
+                print(json.dumps({'work_item':identifier,'workspace':workspace['workspace'],'entry':'blocked until workspace enter proof'}))
+            else:print(identifier)
         elif args.command == "transition":
             if args.status == "in_progress":
                 require_project(root, scope=work_scope(root, args.id))
@@ -191,36 +284,7 @@ def main(argv=None):
                 require_project(root, allow_quality_block=True)
             update(root, args.id, args.status)
         elif args.command == "complete":
-            plan = read_plan(args.plan)
-            actual = plan["actual_features"]
-            if not isinstance(actual, list) or any(not isinstance(item, str) for item in actual):
-                raise ValueError("actual_features에는 Feature UUID 목록이 필요합니다")
-            require_project(root, scope=work_scope(root, args.id) + actual)
-            _, current_item = work_item(root, args.id)
-            if current_item.get("kind") != "reconciliation":
-                develop_check(root, work_scope(root, args.id) + actual)
-            check_findings(plan.get("findings"))
-            if not plan["findings"]:
-                raise ValueError("완료 영향 판정 근거가 필요합니다")
-            _, item = work_item(root, args.id, editable=True)
-            if set(actual) - set(item["declared_features"]):
-                raise ValueError("실제 변경 범위를 선언 범위에 반영하고 Gate 집합을 재검토하세요")
-            statuses = require_gates(root, item, "complete")
-            evidence = verify_evidence(root, [row["ref"] for row in plan["evidence"]])
-            inputs = {}
-            for status in statuses:
-                runs = item["gate_results"][status["id"]]
-                inputs.update(runs[-1]["inputs"])
-            if not inputs:
-                raise ValueError("Gate 검증 입력 기록이 필요합니다")
-            update(root, args.id, "completed", {
-                "actual_features": actual, "findings": plan["findings"],
-                "validation": {
-                    "status": "passed", "fingerprint": content_hash(inputs),
-                    "evidence": [{"ref": ref} for ref in evidence],
-                    "gate_status": statuses,
-                },
-            })
+            complete_work(root, args.id, args.plan)
         elif args.command == "analysis-record":
             require_project(root, allow_quality_block=True)
             record_analysis(root, read_plan(args.plan))
@@ -238,6 +302,8 @@ def main(argv=None):
                 raise ValueError("범위 확장에는 Feature UUID 목록이 필요합니다")
             require_project(root, scope=work_scope(root, args.id) + features)
             _, item = work_item(root, args.id, editable=True)
+            if args.apply:
+                workspaces.bind_discovery(root,args.id,features,plan.get('reason'));return 0
             preview = {'work_item': args.id, 'record': content_hash(item), 'features': features,
                        'reason': plan.get('reason'), 'feature_state': content_hash(read_records(root, 'features.yaml', 'features'))}
             approval = content_hash(preview)
@@ -335,6 +401,8 @@ def main(argv=None):
             install_skills(root, args.agent)
         elif args.command == "preflight":
             require_project(root, args.agent, args.features)
+            if args.phase == "init" and workspaces.reference(root) is None and workspaces.config(root)["mode"]=="isolated" and workspaces.active(root):
+                raise ValueError("활성 격리 작업 중 원본 초기화 변경을 차단합니다")
             if args.phase == "develop":
                 develop_check(root, args.features)
             print(json.dumps({"phase": args.phase, "core_version": __version__,

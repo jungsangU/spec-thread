@@ -1,6 +1,6 @@
 ## Shared SpecThread conversation and presentation protocol
 
-This section is included in each installed sdd-init, sdd-develop and sdd-sync Skill for both supported agents. It controls the current agent's conversation, not a new scheduler, automatic session transition, or background process. Do not alter official Spec Kit formats, mandatory Gates, approval rules, UUID/history semantics, or user-owned Git operations.
+This section is included in each installed sdd-init, sdd-develop, sdd-sync and sdd-mode Skill for both supported agents. It controls the current agent's conversation, not a new scheduler, automatic session transition, or background process. Do not alter official Spec Kit formats, mandatory Gates, approval rules, UUID/history semantics, or user-owned Git operations.
 
 ### Ask progressively
 

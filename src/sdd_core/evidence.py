@@ -79,6 +79,10 @@ def current_result(root, result, definition):
     if result.get("status") != "PASS":
         return result.get("status", "UNKNOWN")
     try:
+        from .workspaces import execution_context
+        context=execution_context(root)
+        if context is not None and result.get("execution_context")!=context:return "STALE"
+        if "input_modes" in result and input_modes(root,list(result["inputs"]))!=result["input_modes"]:return "STALE"
         if set(result.get("inputs", {})) != set(definition.get("paths", [])):
             return "UNKNOWN"
         if set(result.get("evidence", {})) != set(definition.get("evidence", [])):
@@ -100,3 +104,9 @@ def current_result(root, result, definition):
     except (OSError, ValueError):
         return "STALE"
     return "PASS"
+
+
+
+def input_modes(root,paths):
+    import stat
+    return {name:stat.S_IMODE(project_path(root,name).stat().st_mode) for name in paths}

@@ -9,6 +9,9 @@ LEASE_SECONDS = 10
 
 
 def location(root):
+    if (root/'.specify/workspace.json').is_file():
+        from .workspaces import reference
+        root=Path(reference(root)['origin'])
     key = hashlib.sha256(os.path.normcase(str(root.resolve())).encode("utf-8")).hexdigest()
     base = (Path(os.environ["LOCALAPPDATA"]) if os.name == "nt" and os.environ.get("LOCALAPPDATA")
             else Path.home() / ".cache")
@@ -26,5 +29,5 @@ def active_role(root, role):
         expires = json.loads(state.read_text(encoding="utf-8"))
         now = time.time()
         return type(expires) in (float, int) and now < expires <= now + LEASE_SECONDS
-    except (OSError, ValueError):
+    except (OSError, ValueError, KeyError, TypeError):
         return False

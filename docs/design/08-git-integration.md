@@ -17,7 +17,7 @@ flowchart LR
   G -->|통합 결과 변경| V["기존 검사로 다시 검증"]
 ~~~
 
-Harness는 병렬 세션의 실행과 동시성을 보장하지 않는다. 자동 잠금, FIFO 대기열, 생존 감시·장애 복구, 중앙 세션 관리자·오케스트레이터, SQLite 상태 DB, 중앙 ID 발급기, Worktree 등록부, 체크포인트 관리자, 실시간 동기화와 별도 자동 통합 엔진을 도입하지 않는다. 초기 분석 완료 역시 사용자 Git 반영과 구분한다.
+세션 실행·작업 배분은 사용자 책임이다. Direct는 기존 직접 편집 흐름을 유지하며 Core 관리정보만 짧은 잠금·CAS로 보호한다. Isolated는 [병렬 개발](parallel-development.md)에 정의한 Work Item 사본·로컬 FIFO·순차 원본 반영·저널 복구를 Core가 수행한다. 이 반영은 Git 통합이 아니며 Commit·Push·Merge·Rollback은 계속 사용자 책임이다. 중앙 서버·상주 오케스트레이터·상태 DB·자동 Agent 재시작·실시간 코드 동기화는 제외한다. 개발 격리를 위해 Git Worktree·Branch·Merge·Stash를 사용하지 않는다.
 
 ## Harness 제품 Git
 

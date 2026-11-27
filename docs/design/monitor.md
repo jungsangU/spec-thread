@@ -1,6 +1,6 @@
 # SpecThread Monitor
 
-설계 1.2 · 사용자 승인 2026-11-23. 선택 설치 모듈은 지정한 프로젝트를 읽어 화면을 제공한다. [사전 검토와 사용자 제공 시각 레퍼런스](../validation/monitor-design-review.md)
+설계 2.0 · 사용자 승인 2026-11-23. 선택 설치 모듈은 지정한 프로젝트를 읽어 화면을 제공한다. [사전 검토와 사용자 제공 시각 레퍼런스](../validation/monitor-design-review.md)
 
 ## 요구사항과 경계
 
@@ -84,3 +84,7 @@ Monitor 배포는 Core와 별도다. 0.1.0은 Core 0.5.0을 사용한다. Baseli
 Core 0.5.0의 verification.yaml을 관측 파일에 포함한다. Work Item 상세는 프로파일·분류 근거·승인 경로·필수 절차와 수행 상태를, Gate 상세는 정책 출처·재사용 출처·실제 실행 시간을 표시한다. 이전 여섯 파일 Baseline은 읽기 전용 레거시 검사로 표시하며 새 파일을 자동 생성하지 않는다. 아직 저장하지 않은 승인 미리보기를 별도 대기열로 관리하지 않는다.
 
 상세 화면은 선택 항목에서 바로 판단할 근거를 우선 표시한다. 세션은 현재 확인 요청과 관측 파일, Feature는 남은 태스크와 차단된 Discovery 의존 관계, Work Item은 우선 검토할 필수 Gate를 보여 준다. 산출물에서 연결 Feature와 증거 참조 Work Item으로 이동할 수 있다. Git 상세는 파일의 소유권을 추정하지 않고 동일 경로를 관측한 세션을 표시한다. Pipeline은 현재 PASS로 집계되지 않은 필수 Gate 수와 상세 화면으로의 연결을 표시한다.
+
+## 등록된 독립 작업 관측
+
+원본 Monitor에서 같은 프로젝트 registry의 Workspace/후보만 선택 조회한다. 화면에 미반영 Scope를 표시하고 Git diff는 계속 원본을 기준으로 한다. 현재 활성 후보와 최초 사본을 구분한다. 자연 Hook의 등록 cwd를 같은 세션의 원본 이벤트로 연결하고 workspace_id를 보존한다. 임의 외부 루트·publication/history 편집 권한을 주지 않는다. 기존 Living Office·Reader·CEO 승인 범위와 Monitor 미실행 개발을 유지한다. [병렬 개발](parallel-development.md).

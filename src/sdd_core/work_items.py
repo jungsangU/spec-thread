@@ -1,3 +1,4 @@
+from .concurrency import metadata_transaction
 import json
 from uuid import UUID
 
@@ -32,6 +33,7 @@ def check_findings(findings):
             raise ValueError(f"CONFLICT: {evidence}")
 
 
+@metadata_transaction
 def update(root, identifier, status, payload=None, *, related=None):
     validate(root)
     records = read_records(root, FILENAME, "work_items")
@@ -77,6 +79,7 @@ def update(root, identifier, status, payload=None, *, related=None):
     write_records(root, records)
 
 
+@metadata_transaction
 def expand_scope(root, identifier, features, reason):
     from .analysis import develop_check
     from .baseline import nonempty, sequence

@@ -1,6 +1,6 @@
 # 설계 결정 기록
 
-현재 설계 1.2. 2026-11-21부터의 결정과 후속 변경 근거를 보존한다. 현재 상세 계약은 [주제별 원본](README.md), 구현·검증의 진행 상태는 [미결정 백로그](OPEN-ISSUES.md)에 연결한다.
+현재 설계 2.0. 2026-11-21부터의 결정과 후속 변경 근거를 보존한다. 현재 상세 계약은 [주제별 원본](README.md), 구현·검증의 진행 상태는 [미결정 백로그](OPEN-ISSUES.md)에 연결한다.
 
 | ID | 결정 | 결정 이유 |
 | --- | --- | --- |
@@ -32,7 +32,7 @@
 | --- | --- |
 | 초기 0.1의 별도 `.sdd/` 프로토콜, Claim·Source Symbol 엔터티, R0~R3 승인 | **대체**. 공식 Spec Kit와 6개 Baseline, 파일 경로 기반 Source Map, Discovery 및 영향 판정을 사용한다. 승인 의도·구현 사실·검증 증거의 권한 구분은 유지한다. [초기 초안](https://github.com/jungsangU/spec-thread/tree/54b0994/docs/design) |
 | ST-09의 선택 Worktree 통합·단일 커밋 절차 및 ST-10의 전용 초기 Git 반영 계약 | **ST-13으로 대체**. 초기 분석 완료와 Git 반영을 구분하는 원칙, 사용자 주도 작업 분배, 영향·구조·증거 검증은 유지한다. 임시 통합 트리, 기대 ref, 선택 Work Item 병합 흐름은 1.0의 운영 요건에서 제외한다. [당시 상세 명세](https://github.com/jungsangU/spec-thread/blob/ed9d3d3/docs/design/08-git-integration.md) |
-| 외부 변경 상시 감시 및 자동 복구, 병렬 세션 보장과 자동 조정 | **제외**. 사용자가 요청한 외부 변경 정합화와 사용자 주도 세션 운영이 확정이다. 자동 락, FIFO, 중앙 오케스트레이터와 상태 DB는 백로그 항목으로 취급하지 않는다. |
+| 외부 변경 상시 감시 및 자동 복구, 병렬 세션 보장과 자동 조정 | 당시 제외. 설계 2.0 ST-44~ST-64가 로컬 작업 사본·Core 잠금·FIFO·반영 복구 범위를 대체한다. 중앙 서버·상주 오케스트레이터·상태 DB·자동 Agent 재시작은 계속 제외한다. |
 | 초기 설계 버전 0.1 | **1.0 확정**. 첫 정식 설계 기준선으로 사용자 선택을 받았다. Core 배포 버전과 독립이다. [릴리즈 노트](../../CHANGELOG.md) |
 
 근거는 현재 요청의 확정 정책, 접근 가능한 [SDD 산출물 관리 표준 대화](chatgpt-conversation://6af31424-1064-83ec-9c80-8aad83f5143c), 로컬 Git의 `54b0994`와 `ed9d3d3` 설계 문서다. 최신 원칙과 현행 소스가 다르면 설계 원칙을 본문에, 구현 차이를 백로그에 남긴다.
@@ -95,3 +95,31 @@
 | ST-41 | 14~15 | 변경 요구·관련 불변 계약 중심 정합성. 정보 변화가 있을 때만 산출물 부분 갱신, 기존 기록으로 충분하면 별도 보고서 제외. [검증](06-verification.md)·[산출물](01-artifact-model.md) |
 | ST-42 | 17 | 공식 Analyze/Converge 호출 필요성을 판단하되 필수 계약·원형·전제를 유지. 같은 목적의 중복 의미 분석 제외, 변경분 검토로 필수 공식 수행을 대체하지 않음. [공식 연동](spec-kit-integration.md) |
 | ST-43 | 배포 | Core 0.5.0→0.5.1은 기존 승인·누적 변환으로 공통 Skill 정책만 갱신. 스키마·테스트 엔진·새 필드는 도입하지 않음. [버전](version-sync.md) |
+
+## 2026-11-27 설계 2.0 · 병렬 개발과 Core 동시성
+
+사용자 제공 병렬 개발 지시서 Decision 18~38과 Major 선택이 근거다. ST-13의 사용자 Git·세션 실행 책임은 유지하고 이전 로컬 잠금/FIFO/복구 제외를 아래 범위로 대체한다. 원본은 [병렬 개발](parallel-development.md)이며 구현·미확인은 별도 검증 보고서에 둔다.
+
+| ID | 근거 | 확정 결정 |
+| --- | --- | --- |
+| ST-44 | Decision 18 | Direct/Isolated 도입·기본 Direct·명시 선택 |
+| ST-45 | Decision 19 | Work Item별 실제 독립 사본·원본 조기 반영 금지 |
+| ST-46 | Decision 20 | 활성 Work/사본/반영 중 모드 변경 차단 |
+| ST-47 | Decision 21 | COW 우선·일반 복제 대체·하드링크 금지 |
+| ST-48 | Decision 22 | 3방향 파일·레코드 병합·의미 충돌 Agent 판단 |
+| ST-49 | Decision 23 | 로컬 Integration Lock·긴 검증과 짧은 Metadata/Publish 분리 |
+| ST-50 | Decision 24 | 자동 해결 기본 3회/5분·진전 없음 중단·테스트 시간 제외 |
+| ST-51 | Decision 25 | 준비 등록 순서 FIFO·사용자 대기 시 해제 |
+| ST-52 | Decision 26 | 커널 소유권·정확한 생성 정체성·종료 소유자만 정리 |
+| ST-53 | Decision 27 | 실제 백업·staging·저널·외부 변경 보존·완료와 반영 동기화 |
+| ST-54 | Decision 28 | 최신 원본 직접/간접 영향·동일 Work 유효 Gate만 재사용 |
+| ST-55 | Decision 29 | Work 상태와 별도 통합 상태·원본 성공 후 completed |
+| ST-56 | Decision 30 | 원본 밖 Runtime·registry/snapshot/work/staging/queue/lock/journal |
+| ST-57 | Decision 31 | 원본 Monitor·등록 사본·같은 Session·기존 Git/Office 권한 유지 |
+| ST-58 | Decision 32 | Work별 임시/결과/포트/소유 프로세스·기존 외부 리소스 설정 |
+| ST-59 | Decision 33 | 동일 Codex/Claude 세션 명시 경로·실제 권한/Hook PoC·미확인 차단 |
+| ST-60 | Decision 34 | Snapshot/Publish Lock으로 원본 중간 반영 사본 방지 |
+| ST-61 | Decision 35 | Direct 포함 레코드 CAS·무관 Work Gate 무효화 제거 |
+| ST-62 | Decision 36 | 증거 보존 후 성공 정리·실패/보류 보존·명시 삭제 |
+| ST-63 | Decision 37 | 신규 모드 선택·비대화형 Direct·기존 설정 보존·업데이트 차단 |
+| ST-64 | Decision 38 | 기존 승인 체계 재사용·일반 승인 반복 금지·의미/위험 변화 구체 승인 |

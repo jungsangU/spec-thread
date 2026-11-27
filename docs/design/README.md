@@ -1,6 +1,6 @@
-# SpecThread 설계 1.2
+# SpecThread 설계 2.0
 
-설계 1.2 · Core 0.5.1. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
+설계 2.0 · Core 0.6.0. 주제별 원본과 구현 대조 절차를 사용한다. 설계 버전과 Core 배포 버전은 독립적이다. [설계 릴리즈 노트](../../CHANGELOG.md)
 
 ## 주제별 원본 명세
 
@@ -23,6 +23,7 @@
 | 실행 검증 | [06 Gate·증거·Fingerprint](06-verification.md) | 필수 집합 정의·실행·이력·단계 차단·완료·무효화와 재검증 |
 | 외부 변경 | [수동 Sync](reconciliation.md) | inspect→plan→approve→apply→verify, 실패 시 보존, 현행 승인 경계. Core 버전 동기화와 구분 |
 | 로컬 업데이트 | [Core 버전 동기화](version-sync.md) | 취득·버전 일치·누적 메타데이터 변환·승인·필수/품질 Gate·사용자 원복 |
+| 병렬 실행 | [병렬 개발·Core 동시성](parallel-development.md) | Direct/Isolated, 실제 Snapshot, 동일 세션 진입, FIFO·충돌·검증·저널·실행 격리 |
 | Git·협업 | [08 Git·세션 운영](08-git-integration.md) | 대상 Git 반영, 병렬 세션 책임·제외 범위, 제품 브랜치·PR·CI·설계 릴리즈 |
 | 제품 구현 절차 | [구현·설계 대조 반복](implementation-standard.md) | 구현·테스트·원문 재대조·누락 보완의 반복과 완료 증거 |
 | 개발 관측 | [SpecThread Monitor](monitor.md) | 사용자 실행형 읽기 전용 관측, 이벤트·화면 및 입력 한도 |
@@ -54,6 +55,8 @@
 4. 실행 예시는 가이드, 인수 조건은 PoC 문서를 확인한다. 개요·사례만 읽고 상세 계약을 추정하지 않는다.
 
 ## 구현 재현성 검증
+
+설계 2.0의 Decision 18~38 구현·실제 실패 주입·미검증 네이티브 환경은 [병렬 개발 검증](../validation/parallel-development-review.md)에서 구분한다.
 
 설계 1.2의 정책 11~17 반영·실제 검증 범위와 미측정 지표는 [2차 효율화 검증](../validation/scoped-development-review.md)에 기록한다. 기존 1.1 기록은 당시 구현 근거로 유지한다.
 

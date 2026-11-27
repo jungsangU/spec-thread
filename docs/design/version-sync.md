@@ -1,6 +1,6 @@
 # Core 버전 동기화
 
-**확정 정책.** 설계 릴리즈 버전, 설치된 Core 배포 버전, 공식 Spec Kit 버전은 각각 독립적이다. 동기화 비교는 **로컬 Core 배포 버전**과 **대상 Project 및 선택한 에이전트의 설치 Skill에 기록된 Core 호환 버전**의 정확한 일치를 확인한다. 같은 Major·Minor만 일치하거나 범위 안에 있다는 이유로 허용하지 않는다. Core 0.5.1은 아래 CLI 및 로컬 기록 계약을 사용한다.
+**확정 정책.** 설계 릴리즈 버전, 설치된 Core 배포 버전, 공식 Spec Kit 버전은 각각 독립적이다. 동기화 비교는 **로컬 Core 배포 버전**과 **대상 Project 및 선택한 에이전트의 설치 Skill에 기록된 Core 호환 버전**의 정확한 일치를 확인한다. 같은 Major·Minor만 일치하거나 범위 안에 있다는 이유로 허용하지 않는다. Core 0.6.0은 아래 CLI 및 로컬 기록 계약을 사용한다.
 
 ## 입력과 사용자 책임
 
@@ -39,7 +39,7 @@ flowchart TD
 
 - Project 표식은 `.specify/spec-thread.json`에 `agent`, `core_version`, `quality`를 기록한다. `quality`에는 전역 차단 여부와 제한 Feature UUID 목록이 들어간다. 기존 Baseline 일곱 파일과 공식 산출물의 경로는 유지한다.
 - 설치 Skill 표식은 선택한 에이전트의 `skills/.spec-thread.json`이다. 배포 버전과 각 Harness Skill의 SHA-256을 기록하고 실제 파일도 번들과 대조한다. 다른 에이전트의 Harness 설치나 사용자 수정본이 발견되면 먼저 해결해야 한다. 공식 Spec Kit 스킬은 검사·교체 대상에서 제외한다.
-- 제공하는 마이그레이션 경로는 Core `0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.5.1`이다. Source Map을 경로 단위로 정규화하고, 확인된 구버전 Harness Skill을 교체하며 그 버전의 `sdd-commit` Skill을 제거한다. 지원되지 않는 시작 버전이나 변환 경로는 차단한다. 표식 없는 설치는 운영자가 `from_version`을 확인한다. 0.3.0 변환은 features.yaml에 schema_version 1과 활성 상태, not_started 분석 틀을 추가한다. 이전 자료의 분석 완료나 검증 PASS를 추정하지 않으므로 변환 후 분석·Gate 근거를 새로 확정해야 한다.
+- 제공하는 마이그레이션 경로는 Core `0.1.0 → 0.2.0 → 0.3.0 → 0.4.0 → 0.5.0 → 0.5.1 → 0.6.0`이다. Source Map을 경로 단위로 정규화하고, 확인된 구버전 Harness Skill을 교체하며 그 버전의 `sdd-commit` Skill을 제거한다. 지원되지 않는 시작 버전이나 변환 경로는 차단한다. 표식 없는 설치는 운영자가 `from_version`을 확인한다. 0.3.0 변환은 features.yaml에 schema_version 1과 활성 상태, not_started 분석 틀을 추가한다. 이전 자료의 분석 완료나 검증 PASS를 추정하지 않으므로 변환 후 분석·Gate 근거를 새로 확정해야 한다.
 - `sdd-core version-check --agent codex [FEATURE_UUID ...]`는 명령 진입 전에 사용한다. 등록되지 않은 범위는 거부하고, 전역 실패에서는 전체를 차단한다. 제한 Feature를 참조하거나 범위를 알 수 없으면 차단하고, 확인된 독립 범위는 실행할 수 있다. 품질 실패가 확인된 Feature를 소비하는 의존 범위도 제한한다.
 
 계획 파일은 실제 프로젝트의 기존 검사 명령과 입력 파일을 명시한다. 아래 명령과 경로는 예시이며 프로젝트에서 사용 중인 값으로 바꾼다. 표식이 있는 Project는 `from_version`을 생략한다.
@@ -87,3 +87,7 @@ Core 0.5.0은 schema_version 1을 지원하고 미지원 구조를 차단한다.
 ## Core 0.5.0 → 0.5.1
 
 공통 개발 Skill의 대상 중심 분석·테스트·문서 효율화 정책을 배포하는 Patch다. 기존 누적 변환에 scoped-development-skill-policy 경로만 추가한다. 새 스키마·테스트 수준 필드·Baseline 파일은 없다. 기존 정책·UUID·완료 이력·앱·테스트는 재작성하지 않는다. 알려진 0.5.0 번들의 해시를 확인해 Skill·Project 버전을 Core와 정확히 맞추고 기존 필수/품질 Gate와 구체적 승인·실패 시 사용자 원복 계약을 유지한다.
+
+## Core 0.5.1 → 0.6.0
+
+기존 누적 변환 체계에 isolated-work-items-and-cooperative-concurrency 단계를 추가한다. Baseline schema_version 1·UUID·종료 이력·앱 코드·Monitor 설정을 보존하고 네 번째 sdd-mode Skill을 배포한다. 선택된 development 설정을 보존하며 없으면 Direct로 해석한다. 활성 Workspace·미완료 반영 저널·Workspace 내부 업데이트를 사전 차단한다. 별도 버전 엔진·GitHub 자동 교체·실패 업데이트 재개를 도입하지 않는다. [반영 저널](parallel-development.md)의 복구는 버전 업데이트 자동 롤백과 다르다.

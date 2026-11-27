@@ -5,7 +5,7 @@
 1. [설계 목차](docs/design/README.md)에서 설계 버전과 문서 역할을 확인한다.
 2. [아키텍처](docs/design/architecture.md)와 작업에 해당하는 목차의 주제별 원본을 읽는다. [통합 설계서](docs/design/SpecThread-통합-상세-설계서.md)는 원본을 연결하는 진입점이다. 버전과 Git 작업에는 [버전 동기화](docs/design/version-sync.md), [두 저장소의 Git 운영](docs/design/08-git-integration.md)을 함께 확인한다.
 3. [결정 이력](docs/design/DECISIONS.md), [미결정·미확인 목록](docs/design/OPEN-ISSUES.md), [설계 릴리즈 노트](CHANGELOG.md)에서 확정 범위와 근거를 확인한다. 최신 확정 설계를 기준으로 작업하며 설계와 실제 코드의 차이를 분리해 기록한다.
-4. 공식 Spec Kit 형식과 라이프사이클을 유지한다. 병렬 세션은 사용자가 관리한다. 다른 저장소나 계정의 대화에 의존하는 내용을 발견하면 결정 근거와 적용 조건을 저장소 문서에 남긴다.
+4. 공식 Spec Kit 형식과 라이프사이클을 유지한다. 병렬 세션 실행·분배는 사용자가 관리한다. Direct와 Isolated 및 Core의 로컬 잠금·FIFO·반영 복구 책임은 [병렬 개발](docs/design/parallel-development.md)을 따른다. 다른 저장소나 계정의 대화에 의존하는 내용을 발견하면 결정 근거와 적용 조건을 저장소 문서에 남긴다.
 5. 변경한 계약은 해당 주제의 원본 명세에 반영한다. 관련 결정·백로그·참조·실행 예시를 맞추되 같은 상세 명세를 가이드와 통합 진입점에 중복 작성하지 않고, [HTML 갱신 및 검증 절차](docs/design/README.md)에 따라 HTML도 같은 변경에 포함한다. 설계 버전 변경은 사용자 선택을 받는다.
 6. Git Commit, Push, Merge, Rollback과 태그는 사용자가 수행한다. 작업 결과와 검증 범위를 보고한다.
 

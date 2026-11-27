@@ -373,15 +373,18 @@ def next_actions(baseline, installed):
     return actions[:20]
 
 
-def snapshot(root):
+def snapshot(root, *, git_enabled=True):
     alerts = {}
     try:
-        git_state = changes(root)
+        git_state = changes(root) if git_enabled else None
     except (OSError, ValueError, subprocess.TimeoutExpired):
         git_state = None
         alerts["git"] = "Git 상태를 읽을 수 없습니다"
     try:
-        baseline = project_records(root)
+        from sdd_core.concurrency import runtime_path,project_lock
+        if (runtime_path(root)/'workspaces.json').exists():
+            with project_lock(root,'publish',timeout=.05):baseline=project_records(root)
+        else:baseline = project_records(root)
     except FileNotFoundError:
         baseline = {"state": "missing"}
     except ERRORS:

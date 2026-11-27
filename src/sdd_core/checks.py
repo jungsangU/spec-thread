@@ -25,7 +25,16 @@ def run_checks(root, checks):
     for command in checks:
         started_at = datetime.now(timezone.utc).isoformat()
         started = time.perf_counter()
-        process = subprocess.run(command, cwd=root, capture_output=True, text=True, errors="replace")
+        from .workspaces import execution
+        with execution(root, command) as env:
+            actual=command
+            if env is not None:
+                import os,secrets,sys,json
+                from pathlib import Path
+                from .processes import identity
+                lease=Path(env['TMPDIR'])/('process-'+secrets.token_hex(16)+'.json')
+                actual=[sys.executable,str(Path(__file__).with_name('processes.py')),json.dumps(identity(os.getpid())),str(lease),*command]
+            process = subprocess.run(actual, cwd=root, env=env, capture_output=True, text=True, errors="replace")
         result = {"command": command, "exit_code": process.returncode,
                   "stdout": process.stdout, "stderr": process.stderr,
                   "started_at": started_at, "duration_seconds": time.perf_counter() - started}

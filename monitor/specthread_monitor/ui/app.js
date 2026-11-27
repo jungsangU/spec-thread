@@ -124,6 +124,10 @@ function contextLines(session, detailed = false) {
 }
 let showPermissions = false;
 let lastSnapshot;
+let selectedWorkspace = "";
+let refreshTimer;
+let refreshRun=0;
+byId("workspace-scope").addEventListener("change",(event)=>{selectedWorkspace=event.target.value;refresh();});
 byId("show-permissions").addEventListener("change", (event) => {
   showPermissions = event.target.checked;
   // Blur the filter so focused table preservation does not defer the update.
@@ -349,7 +353,7 @@ async function loadArtifact(path) {
   output.hidden = false;
   output.textContent = "읽는 중";
   try {
-    const { text, truncated } = await api(`/api/artifact?${new URLSearchParams({ path })}`);
+    const { text, truncated } = await api(`/api/artifact?${new URLSearchParams({path,...(selectedWorkspace ? {workspace:selectedWorkspace.split('@')[0],scope:selectedWorkspace.split('@')[1] || 'workspace'} : {})})}`);
     if (request !== artifactRequest) return;
     output.textContent = text || "빈 파일";
     if (truncated) byId("artifact-path").textContent = `${path} · 앞 96 KiB 표시`;
@@ -360,6 +364,14 @@ async function loadArtifact(path) {
 
 function render(data) {
   lastSnapshot = data;
+  const scopeSelect=byId('workspace-scope');
+  const choices=[['','원본 프로젝트'],...(data.workspaces || []).flatMap((row)=>[[row.id+'@workspace',`${row.title || row.id.slice(0,8)} · ${row.active_scope==='candidate' ? '최초 사본' : '현재 작업'} · ${row.state}`],...(row.candidate_available ? [[row.id+'@candidate',`${row.title || row.id.slice(0,8)} · ${row.active_scope==='candidate' ? '현재 작업' : '통합 후보'} · ${row.state}`]] : [])])];
+  if(JSON.stringify(choices)!==scopeSelect.dataset.choices){
+    scopeSelect.replaceChildren(...choices.map(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;return option;}));
+    scopeSelect.dataset.choices=JSON.stringify(choices);
+  }
+  scopeSelect.value=selectedWorkspace;
+  byId('workspace-note').textContent=selectedWorkspace ? '원본 미반영 공간의 Feature·Work Item·Gate·산출물입니다. Git 변경은 원본 기준입니다.' : '원본 프로젝트에 반영된 상태입니다.';
   topicScope = data.root;
   const { baseline, git, activity, installation } = data;
   // Allocate accents once; new sessions never recolor an existing session.
@@ -708,12 +720,22 @@ for (const [id, focus] of [["focus-mode", true], ["living-mode", false]]) {
 }
 
 async function refresh() {
+  const run=++refreshRun;
+  const scopeAtStart=selectedWorkspace;
+  clearTimeout(refreshTimer);
   try {
-    if (!document.hidden) render(await api("/api/snapshot"));
+    if (document.hidden) return;
+    const origin=await api('/api/snapshot');
+    if(run!==refreshRun || scopeAtStart!==selectedWorkspace)return;
+    if(selectedWorkspace){
+      const [id,scope='workspace']=selectedWorkspace.split('@');
+      if(!(origin.workspaces || []).some(row=>row.id===id)){selectedWorkspace='';render(origin);}
+      else{const view=await api('/api/workspace?'+new URLSearchParams({id,scope}));if(run!==refreshRun || scopeAtStart!==selectedWorkspace)return;render({...origin,...view,git:origin.git,workspaces:origin.workspaces});}
+    }else render(origin);
   } catch (error) {
     byId("connection").textContent = `연결 오류 · ${error.message}`;
   } finally {
-    if (token) setTimeout(refresh, 3000);
+    if (token && run===refreshRun) refreshTimer=setTimeout(refresh, 3000);
   }
 }
 

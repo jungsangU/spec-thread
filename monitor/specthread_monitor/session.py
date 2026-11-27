@@ -50,28 +50,42 @@ def record_event(root=None, agent=None):
         if not isinstance(raw, dict) or raw.get("hook_event_name") not in EVENTS:
             return
         project = Path.cwd().resolve() if root is None else root.resolve()
-        session, kind, paths = hook_event(project, raw, agent)
+        workroot=project
+        workspace_ref=None
+        cwd=Path(raw.get('cwd',''))
+        if cwd.is_absolute():
+            for directory in (cwd,*cwd.parents):
+                if (directory/'.specify/workspace.json').is_file():
+                    from sdd_core.workspaces import reference
+                    workspace_ref=reference(directory)
+                    origin=Path(workspace_ref['origin'])
+                    if project not in (origin,directory):return
+                    project=origin;workroot=directory;break
+        session, kind, paths = hook_event(workroot, raw, agent)
         if not kind or not isinstance(session, str) or not IDENTIFIER.fullmatch(session):
             return
         event = {"session_id": session, "cwd": str(project), "hook_event_name": raw["hook_event_name"]}
+        if workspace_ref:
+            event['workspace']=workspace_ref['work_item']
         if raw["hook_event_name"] == "Notification":
             event["notification_type"] = raw.get("notification_type")
         if raw["hook_event_name"] == "PreToolUse":
             event["tool_name"] = raw.get("tool_name")
-        activity = observed_activity(project, raw)
-        directory = observed_directory(project, raw)
+        activity = observed_activity(workroot, raw)
+        directory = observed_directory(workroot, raw)
         if activity:
             event["activity"] = activity
         if directory is not None:
             event["directory"] = directory
         work = observed_gate_work(raw)
+        if work is None and workspace_ref:work={'work':workspace_ref['work_item'],'phase':None}
         if work:
             event["gate_work"] = work
         if paths:
             event.update(tool_name="Edit", tool_input={"file_path": paths[0]})
         if root is not None:
             record(project, agent, event)
-            decision = reader_response(project, raw)
+            decision = reader_response(workroot, raw)
             if decision:
                 print(json.dumps(decision), flush=True)
             return

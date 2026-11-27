@@ -1,6 +1,6 @@
 # 04 Work Item과 개발 흐름
 
-설계 1.2. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
+설계 2.0. `sdd-develop`의 실행 순서, 요청별 상태 전이와 실패·재개의 원본이다. 초기 분석 상태와 대상 진입 판정은 [Discovery](03-analysis-standard.md), Feature 자체의 등록·폐기는 [Feature 생명주기](feature-lifecycle.md)에서 정의한다.
 
 ## 입력과 결과
 
@@ -89,3 +89,7 @@ flowchart TD
 ```
 
 공식 절차의 선행 조건과 develop/verify 단계 Gate는 해당 단계 진입 전에 충족한다. 복구 가능한 오류는 같은 작업에서 수리하고 영향을 받은 검증만 재실행한다. 재개 시 기존 근거의 현재성을 점검해 필요한 부분만 다시 판단하며 failed/completed 종료와 버전 변환 실패 후 처음부터 재시도 규칙은 유지한다.
+
+## 개발 모드와 통합 완료
+
+Direct의 기존 상태·완료 계약은 유지한다. Isolated는 같은 Work UUID를 사본에서 진행하고 별도 integration 상태를 가진다. 사본의 필수 절차/PASS 충족은 준비 상태이며 completed가 아니다. 최신 원본의 영향 검토·필요 Gate·저널 반영 성공 때 원본 completed/integrated가 함께 확정된다. 후보에서 일반 complete를 차단한다. 명시적 사본 폐기는 pending도 실패 이력을 남겨 종료할 수 있으나 기존 failed 재개 금지는 유지한다. [병렬 개발](parallel-development.md)에 FIFO·잠금 해제·중단/재개·복구 계약을 둔다.

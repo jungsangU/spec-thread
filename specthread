@@ -161,6 +161,7 @@ def main():
     parser.add_argument('--monitor', action=argparse.BooleanOptionalAction, help='선택 기능 Monitor 설치 여부')
     parser.add_argument('--ssl-trust', action='store_true', help='pip의 기본 PyPI 호스트 인증서 검사 건너뛰기')
     parser.add_argument('--hook-timeout', type=int, default=5, metavar='SECONDS', help='Monitor Hook 실행 시간 한도 (1–30초)')
+    parser.add_argument('--mode',choices=['direct','isolated'],help='개발 모드; 기존 업데이트에서는 보존')
     parser.add_argument('--check', help='기존 프로젝트 검사 명령 (자동화/고급 옵션)')
     args = parser.parse_args()
     if args.monitor and args.command != 'install':
@@ -232,6 +233,8 @@ def main():
         argv.append('--yes')
     if args.check:
         argv += ['--check', args.check]
+    if args.mode:
+        argv += ['--mode',args.mode]
     options = {'env': {**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8'}}
     if not sys.stdin.isatty():
         options.update(input=sys.stdin.read(), text=True, encoding='utf-8')

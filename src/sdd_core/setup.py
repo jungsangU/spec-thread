@@ -74,7 +74,7 @@ def select_quality(root, saved, check, ask):
                                                             '--root', str(root), 'validate']}]
 
 
-def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print):
+def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print, development_mode=None):
     root = root.resolve(strict=True)
     marker = read_marker(root, PROJECT)
     saved = read_marker(root, SETUP) or {}
@@ -88,6 +88,15 @@ def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print):
         raise ValueError('이 배포본의 전용 Spec Kit 1.4.0 환경으로 실행하세요')
     if agent not in ('codex', 'claude'):
         raise ValueError('Codex 또는 Claude Code를 선택하세요')
+    selected_mode=development_mode
+    if selected_mode is None and marker is None and yes:
+        selected_mode='direct'
+    if selected_mode is not None and selected_mode not in ('direct','isolated'):
+        raise ValueError('개발 모드는 direct 또는 isolated여야 합니다')
+    if development_mode is not None and marker:
+        from .workspaces import config as development_config, active
+        if development_mode!=development_config(root)['mode'] and active(root):
+            raise ValueError('진행 중인 Work Item이 있어 설치 전 Mode 변경을 차단합니다')
     had_baseline = (root / '.specify/baseline').exists()
     before = official_state(root) if (root / '.specify').is_dir() else None
     if before is None and any(root.glob('.agents/skills/speckit-*')):
@@ -132,6 +141,10 @@ def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print):
             if answer not in ('y', 'yes'):
                 return {'status': 'cancelled'}
             break
+    if selected_mode is None and marker is None:
+        selected_mode=ask('개발 모드: direct / isolated [direct]: ').strip().lower() or 'direct'
+        if selected_mode not in ('direct','isolated'):
+            raise ValueError('개발 모드는 direct 또는 isolated여야 합니다')
     emit('1/3  Spec Kit 프로젝트 연동 확인')
     if before is None:
         official(root, 'init', '--here', '--force', '--integration', agent,
@@ -169,6 +182,8 @@ def setup(root, action, agent, *, yes=False, check=None, ask=input, emit=print):
         raise ValueError('공식 설치 확인에서 문제가 남아 있습니다. 성공으로 기록하지 않습니다')
     write_file(root, SETUP, json_bytes({'agent': agent, 'core_version': __version__,
                                        'spec_kit_version': SPEC_KIT, 'check': command}))
+    from .workspaces import mode
+    if selected_mode is not None:mode(root,selected_mode)
     emit('완료했습니다. 사용하는 AI의 새 세션을 이 프로젝트에서 열어 주세요.')
     emit(('Codex: $sdd-init' if agent == 'codex' else 'Claude Code: /sdd-init') + ' 으로 프로젝트 분석을 시작할 수 있습니다.')
     return {'status': 'complete', 'agent': agent, 'core_version': __version__,
@@ -182,9 +197,10 @@ def main(argv=None):
     parser.add_argument('--agent', choices=['codex', 'claude'], required=True)
     parser.add_argument('--yes', action='store_true')
     parser.add_argument('--check')
+    parser.add_argument('--mode',choices=['direct','isolated'])
     args = parser.parse_args(argv)
     try:
-        setup(args.project, args.command, args.agent, yes=args.yes, check=args.check)
+        setup(args.project, args.command, args.agent, yes=args.yes, check=args.check,development_mode=args.mode)
     except (OSError, ValueError, KeyError, TypeError, EOFError, KeyboardInterrupt) as error:
         print(f'설치·업데이트를 완료하지 못했습니다: {error}\n실패 단계의 변경을 확인하세요. 자동 원복은 하지 않습니다.', file=sys.stderr)
         return 1

@@ -319,6 +319,10 @@ def collect(root, sources, project_rows=(), *, idle_seconds=900, project_configu
         events.append(event)
         key = (agent, session)
         context = contexts.setdefault(key, {})
+        workspace=raw.get('workspace')
+        if isinstance(workspace,str) and WORK_ID.fullmatch(workspace):
+            context['workspace']=workspace;event['workspace']=workspace
+        else:context.pop('workspace',None)
         context.update({k: v for k, v in {"directory": event["directory"], "activity": event["activity"]}.items() if v is not None})
         work = observed_gate_work(raw)
         if work:

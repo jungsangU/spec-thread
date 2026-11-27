@@ -10,6 +10,10 @@ If the gate blocks, stop the requested operation and report why. Core replacemen
 
 Run only on explicit user request from the target project root. Verify the official Spec Kit integration, read the constitution and inspect existing official artifacts. Confirm scope or mode only if ambiguous. Use the existing Baseline from installation. Run `python3 .specify/sdd-core scaffold` only if the Baseline does not exist and the installed project passes preflight. Use the [Discovery gate procedure](#discovery-gate) below.
 
+## Isolated routing
+
+Inspect mode before writes. Global initial Discovery/bootstrap at origin is allowed only with no active work. If already inside a registered Workspace/candidate, keep every native read/edit/command and official Feature path there in the SAME agent session and obey the sdd-develop entry proof; never independently create another Work Item. Adding a new Feature during isolated development uses its pending discovery Work Item and first READY scope binding, not origin writes. Shared managed Markdown/source maps use Core CAS commands. Unknown tool permissions or natural Hook origin linkage blocks isolated entry.
+
 ## Guided intake
 
 Inspect existing project files and prior answers before asking. For Greenfield, start with the intended users and problem only when they are unknown. Then discover the main end-to-end usage flow, must-have behavior, important constraints, and Feature boundaries as needed, one question per turn. The order is adaptive: skip known answers and follow the next question whose answer affects the work. Offer two or three short examples or choices when useful and always accept free text or "not sure". Never require a complete product description, feature list and technical constraints in one answer. If the user already provided a full brief, use it rather than forcing a step-by-step interview.

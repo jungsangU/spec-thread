@@ -143,3 +143,7 @@ Gate를 통과한 Feature에 공식 계획과 필요한 설계 자료(`research.
 개발 진입은 구조 검사 → 프로젝트 status → 프로젝트 inputs/evidence 유효성 → 대상과 의존 Feature 순회 → 각 Feature의 구조·분석·입력·증거 해시 → READY → 의존성 위험 순으로 확인한다. 현재 구현은 대상의 등록된 의존 Feature도 재귀적으로 확인하고 방문 집합으로 순환을 종료한다. complete 분석 기록은 미분석 목록이 비고 모든 활성 Feature가 유효해야 저장한다. 분석 객체가 바뀌면 이전 보고서의 analysis_hash가 맞지 않으므로 필요한 보고서를 같은 제출에서 재확정한다. Core가 그래프 밖의 미발견 의존성을 자동 탐색하는 것은 아니며 그 충분성은 Skill이 판단한다.
 
 초기화는 기존 테스트·빌드·정적 검사·실제 검토 방법도 탐색하여 [verification.yaml](verification-profiles.md)에 재사용 정의를 등록한다. 방법이 미확인이면 unconfigured를 유지하며 검증을 추정해 통과시키지 않는다. Feature 탐색·Discovery·분리/통합 보존 정책은 변하지 않고, 이후 개발은 유효한 분석과 검증 정의를 재사용한다.
+
+## Isolated의 초기 분석 위치
+
+프로젝트 최초 init은 활성 Work가 없는 원본에서 수행한다. 이후 개발 중 신규 Feature는 `start --discovery`의 pending 사본에서 공식 초기 명세·Discovery를 수행한다. READY 확정 Feature UUID만 등록하고 최초 scope-expand로 해당 Work와 결합한다. 잠정 Feature에 영구 UUID를 주지 않는다. 도구·권한·Hook 검증은 [병렬 개발](parallel-development.md)을 따른다.

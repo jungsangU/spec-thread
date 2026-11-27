@@ -83,3 +83,7 @@ pip SSL 오류가 나면 재시도 질문에서 `y`를 선택한다. 질문 없�
 Core 0.5.0은 verification.yaml의 미확인 정의 틀을 포함합니다. 설치·업데이트만으로 검증 방법이나 프로파일이 확정되지는 않습니다. sdd-init/개발 준비에서 실제 기존 검사와 필요한 검토를 확인합니다. [위험도 기반 개발·검증](design/verification-profiles.md)
 
 Core 0.5.1 배포본은 같은 update 명령으로 개발 Skill의 2차 효율화 정책을 갱신합니다. 기존 검증 정의·스키마·앱·이력은 보존합니다. [Patch 전환 계약](design/version-sync.md)
+
+## 개발 모드 선택
+
+새 대화형 install은 Direct/Isolated를 선택합니다. 비대화형 미지정은 Direct이며 `--mode isolated`를 명시할 수도 있습니다. update는 기존 선택을 보존합니다. 진행 중 작업의 모드 전환과 활성 사본/반영 중 업데이트는 차단합니다. Isolated는 동일 세션 도구·권한·자연 Hook 연결 검증이 필요하며 미확인 환경은 개발 진입을 차단합니다. [상세 계약](design/parallel-development.md).

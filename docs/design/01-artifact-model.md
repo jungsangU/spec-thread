@@ -134,3 +134,7 @@ No Change No Write, Reuse First, Single Source of Truth, Minimal Edit, No Extra 
 | Baseline | 실제 관리정보 변경. 상태·범위·관계 등은 필요한 시점에 즉시 반영 |
 
 기존 Work Item·findings·Evidence·공식 산출물로 충분하면 별도 구현 완료·테스트 요약·영향·요구 충족·변경 요약 보고서나 Plan 중복 문서를 생성하지 않는다. 공식 절차·프로젝트 정책·사용자가 별도 보고서를 요구하면 예외다. 무관한 문구 정리·스타일 변경·전체 재작성·형식적 파일 수정도 하지 않는다. [분석 사실 재사용](05-impact-analysis.md)과 현재 Gate PASS 재사용은 구분한다.
+
+## 동시 저장과 작업 사본
+
+[병렬 개발](parallel-development.md)의 Runtime은 원본 밖에 두며 기존 Baseline schema_version 1을 유지한다. 관리 YAML은 레코드별 3방향 CAS, 관리 Markdown은 expected_hash, Source Map은 base/updated로 저장한다. 신규 Work 통합 메타데이터는 기존 레코드의 integration에 부가하고 Gate 결과의 input_modes/execution_context/retained_evidence는 선택 필드다. 과거 기록의 PASS·UUID를 임의 생성/변경하지 않는다. Snapshot은 파일의 실제 바이트·모드·디렉터리를 보존한다.

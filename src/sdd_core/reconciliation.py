@@ -123,6 +123,19 @@ def prepare(root, plan):
 
 
 def apply(root, preview, identifier):
+    from .concurrency import project_lock
+    from .workspaces import config,active
+    # Explicit external reconciliation is source administration, never private
+    # Work integration. No long project test runs while these locks are held.
+    with project_lock(root,'publish'),project_lock(root):
+        if config(root)['mode']=='isolated' and active(root):
+            raise ValueError('활성 독립 작업을 종료한 뒤 원본 정합화를 적용하세요')
+        if planned_inputs(root,list(preview['inputs']))!=preview['inputs']:
+            raise ValueError('승인한 정합화 입력이 변경됐습니다')
+        return _apply(root,preview,identifier)
+
+
+def _apply(root, preview, identifier):
     # The caller has recomputed the preview and checked its approval hash.
     work = read_document(root, 'work-items.yaml')
     if identifier in {x['id'] for x in work['work_items']} | {

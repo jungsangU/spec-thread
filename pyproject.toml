@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spec-thread"
-version = "0.5.1"
+version = "0.6.0"
 requires-python = ">=3.11"
-dependencies = ["PyYAML>=6,<7"]
+dependencies = ["PyYAML>=6,<7", "psutil>=6,<8"]
 
 [project.scripts]
 sdd-core = "sdd_core.cli:main"

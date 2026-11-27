@@ -1,6 +1,6 @@
 # Feature 등록·재편·폐기
 
-설계 1.2. Feature의 불변 식별, 병합·분할, 폐기 및 아카이브 처리의 원본이다. 레코드 구조는 [산출물과 데이터 모델](01-artifact-model.md), 확정 전 분석은 [Discovery](03-analysis-standard.md)를 따른다.
+설계 2.0. Feature의 불변 식별, 병합·분할, 폐기 및 아카이브 처리의 원본이다. 레코드 구조는 [산출물과 데이터 모델](01-artifact-model.md), 확정 전 분석은 [Discovery](03-analysis-standard.md)를 따른다.
 
 ## 활성·폐기와 아카이브
 

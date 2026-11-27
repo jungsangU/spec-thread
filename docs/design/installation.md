@@ -1,6 +1,6 @@
 # 신규 설치와 업데이트의 통합 진입점
 
-설계 1.2 · 사용자 요청: 내려받은 배포본에서 install/update 두 명령으로 설치 절차를 끝낸다. 사용자 단계는 [설치 가이드](../SpecThread-설치-매뉴얼.md), 내부 버전 변환·품질 제한은 [버전 동기화](version-sync.md)가 원본이다.
+설계 2.0 · 사용자 요청: 내려받은 배포본에서 install/update 두 명령으로 설치 절차를 끝낸다. 사용자 단계는 [설치 가이드](../SpecThread-설치-매뉴얼.md), 내부 버전 변환·품질 제한은 [버전 동기화](version-sync.md)가 원본이다.
 
 ## 경계와 명령
 
@@ -30,7 +30,7 @@ pip의 SSL 오류 이후 사용자가 동의하면 기본 PyPI 호스트인 pypi
 | `.specify/spec-thread.json`의 runner_hash | 실행 파일의 관리 해시. 기존 버전·품질 필드와 함께 확인 |
 | `.specify/spec-thread-install.json` | agent/core_version/spec_kit_version/check 기록. 프로젝트의 기존 검사 argv를 재사용하며 실행 상태 DB가 아님 |
 
-전용 환경 캐시는 src/pyproject의 실제 내용 해시로 구분하고 준비 완료 표식을 패키지 설치 성공 후에만 쓴다. 폴더별 잠금·동시 설치 보장은 추가하지 않는다. 사용자 앱을 변경하는 설치는 같은 프로젝트에서 동시에 실행하지 않는다.
+전용 환경 캐시는 src/pyproject의 실제 내용 해시로 구분하고 준비 완료 표식을 패키지 설치 성공 후에만 쓴다. 설치 프로그램 자체의 병렬 실행 보장은 추가하지 않는다. 개발 중 관리 잠금과는 별개다. 사용자 앱을 변경하는 설치는 같은 프로젝트에서 동시에 실행하지 않는다.
 
 ## 흐름과 Gate
 
@@ -63,3 +63,7 @@ Core 실행 파일은 기록한 관리 해시와 일치하는 파일만 교체�
 설치·업데이트의 Python 자식 프로세스와 Spec Kit 출력은 UTF-8로 통일하며 JSON 파일도 UTF-8로 읽는다. CP949 터미널의 표현 불가능한 문자는 설치를 중단시키지 않도록 대체 표기한다. 선택 설치한 Monitor의 관리 실행기와 Hook도 같은 `update`에서 갱신하며 상세 관측 계약은 [Monitor](monitor.md)를 따른다.
 
 새 설치는 verification.yaml을 포함한 일곱 파일을 만들며 실제 검증 정의가 없으면 unconfigured다. 설치 성공은 개발 준비·검증 통과를 의미하지 않는다. 기존 0.4.0 배포의 업데이트는 [0.5.0 누적 변환](version-sync.md) 후 현재 위험/검증 정의를 확인한다.
+
+## Core 0.6.0 모드 설치
+
+신규 대화형 설치는 Direct/Isolated를 선택하고 `--mode direct|isolated`도 받는다. 비대화형 미지정과 기존 설정 없는 업데이트는 Direct가 기본이며 기존 mode/runtime/limits는 보존한다. 활성 Work 중 모드 변경, 활성 Workspace/저널 중 업데이트를 사전 차단한다. 다운로드한 배포본의 install/update 두 명령과 기존 품질·승인 계약은 유지한다. [모드·Runtime 상세](parallel-development.md).

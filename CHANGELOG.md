@@ -2,6 +2,13 @@
 
 버전은 Harness 설계의 Major.Minor를 뜻한다. Core 배포 버전과 공식 Spec Kit 버전은 별도로 관리한다.
 
+## 2.0
+
+- 사용자 Major 선택. Decision 18~38: Direct/Isolated, 동일 세션 사본 개발과 로컬 FIFO 순차 통합을 확정했다.
+- Core의 짧은 Metadata 잠금·레코드 CAS, 별도 Integration/Snapshot-Publish 잠금, 실제 Snapshot·3방향 병합·제한적 충돌 처리·저널 복구를 추가했다.
+- 기존 프로파일·동일 Work 검증 재사용·필수 Gate·수동 Git·공식 Spec Kit 원형을 유지한다. 설치 모드·업데이트 차단·등록 사본 Monitor 관측을 연결한다.
+- Core 0.6.0은 독립 제품 버전이다. 실제 네이티브/Windows·외부 리소스 검증과 남은 구현 경계는 docs/validation/parallel-development-review.md에 구분한다.
+
 ## 1.2
 
 - 사용자 선택 Minor. 기존 위험도·승인·필수 Gate를 유지하고 정책 11~17을 추가했다.

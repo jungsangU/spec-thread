@@ -1,3 +1,4 @@
+from .concurrency import metadata_transaction
 from .baseline import mapping, nonempty, sequence, validate
 from .discovery import assess_discovery
 from .evidence import content_hash, input_files, verify_evidence
@@ -9,6 +10,7 @@ def feature_basis(feature):
     return content_hash({key: feature[key] for key in ("id", "status", "spec_path", "dependencies")})
 
 
+@metadata_transaction
 def record_analysis(root, plan):
     validate(root)
     document = read_document(root, "features.yaml")
@@ -100,6 +102,7 @@ def develop_check(root, identifiers):
         pending.extend(dependency["feature_id"] for dependency in feature["dependencies"])
 
 
+@metadata_transaction
 def register_feature(root, plan, identifier):
     validate(root)
     document = read_document(root, "features.yaml")

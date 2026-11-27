@@ -232,3 +232,9 @@ class ReconciliationRefreshTest(unittest.TestCase):
         self.assertEqual(self.cli('reconcile', self.plan('sync.json', self.sync_plan()))[0], 1)
         self.assertEqual(before, (self.root / 'specs/a/spec.md').read_bytes())
         self.assertEqual(read_document(self.root, 'work-items.yaml')['work_items'], [])
+
+    def test_isolated_explicit_source_sync_keeps_mode_and_existing_gate_contract(self):
+        from sdd_core.workspaces import mode,config
+        mode(self.root,'isolated')
+        self.test_reconcile_creates_history_and_requires_real_verification()
+        self.assertEqual(config(self.root)['mode'],'isolated')

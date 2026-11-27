@@ -217,7 +217,7 @@ class VersionSyncTest(unittest.TestCase):
         self.write('policy-patch.json',json.dumps({'agent':'codex','quality':[
             {'features':[],'paths':['quality-input.txt'],'command':[sys.executable,'-c','pass']}]}))
         preview=json.loads(self.cli('version-sync',path)[1])
-        self.assertEqual(preview['migrations'],[{'from':'0.5.0','to':'0.5.1','migration':'scoped-development-skill-policy'}])
+        self.assertIn({'from':'0.5.0','to':'0.5.1','migration':'scoped-development-skill-policy'},preview['migrations'])
         self.assertEqual(self.cli('version-sync',path,'--confirm',preview['approval_hash'])[0],0)
         self.assertEqual(before,{p.name:p.read_bytes() for p in (self.root/'.specify/baseline').iterdir()})
         self.assertEqual(self.cli('version-check')[0],0)

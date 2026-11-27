@@ -1,6 +1,6 @@
 # 공식 Spec Kit 연동 계약
 
-설계 1.2 · 재현 기준 GitHub Spec Kit **v1.4.0** (`0019fa1`). 이 문서는 공식 기능·전제와 SpecThread 연결 방식의 원본이다. 현재 최신 버전 일반론이 아니라 고정한 태그의 문헌 대조다. [릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
+설계 2.0 · 재현 기준 GitHub Spec Kit **v1.4.0** (`0019fa1`). 이 문서는 공식 기능·전제와 SpecThread 연결 방식의 원본이다. 현재 최신 버전 일반론이 아니라 고정한 태그의 문헌 대조다. [릴리스](https://github.com/github/spec-kit/releases/tag/v1.4.0)
 
 | 영역 | 공식 기능 및 전제 | Harness 설계에 적용 |
 | --- | --- | --- |
@@ -39,3 +39,7 @@
 이 기준은 프로파일 최소·동적 절차와 필수 정책을 대체하지 않는다. 선택적 절차가 불필요하면 추가하지 않되, 필요해 호출한 공식 Skill을 변경분만 읽는 축약 검증으로 바꾸지 않는다. 실제 설치본의 입력·출력·선행 조건을 확인하고 원형의 필수 범위를 지킨다. 공식 검토와 같은 의미의 별도 분석은 중복하지 않고 결과를 기존 Work Item 판단에 활용한다. 유효성은 [프로파일·절차 기록 계약](verification-profiles.md)을 따른다. Analyze·Converge의 목적을 합치거나 변경분 검토로 필수 공식 절차를 완료 처리하지 않는다.
 
 공식 Skill 수정·Fork·Preset을 통한 검증 변경·Extension의 별도 검증 명령·모방 엔진은 이번 범위에 도입하지 않는다. 기존 sdd-develop의 호출 선택과 기존 Core의 기록·Gate만 사용한다.
+
+## Git 없는 독립 작업 사본
+
+공식 v1.4.0 스크립트를 수정하지 않고 gitless 경로를 사용한다. SPECIFY_INIT_DIR·SPECIFY_FEATURE_DIRECTORY·SPECIFY_FEATURE_NO_PERSIST와 Git 상위 탐색 차단을 명시한다. 실제 create/setup/prerequisite 실행 증거와 네이티브 전체 실행 검증을 구분한다. [Adapter·경로·진입 계약](parallel-development.md).

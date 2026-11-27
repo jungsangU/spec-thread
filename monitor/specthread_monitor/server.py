@@ -133,6 +133,46 @@ class MonitorServer(HTTPServer):
     def authority(self):
         return f"127.0.0.1:{self.server_port}"
 
+    def workspace_list(self):
+        from sdd_core.workspaces import registry, reference
+        result=[]
+        try:
+            for identifier,row in list(registry(self.root)['items'].items())[:100]:
+                try:
+                    if row['state'] in ('integrated','discarded'):continue
+                    root=Path(row[row.get('active_scope','workspace')]);reference(root)
+                    from sdd_core.records import read_document
+                    work=next(item for item in read_document(root,'work-items.yaml')['work_items'] if item['id']==identifier)
+                    names={item['id']:item['name'] for item in read_document(root,'features.yaml')['features']}
+                    title=' · '.join(names.get(id,id) for id in (work['actual_features'] or work['declared_features'])) or 'Discovery 진행 중'
+                    result.append({'id':identifier,'title':title,'work_status':work['status'],'state':row['state'],'candidate_available':Path(row['candidate']).is_dir(),'active_scope':row.get('active_scope','workspace'),
+                                   'wait_seconds':row.get('wait_seconds'), 'reason':row.get('reason')})
+                except (OSError,ValueError,KeyError,TypeError,StopIteration):continue
+        except (OSError,ValueError,KeyError,TypeError):pass
+        return result
+
+    def workspace_root(self, identifier, scope='workspace'):
+        from sdd_core.workspaces import registry, reference
+        if scope not in ('workspace','candidate'):raise ValueError('허용하지 않는 관측 범위')
+        row=registry(self.root)['items'].get(identifier)
+        if not row or row['state'] in ('integrated','discarded'):raise ValueError('등록된 활성 Workspace가 아닙니다')
+        root=Path(row[scope]);ref=reference(root)
+        if ref['origin']!=str(self.root.resolve()):raise ValueError('다른 프로젝트 Workspace')
+        return root
+
+    def workspace_snapshot(self, identifier, scope='workspace'):
+        root=self.workspace_root(identifier,scope)
+        data=snapshot(root,git_enabled=False)
+        from copy import deepcopy
+        activity=deepcopy(self.get_snapshot()['activity'])
+        activity['sessions']=[session for session in activity['sessions'] if session.get('workspace')==identifier]
+        activity['events']=[event for event in activity['events'] if event.get('workspace')==identifier]
+        connect_sessions(data['baseline'],activity['sessions'])
+        activity['session_gates']=session_gates(data['baseline'].get('items',[]),activity['sessions'])
+        return {**data,'activity':activity,'root':self.root.name+' / '+identifier[:8]+' / '+scope,
+                'metrics':dashboard(data['baseline'],test_report(root)),
+                'workspace_context':{'id':identifier,'scope':scope,'published':False}}
+
     def get_snapshot(self):
         if time.monotonic() - self.cached_at >= 2:
             data = snapshot(self.root)
@@ -142,7 +182,7 @@ class MonitorServer(HTTPServer):
             connect_sessions(data["baseline"], activity["sessions"])
             activity["project_agent"] = agent
             activity["session_gates"] = session_gates(data["baseline"].get("items", []), activity["sessions"])
-            self.cached = {**data, "activity": activity,
+            self.cached = {**data, "workspaces": self.workspace_list(), "activity": activity,
                            "metrics": dashboard(data["baseline"], test_report(self.root))}
             self.cached_at = time.monotonic()
         return self.cached
@@ -216,11 +256,23 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == "/api/snapshot":
             self.send_json(200, self.server.get_snapshot())
+        elif url.path == '/api/workspace':
+            try:
+                query=parse_qs(url.query,max_num_fields=2,strict_parsing=True)
+                identifier,=query['id'];scope,=query.get('scope',['workspace'])
+                content=self.server.workspace_snapshot(identifier,scope)
+            except (ValueError,KeyError,OSError,TypeError):self.send_json(400,{'error':'등록 Workspace만 조회할 수 있습니다'})
+            else:self.send_json(200,content)
         elif url.path == "/api/artifact":
             try:
-                query = parse_qs(url.query, max_num_fields=1, strict_parsing=True)
+                query = parse_qs(url.query, max_num_fields=3, strict_parsing=True)
                 name, = query["path"]
-                content = read_artifact(self.server.root, name, self.server.get_snapshot()["artifacts"])
+                if 'workspace' in query:
+                    identifier,=query['workspace'];scope,=query.get('scope',['workspace'])
+                    root=self.server.workspace_root(identifier,scope)
+                    artifacts=self.server.workspace_snapshot(identifier,scope)['artifacts']
+                else:root=self.server.root;artifacts=self.server.get_snapshot()['artifacts']
+                content = read_artifact(root, name, artifacts)
             except (ValueError, KeyError, OSError):
                 self.send_json(400, {"error": "이 산출물의 텍스트를 읽을 수 없습니다"})
             else:

@@ -1,3 +1,4 @@
+from .concurrency import metadata_transaction
 import json
 import posixpath
 import re
@@ -148,6 +149,7 @@ def prepare_retirement(root, identifier, plan):
     return preview, updated, writes
 
 
+@metadata_transaction
 def retire(root, preview, updated, writes):
     try:
         source = project_path(root, preview["from"])

@@ -1,3 +1,4 @@
+from .concurrency import metadata_transaction
 """Risk profiles and reusable policy; execution stays in the existing Gate engine."""
 from copy import deepcopy
 
@@ -105,6 +106,7 @@ def registry_preview(root, document):
             'approval_required': bool(changed) or not new, 'approval_reasons': changed or ([] if new else ['공통 검증 정의가 없는 정책 확인'])}
 
 
+@metadata_transaction
 def apply_registry(root, preview):
     if content_hash(registry(root, configured=False)) != preview['previous'] or verify_evidence(root, preview['document']['basis']) != preview['basis']:
         raise ValueError('검증 정의 또는 근거가 변경됐습니다')
@@ -183,6 +185,7 @@ def profile_preview(root, identifier, plan):
             'approval_reasons': (['Strict 최초 분류·상향 또는 새 고위험'] if strict_approval else []) + (['중요 판단 불확실성'] if uncertain else [])}
 
 
+@metadata_transaction
 def apply_profile(root, identifier, preview, *, delegated=False):
     from .gates import work_item
     document, item = work_item(root, identifier, editable=True)
@@ -264,6 +267,7 @@ def steps_required(root, item):
                 raise ValueError(f'필수 공식 검토 입력/증거가 변경됐습니다: {name}')
 
 
+@metadata_transaction
 def record_step(root, identifier, name, plan):
     from .gates import work_item
     if name not in STEPS:
