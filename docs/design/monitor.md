@@ -88,3 +88,7 @@ Core 0.5.0의 verification.yaml을 관측 파일에 포함한다. Work Item 상�
 ## 등록된 독립 작업 관측
 
 원본 Monitor에서 같은 프로젝트 registry의 Workspace/후보만 선택 조회한다. 화면에 미반영 Scope를 표시하고 Git diff는 계속 원본을 기준으로 한다. 현재 활성 후보와 최초 사본을 구분한다. 자연 Hook의 등록 cwd를 같은 세션의 원본 이벤트로 연결하고 workspace_id를 보존한다. 임의 외부 루트·publication/history 편집 권한을 주지 않는다. 기존 Living Office·Reader·CEO 승인 범위와 Monitor 미실행 개발을 유지한다. [병렬 개발](parallel-development.md).
+
+대시보드의 세션 카드, 캐릭터와 현재 세션 신호는 관측 상태가 `working` 또는 `recent`인 세션만 표시한다. 오른쪽 세션 활동은 고정된 표시 높이 안에서 모든 해당 세션을 스크롤할 수 있다. 종료·장기 미활동·상태 미확인 세션은 세션 상세에서 보존 범위 안의 기록으로 본다.
+
+상세 메뉴에서는 확인 요청, Discovery 차단, Gate 검토, 산출물 누락, 변경 충돌과 복수 세션 관측을 건수로 표시하고 같은 기준으로 목록을 좁힐 수 있다. Pipeline은 현재 필수 Gate 충족, 태스크 측정 공백과 원본에 반영되지 않은 통합 후보를 한 화면에서 비교한다.

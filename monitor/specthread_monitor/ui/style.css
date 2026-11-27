@@ -235,7 +235,16 @@ select { font: inherit; color: inherit; background: #26223a; border: 1px solid v
 .office-stage { min-width: 0; background: #20192e url("/office-night.webp") center / 100% 100% no-repeat; }
 .office-stage canvas { background: transparent; image-rendering: auto; }
 .office-showcase .activity { background: linear-gradient(155deg, #2c213c, #21192f); }
-.office-showcase .session-cards { grid-template-columns: 1fr; }
+.office-showcase .session-cards {
+  grid-template-columns: 1fr;
+  max-height: min(29rem, 55vh);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: #8466a4 #21192f;
+  padding-inline-end: .4rem;
+}
+.review-summary button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .office-showcase .speech-bubble { background: #1a1228f5; width: 16%; border-radius: 10px; }
 .office-summary { grid-template-columns: minmax(0, 1fr); }
 .office-summary > .stack { grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); }

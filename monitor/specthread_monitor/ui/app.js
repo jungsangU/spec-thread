@@ -145,14 +145,21 @@ function line(text) {
   return node("p", text, "muted");
 }
 
-function cards(id, rows, create, empty) {
+function cards(id, rows, create, empty, refreshFocused = false) {
   const target = byId(id);
   const focused = target.contains(document.activeElement);
-  if (focused) return;
+  if (focused && !refreshFocused) return;
+  const focusKey = focused ? document.activeElement.closest("[data-session-key]")?.dataset.sessionKey : null;
+  const scroll = target.scrollTop;
   const open = new Set([...target.querySelectorAll("details[open]")].map((element) => element.dataset.key));
   const rendered = rows.map(create);
   for (const card of rendered) if (open.has(card.dataset.key)) card.open = true;
   target.replaceChildren(...(rendered.length ? rendered : [line(empty)]));
+  target.scrollTop = scroll;
+  if (focusKey) {
+    const restored = rendered.find((card) => card.dataset.sessionKey === focusKey)?.querySelector("button");
+    (restored || target).focus({ preventScroll: true });
+  }
 }
 
 
@@ -313,8 +320,26 @@ function renderArtifacts() {
   const filter = byId("artifact-filter").value.trim().toLowerCase();
   const kind = byId("artifact-kind").value;
   const visible = artifacts.filter((artifact) => artifact.path.toLowerCase().includes(filter) && (
-    !kind || kind === "changed" && artifact.changed || kind === "baseline" && artifact.path.startsWith(".specify/baseline/") || artifact.path.split("/").at(-1) === `${kind}.md`));
-  byId("artifact-summary").replaceChildren(chip(`${visible.length}개 표시`), chip(`${artifacts.filter((row) => row.changed).length}개 변경`, "warn"), chip(`${artifacts.filter((row) => !row.present).length}개 미발견`));
+    !kind || kind === "changed" && artifact.changed || kind === "missing" && !artifact.present ||
+    kind === "gate-evidence" && artifact.gate_statuses.length > 0 || kind === "baseline" && artifact.path.startsWith(".specify/baseline/") || artifact.path.split("/").at(-1) === `${kind}.md`));
+  const summary = byId("artifact-summary");
+  const previous = document.activeElement?.dataset.artifactFilter;
+  summary.replaceChildren(chip(`${visible.length}개 표시`), ...[
+    ["missing", "미발견", (row) => !row.present],
+    ["changed", "변경됨", (row) => row.changed],
+    ["gate-evidence", "Gate 증거", (row) => row.gate_statuses.length > 0],
+  ].map(([value, title, matches]) => {
+    const button = node("button", `${title} ${artifacts.filter(matches).length}`, "entity-link");
+    button.type = "button";
+    button.dataset.artifactFilter = value;
+    button.setAttribute("aria-pressed", String(kind === value));
+    button.addEventListener("click", () => {
+      byId("artifact-kind").value = kind === value ? "" : value;
+      renderArtifacts();
+    });
+    return button;
+  }));
+  if (previous) [...summary.children].find((button) => button.dataset.artifactFilter === previous)?.focus();
   cards("artifact-data", visible, (artifact) => {
     const row = node("button", undefined, "artifact-button");
     row.type = "button";
@@ -387,11 +412,13 @@ function render(data) {
   ].filter(Boolean).join(" · ");
   renderMetrics(data.metrics);
   renderWorkDistribution(items, baseline, data.metrics);
-  const sessions = sessionStats(activity);
+  const current = activity.sessions.filter((session) => ["working", "recent"].includes(session.state));
+  const currentKeys = new Set(current.map((session) => identity(session).key));
+  const sessions = sessionStats({ ...activity, sessions: current });
   const working = sessions.filter(({ session }) => session.state === "working").length;
   byId("session-scope").textContent = activity.configured ?
-    `작업 관측 ${working} · 관측 세션 ${sessions.length}` : "실시간 입력 미연결";
-  const sessionGates = activity.session_gates || [];
+    `작업 관측 ${working} · 현재 세션 ${sessions.length}` : "실시간 입력 미연결";
+  const sessionGates = (activity.session_gates || []).filter((row) => currentKeys.has(`${row.agent}:${row.session}`));
   const gateKeys = new Set(sessionGates.map((row) => `${row.agent}:${row.session}`));
   byId("session-gate-panel").hidden = !sessionGates.length;
   cards("session-gate-data", sessionGates, (row) => {
@@ -400,8 +427,9 @@ function render(data) {
       ...row.gates.map((gate) => line(gate.id + " · " + gate.status)));
     return entry;
   }, "");
-  cards("session-cards", sessions.slice(0, 6), ({ session, events, files }) => {
+  cards("session-cards", sessions, ({ session, events, files }) => {
     const card = tint(node("div", undefined, "session-card"), session);
+    card.dataset.sessionKey = identity(session).key;
     const head = node("strong");
     const blocked = gateKeys.has(session.agent + ":" + session.session);
     card.classList.toggle("has-gate", blocked);
@@ -416,31 +444,33 @@ function render(data) {
     return card;
   }, activity.project_agent
     ? `다른 터미널에서 같은 프로젝트 폴더를 열고 ${activity.project_agent}를 실행하세요. 첫 이벤트가 오면 자동으로 표시됩니다.`
-    : activity.configured ? "첫 활동 이벤트를 기다리는 중" : "프로젝트에 Monitor를 추가 설치하면 세션을 연결할 수 있습니다.");
+    : activity.configured ? "최근 활동이 관측된 세션이 없습니다." : "프로젝트에 Monitor를 추가 설치하면 세션을 연결할 수 있습니다.", true);
   artifacts = data.artifacts;
   renderArtifacts();
   const permissionEvents = activity.sessions.filter((event) => event.state !== "ended" &&
     ["permission_requested", "input_requested", "turn_completed", "turn_failed", "turn_interrupted"].includes(event.kind));
-  const projectActions = data.next_actions.map((action) => {
-    const linked = activity.sessions.filter((session) => session.context?.work === action.ref ||
+  const dashboardProjectActions = data.next_actions.map((action) => {
+    const linked = current.filter((session) => session.context?.work === action.ref ||
       session.context?.spec_paths?.some((path) => action.ref === `${path}/tasks.md`));
     return linked.length === 1 ? { ...action, session: linked[0], text: sessionTopic(linked[0]) + " · " + action.text } : action;
   });
-  const actions = projectActions.concat(permissionEvents.map((event) => ({
+  const sessionAction = (event) => ({
     text: sessionTitle(event) + " · 응답·결과 확인", ref: event.session, session: event,
-  })));
-  cards("action-data", actions.slice(0, 3), (action) => {
+  });
+  const dashboardActions = dashboardProjectActions.concat(permissionEvents
+    .filter((event) => currentKeys.has(identity(event).key)).map(sessionAction));
+  cards("action-data", dashboardActions.slice(0, 3), (action) => {
     const row = node("div", undefined, "action");
     if (action.session) tint(row, action.session);
     row.append(node("p", action.text));
     return row;
   }, "표시할 다음 행동이 없습니다.");
-  renderDetailPages(data, actions);
-  const latest = activity.sessions.findLast((event) => !seenEvents.has(event.id)) || lastSignal || activity.events.at(-1);
-  seenEvents = new Set(activity.sessions.map((event) => event.id));
-  lastSignal = activity.sessions.some((event) => event.id === latest?.id) ? latest : activity.events.at(-1);
-  byId("office-signal").textContent = lastSignal ? eventLabel(lastSignal) : "세션 이벤트 대기";
-  office.update(activity.sessions, sessionGates, items);
+  renderDetailPages(data, data.next_actions.concat(permissionEvents.map(sessionAction)));
+  const latest = current.findLast((event) => !seenEvents.has(event.id));
+  seenEvents = new Set(current.map((event) => event.id));
+  lastSignal = latest || current.find((event) => event.id === lastSignal?.id) || current.at(-1);
+  byId("office-signal").textContent = lastSignal ? eventLabel(lastSignal) : "현재 세션 이벤트 대기";
+  office.update(current, sessionGates, items);
 }
 
 async function api(path) {
