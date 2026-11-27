@@ -338,6 +338,11 @@ async function loadArtifact(path) {
   }
   const artifact = artifacts.find((row) => row.path === path);
   byId("artifact-meta").replaceChildren(...(artifact ? [chip(artifact.changed ? "변경됨" : "저장 파일", artifact.changed ? "warn" : "neutral"), ...artifact.gate_statuses.map((status) => chip(status, statusTone(status)))] : []));
+  const features = (lastSnapshot?.baseline.features || []).filter((feature) => path.startsWith(feature.spec_path + "/"));
+  const gateRefs = (lastSnapshot?.baseline.items || []).flatMap((work) => work.gates
+    .filter((gate) => gate.evidence.some((ref) => ref.split("#")[0] === path))
+    .map((gate) => routeButton(`증거 참조 · ${gate.id}`, "work-items", work.id)));
+  byId("artifact-meta").append(...features.map((feature) => routeButton(feature.name, "features", feature.id)), ...gateRefs);
   byId("artifact-title").textContent = path.split("/").at(-1);
   byId("artifact-path").textContent = path;
   const output = byId("artifact-text");
@@ -465,7 +470,9 @@ function createOffice() {
   let pulses = new Map();
   let gateSignals = new Map();
   let gatePulses = new Map();
+  const signalDuration = 1600;
   let celebrations = new Map();
+  let gatePasses = new Map();
   let completedWork = new Set();
   const seatKey = (session) => `${session.agent}:${session.session}`;
   let frame;
@@ -476,7 +483,6 @@ function createOffice() {
   }
 
   const spriteOrder = ["short", "long", "curly", "robot", "tiger", "lion", "cat", "fox"];
-  const sleeves = ["#d68d49", "#a78eb9", "#56867c", "#c6a783", "#595a72", "#dcc1a0", "#b87980", "#708264"];
   const workstationSize = 72;
   const managerSize = 57;
   const sessionDesks = [97, 198].flatMap((bottom) => [84, 160, 236, 312].map((x) => ({ x, bottom })));
@@ -509,30 +515,10 @@ function createOffice() {
     } else {
       rect(x - 1, y - 3, 2, 4, "#352437");
       rect(x - 1, y + 2, 2, 2, "#352437");
-      if (flashing) {
-        rect(x + 8, y - 4, 3, 1.5, color);
-        rect(x + 9, y, 3, 1.5, color);
-      }
     }
-  }
-
-  function raisedHands(index, x, bottom, now, both) {
-    const swing = Math.sin(now / 95) * 2;
-    for (const side of both ? [-1, 1] : [-1]) {
-      const handX = x + side * (18 + swing);
-      const handY = bottom - 29 - swing;
-      ctx.beginPath();
-      ctx.moveTo(x + side * 8, bottom - 12);
-      ctx.lineTo(x + side * 16, bottom - 18);
-      ctx.lineTo(handX, handY);
-      ctx.lineCap = "round";
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = "#362538";
-      ctx.stroke();
-      ctx.lineWidth = 3.5;
-      ctx.strokeStyle = sleeves[index];
-      ctx.stroke();
-      rect(handX - 2, handY - 3, 4, 4, "#ffd4aa");
+    if (flashing) {
+      rect(x + 8, y - 4, 3, 1.5, color);
+      rect(x + 9, y, 3, 1.5, color);
     }
   }
 
@@ -553,10 +539,13 @@ function createOffice() {
       const cheering = moving && now < (celebrations.get(key) || 0);
       const sprite = spriteOrder.indexOf(identity(session).appearance);
       drawSprite(sprite, x, bottom, workstationSize);
-      const workerX = x - 14;
-      if (alerting || cheering) raisedHands(sprite, workerX, bottom - 26, now, cheering);
-      if (cheering || gateSignals.has(key)) {
-        statusBadge(x + 7, bottom - 63, cheering, alerting && Math.floor(now / 135) % 2 === 1);
+      const passed = moving && now < (gatePasses.get(key) || 0);
+      const waiting = gateSignals.has(key);
+      if (waiting || passed || cheering) {
+        const positive = !waiting && (passed || cheering);
+        const pulsing = waiting ? alerting : passed || cheering;
+        statusBadge(x + 7, bottom - 63, positive, pulsing && Math.floor(now / 180) % 2 === 1);
+        if (waiting && passed) statusBadge(x + 25, bottom - 63, true, Math.floor(now / 180) % 2 === 1);
       } else if (active) {
         const shift = Math.floor(now / 120) % 2 * 3;
         rect(x + 13 + shift, bottom - 37, 3, 1, "#ffe1ac");
@@ -565,7 +554,7 @@ function createOffice() {
     for (const { id, x, bottom, index } of managers) {
       if (byId(id).getAttribute("aria-pressed") === "true") drawSprite(index, x, bottom, managerSize);
     }
-    if (moving && [...pulses.values(), ...gatePulses.values(), ...celebrations.values()].some((end) => now < end)) {
+    if (moving && [...pulses.values(), ...gatePulses.values(), ...celebrations.values(), ...gatePasses.values()].some((end) => now < end)) {
       lastFrame = now;
       frame = requestAnimationFrame(animateFrame);
     }
@@ -586,9 +575,21 @@ function createOffice() {
   return {
     update(sessions, gates, items) {
       const nextCompleted = new Set(items.filter((item) => item.status === "completed").map((item) => item.id));
-      const nextGates = new Map(gates.map((entry) => [seatKey(entry), JSON.stringify(entry.gates)]));
+      const nextGates = new Map(gates.map((entry) => [seatKey(entry), entry]));
+      const workById = new Map(items.map((item) => [item.id, item]));
+      const now = performance.now();
+      const animate = canAnimate();
+      const nextPasses = new Map([...gatePasses].filter(([, end]) => end > now));
+      for (const [key, prior] of gateSignals) {
+        const work = workById.get(prior.work);
+        if (animate && work && prior.gates.some(({ id }) =>
+          work.gates.some((gate) => gate.id === id && (gate.current === "PASS" || gate.historical && gate.recorded === "PASS")))) {
+          nextPasses.set(key, now + signalDuration);
+        }
+      }
+      gatePasses = nextPasses;
       const present = sessions.filter((session) => session.state !== "ended" &&
-        (session.state !== "quiet" || nextGates.has(seatKey(session))));
+        (session.state !== "quiet" || nextGates.has(seatKey(session)) || nextPasses.has(seatKey(session))));
       const flagged = present.filter((session) => nextGates.has(seatKey(session))).slice(-sessionDesks.length);
       const others = present.filter((session) => !nextGates.has(seatKey(session)));
       const extra = sessionDesks.length - flagged.length;
@@ -615,8 +616,6 @@ function createOffice() {
         return bubble;
       }).filter(Boolean);
       byId("office-bubbles").replaceChildren(...bubbles);
-      const now = performance.now();
-      const animate = canAnimate();
       const nextPulses = new Map();
       for (const session of visible) {
         const key = seatKey(session);
@@ -631,14 +630,15 @@ function createOffice() {
         const work = session.context?.work;
         const turned = previous !== session.id && session.kind === "turn_completed";
         const finished = nextCompleted.has(work) && !completedWork.has(work);
-        const end = animate && previous && (turned || finished) ? now + 1700 : celebrations.get(key);
+        const end = animate && previous && (turned || finished) ? now + signalDuration : celebrations.get(key);
         if (end > now) nextCelebrations.set(key, end);
       }
       celebrations = nextCelebrations;
       completedWork = nextCompleted;
       const nextGatePulses = new Map();
-      for (const [key, signature] of nextGates) {
-        const end = animate && signature !== gateSignals.get(key) ? now + 1500 : gatePulses.get(key);
+      for (const [key, entry] of nextGates) {
+        const changed = JSON.stringify(entry.gates) !== JSON.stringify(gateSignals.get(key)?.gates);
+        const end = animate && changed ? now + signalDuration : gatePulses.get(key);
         if (end > now) nextGatePulses.set(key, end);
       }
       gatePulses = nextGatePulses;
@@ -652,6 +652,7 @@ function createOffice() {
       pulses.clear();
       gatePulses.clear();
       celebrations.clear();
+      gatePasses.clear();
       cancelAnimationFrame(frame);
       draw(performance.now());
     },

@@ -121,7 +121,11 @@ function picker(page, container, rows, options, describe, inspect, empty) {
   if (focused) [...view.list.children].find((row) => row.dataset.entity === focused)?.focus({ preventScroll: true });
   const selected = view.unresolved ? undefined : visible.find((row) => describe(row).id === view.selected);
   const dependencies = page === "features" ? [lastSnapshot.baseline.features, lastSnapshot.baseline.items?.map((work) => [work.id, work.status, work.declared_features, work.actual_features])] :
-    page === "work-items" ? [lastSnapshot.baseline.features, lastSnapshot.activity.sessions.filter((session) => session.context?.work === view.selected).map((session) => [session.id, sessionTopic(session)])] :
+    page === "sessions" ? [lastSnapshot.activity.session_gates, lastSnapshot.git?.files] :
+    page === "work-items" ? [lastSnapshot.baseline.features, lastSnapshot.activity.session_gates, lastSnapshot.activity.sessions.filter((session) => session.context?.work === view.selected).map((session) => [session.id, sessionTopic(session)])] :
+    page === "changes" ? lastSnapshot.activity.events.filter((event) => event.paths.includes(view.selected))
+      .map((event) => [event.agent, event.session]).filter((pair, index, pairs) =>
+        pairs.findIndex(([agent, session]) => agent === pair[0] && session === pair[1]) === index) :
     page === "pipeline" ? [lastSnapshot.metrics, lastSnapshot.installation, lastSnapshot.baseline.analysis] : [];
   const signature = JSON.stringify([view.unresolved, selected, selected ? describe(selected) : null, dependencies]);
   view.refreshed = false;
@@ -158,11 +162,19 @@ function renderSessionDetails(data) {
         timeline.append(entry);
       }
       if (!events.length) timeline.append(node("li", "표시할 작업 이벤트가 없습니다. 권한 이벤트는 기본으로 숨깁니다."));
+      const observedGates = data.activity.session_gates?.find((entry) => entry.agent === session.agent && entry.session === session.session)?.gates || [];
+      const changedPaths = [...new Set(events.flatMap((event) => event.paths))];
       const gates = (linked.gates || []).map((gate) => {
         const card = tint(node("div", undefined, "gate-tile"), session);
         card.append(node("strong", gate.id), chip(gate.status, statusTone(gate.status))); return card;
       });
       return [detailHeader(sessionTitle(session), "선택한 세션의 작업과 최근 관측", [chip(sessionStates[session.state]), chip(session.agent === "codex" ? "Codex" : "Claude Code")]),
+        sectionBlock("지금 확인할 항목", observedGates.length
+          ? observedGates.map((gate) => line(`${gate.id} · ${gate.status}`))
+          : [line("현재 스냅샷에 이 세션의 검토 요청이 없습니다.")]),
+        ...(changedPaths.length ? [sectionBlock("이 세션에서 관측한 변경", changedPaths.slice(0, 8).map((path) =>
+          data.git?.files.some((change) => change.path === path) ? routeButton(path, "changes", path) : node("code", path)),
+          `${changedPaths.length}개 경로 · 세션 이벤트 기준`)] : []),
         renameTopic(session), fieldGrid([["현재 관측", activityTitle(session)], ["작업 폴더", linked.directory || session.directory], ["연결 Feature", linked.features?.join(" · ") || "미확인"], ["변경 파일", `${files}개`]]),
         sectionBlock("연결 작업과 검증", [...(linked.work ? [routeButton("연결된 Work Item 보기 →", "work-items", linked.work)] : [line("명시적으로 연결된 Work Item이 없습니다.")]), ...gates]),
         sectionBlock("최근 활동", [timeline], `${events.length}개 관측 · 최신순`),
@@ -180,9 +192,19 @@ function renderFeatureDetails(data) {
       const connected = works.filter((work) => [...work.declared_features, ...work.actual_features].includes(feature.id));
       const dependencies = feature.dependencies.map((edge) => routeButton(`${names.get(edge.feature_id) || "연결 Feature"} · ${edge.type}`, "features", edge.feature_id));
       const dependents = features.filter((row) => row.dependencies.some((edge) => edge.feature_id === feature.id));
+      const blockedDependencies = feature.dependencies.filter((edge) =>
+        features.some((row) => row.id === edge.feature_id && row.discovery === "BLOCKED"));
+      const open = connected.filter((work) => !["completed", "failed"].includes(work.status));
+      const remaining = feature.tasks ? feature.tasks.total - feature.tasks.done : null;
       const taskBlock = node("div", undefined, "feature-progress");
       taskBlock.append(node("strong", feature.tasks ? ratio(feature.tasks.done, feature.tasks.total) : "미확인"), progressBar(feature.name, feature.tasks?.done || 0, feature.tasks?.total || 0), line(feature.tasks ? `${feature.tasks.done}개 완료 / ${feature.tasks.total}개 태스크` : "공식 tasks.md를 아직 확인할 수 없습니다."));
       return [detailHeader(feature.name, "Feature 범위·공식 태스크·연결 작업", [chip(feature.status === "active" ? "활성" : "아카이브", statusTone(feature.status)), chip(`Discovery ${feature.discovery || "미확인"}`, statusTone(feature.discovery))]),
+        sectionBlock("진행을 판단할 근거", [
+          ...blockedDependencies.map((edge) => routeButton(`Discovery BLOCKED · ${names.get(edge.feature_id)}`, "features", edge.feature_id)),
+          remaining === null ? artifactLink(`${feature.spec_path}/tasks.md`) :
+            line(`남은 공식 태스크 ${remaining}개 · 종료되지 않은 연결 작업 ${open.length}개`),
+          ...open.slice(0, 3).map((work) => routeButton(`${label(work.status)} · ${workTitle(work, data)}`, "work-items", work.id)),
+        ]),
         taskBlock,
         sectionBlock("이 기능이 의존하는 기능", dependencies.length ? dependencies : [line("기록된 의존 관계가 없습니다.")]),
         sectionBlock("이 기능을 사용하는 기능", dependents.length ? dependents.map((row) => routeButton(row.name, "features", row.id)) : [line("기록된 역방향 의존 관계가 없습니다.")]),
@@ -205,6 +227,10 @@ function renderWorkDetails(data) {
     (work) => {
       const linked = data.activity.sessions.filter((session) => session.context?.work === work.id);
       const names = (ids) => ids.map((id) => data.baseline.features.find((feature) => feature.id === id)?.name || id).join(" · ") || "없음";
+      const activeGates = (data.activity.session_gates || []).filter((entry) => entry.work === work.id).flatMap((entry) => entry.gates);
+      const checks = activeGates.length ? activeGates :
+        work.gates.filter((gate) => gate.required && ["FAIL", "STALE", "UNKNOWN"].includes(gate.current))
+          .map((gate) => ({ id: gate.id, status: gate.current }));
       const gateCards = work.gates.map((gate) => {
         const block = node("section", undefined, "gate-tile");
         if (linked.length === 1) tint(block, linked[0]);
@@ -220,6 +246,10 @@ function renderWorkDetails(data) {
           }) : [line("기록된 증거 참조 없음")])); return block;
       });
       return [detailHeader(workTitle(work, data), "Work Item · 검증을 확인한 뒤 다음 단계를 판단하세요", [chip(label(work.status), statusTone(work.status))]),
+        sectionBlock("우선 확인", ["completed", "failed"].includes(work.status)
+          ? [line("종료 상태입니다. 아래 Gate에서 종료 당시 증거를 확인할 수 있습니다.")]
+          : checks.length ? checks.map(({ id, status }) => line(`${id} · ${status}`))
+          : [line(work.gate_issue || "현재 기록에서 우선 확인할 Gate를 식별하지 못했습니다.")]),
         ...linked.map((session) => tint(routeButton(sessionTitle(session), "sessions", identity(session).key), session)),
         ...(work.verification ? [sectionBlock("검증 프로파일", [chip(work.verification.profile), line(work.verification.reason),
           fieldGrid([["분류·확장 이력", `${work.verification.revisions}회`], ["진행 권한", ({ explicit_user: "구체적 승인 기록", office_ceo: "CEO 위임" })[work.verification.approval_mode] || "최초 요청 범위"]]),
@@ -238,6 +268,8 @@ function renderGitDetails(data) {
   const selected = picker("changes", "change-data", rows, [["working", "작업 트리 변경"], ["staged", "스테이징 변경"], ["untracked", "새 파일"], ["conflict", "충돌"]],
     (change) => ({ id: change.path, title: change.path.split("/").at(-1), status: gitCategory(change), badge: { working: "수정", staged: "스테이징", untracked: "새 파일", conflict: "충돌" }[gitCategory(change)], subtitle: change.path, search: change.status, categories: [gitCategory(change), ...(!["untracked", "conflict"].includes(gitCategory(change)) && change.status[0] !== " " ? ["staged"] : [])] }),
     (change) => {
+      const observers = sessionStats(data.activity).filter(({ events }) =>
+        events.some((event) => event.paths.includes(change.path)));
       const preview = node("div"); preview.id = "diff-display";
       preview.append(node("h3", "변경 내용"));
       const title = node("p", "", "muted"); title.id = "diff-title";
@@ -257,7 +289,11 @@ function renderGitDetails(data) {
       refresh.addEventListener("click", () => loadDiff(change.path, selectedDiffKey?.startsWith(change.path + ":") ? selectedDiffKey.endsWith(":true") : change.status[1] === " ", "선택한 파일 diff"));
       tabs.append(refresh);
       return [detailHeader(change.path.split("/").at(-1), change.path, [chip(change.status)]),
-        line(`관측 브랜치 · ${data.git.branch || "미확인"}`), line("diff는 파일 선택·탭 전환·새로고침 시 읽습니다."), tabs, preview];
+        line(`관측 브랜치 · ${data.git.branch || "미확인"}`),
+        sectionBlock("변경을 관측한 세션", observers.length ? observers.map(({ session }) =>
+          routeButton(sessionTitle(session), "sessions", identity(session).key)) : [line("세션 이벤트에 이 경로가 없습니다.")],
+          observers.length > 1 ? "여러 세션에서 같은 경로를 관측했습니다. 변경 내용을 함께 확인하세요." : undefined),
+        tabs, preview];
     }, data.git ? "현재 변경된 파일이 없습니다." : "Git 상태를 읽을 수 없습니다.");
   if (selected && detailViews.get("changes").refreshed && !["untracked", "conflict"].includes(gitCategory(selected))) {
     let staged = selectedDiffKey?.startsWith(selected.path + ":") ? selectedDiffKey.endsWith(":true") : selected.status[1] === " ";
@@ -286,7 +322,10 @@ function renderPipelineDetails(data, actions) {
     { id: "installation", title: "설치와 품질", note: installation?.record_integrity || "미확인", content: () => [fieldGrid([["Core 버전", installation?.core_version], ["Skill·runner 해시", installation?.record_integrity], ["품질 제한", installation?.quality_available ? installation.global_blocked ? "전역 차단" : installation.restricted_features.join(" · ") || "없음" : "미확인"]]), line("설치 변경과 검증 실행은 Monitor에서 수행하지 않습니다.")] },
   ];
   picker("pipeline", "pipeline-data", stages, [], (stage) => ({ id: stage.id, title: stage.title, subtitle: stage.note, status: "stage", badge: "근거 보기" }),
-    (stage) => [detailHeader(stage.title, "프로젝트 기록에 근거한 단계별 현황"), ...stage.content()], "확인할 단계가 없습니다.");
+    (stage) => [detailHeader(stage.title, "프로젝트 기록에 근거한 단계별 현황"),
+      ...(stage.id === "verification" && metrics.required_total > metrics.required_pass
+        ? [line(`현재 PASS로 집계되지 않은 필수 Gate ${metrics.required_total - metrics.required_pass}개 · Work Item에서 상태와 근거를 확인하세요.`)] : []),
+      ...stage.content()], "확인할 단계가 없습니다.");
   const target = byId("pipeline-actions");
   if (target.contains(document.activeElement)) return;
   const visible = pipelineExpanded ? actions : actions.slice(0, 4);
