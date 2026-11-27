@@ -11,6 +11,7 @@ import shutil
 import shlex
 import sys
 import venv
+import tempfile
 
 
 HOOK_EVENTS = ('SessionStart', 'UserPromptSubmit', 'PostToolUse', 'PermissionRequest', 'PreToolUse', 'Stop', 'SessionEnd')
@@ -148,6 +149,57 @@ def install_monitor(source, target, cache, core_digest, ssl_trust, *, interactiv
     print(f'공용 프로젝트 세션 관측 설정 완료 · {launcher.name} 실행')
 
 
+def select_project(command, explicit, source, cache, interactive, *, ask=None):
+    if ask is None:ask=input
+    target=(explicit or Path.cwd()).expanduser().resolve()
+    if explicit is None and interactive and command=='update':
+        previous=None
+        if target!=source and ((target/'.specify/spec-thread.json').is_file() or (target/'.specify/baseline').is_dir()):
+            previous=target
+        else:
+            try:
+                record=json.loads((cache/'last-project.json').read_text(encoding='utf-8'))
+                if record.get('schema_version')==1 and isinstance(record.get('project'),str) and Path(record['project']).is_absolute():
+                    saved=Path(record['project']).resolve()
+                    if saved!=source and saved.is_dir() and ((saved/'.specify/spec-thread.json').is_file() or (saved/'.specify/baseline').is_dir()):
+                        previous=saved
+            except (OSError,ValueError,TypeError,AttributeError):pass
+        if previous is not None:
+            while True:
+                answer=ask(f'기존 앱 경로가 맞나요? [{previous}] [Y/n]: ').strip().lower()
+                if answer in ('','y','yes','예','네'):return previous
+                if answer in ('n','no','아니오','아니요'):
+                    answer=ask('설치·업데이트할 애플리케이션 폴더 경로: ').strip()
+                    if not answer:raise ValueError('애플리케이션 폴더를 지정하세요.')
+                    return Path(answer.strip("\"'")).expanduser().resolve()
+    if interactive and command=='install' and explicit is None and target!=source:
+        answer=ask(f'앱 폴더 경로 [{target}]: ').strip()
+        if answer:target=Path(answer.strip("\"'")).expanduser().resolve()
+    if target==source or (explicit is None and interactive and command=='update'):
+        answer=ask('설치·업데이트할 애플리케이션 폴더 경로: ').strip()
+        if not answer:raise ValueError('애플리케이션 폴더를 지정하세요.')
+        target=Path(answer.strip("\"'")).expanduser().resolve()
+    return target
+
+
+def remember_project(cache,target):
+    # Preference only; never an executable command, approval or project authority.
+    if not (target/'.specify/spec-thread.json').is_file():return
+    temporary=None
+    try:
+        cache.mkdir(parents=True,exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8',dir=cache,prefix='.last-project-',delete=False) as stream:
+            temporary=Path(stream.name)
+            json.dump({'schema_version':1,'project':str(target.resolve())},stream,ensure_ascii=False)
+        os.replace(temporary,cache/'last-project.json')
+    except OSError as error:
+        print(f'앱 경로를 기억하지 못했습니다. 다음 실행에서 경로를 직접 지정하세요: {error}',file=sys.stderr)
+    finally:
+        if temporary is not None:
+            try:temporary.unlink(missing_ok=True)
+            except OSError:pass
+
+
 def main():
     # Preserve the terminal's encoding but never crash on non-CP949 characters.
     for stream in (sys.stdout, sys.stderr):
@@ -177,16 +229,8 @@ def main():
     if not 1 <= args.hook_timeout <= 30:
         parser.error('--hook-timeout은 1–30초로 지정하세요.')
     ssl_trust = args.ssl_trust
-    target = (args.project or Path.cwd()).expanduser().resolve()
-    if interactive and args.command == 'install' and args.project is None and target != source:
-        answer = input(f'앱 폴더 경로 [{target}]: ').strip()
-        if answer:
-            target = Path(answer.strip('"')).expanduser().resolve()
-    if target == source:
-        answer = input('설치·업데이트할 애플리케이션 폴더 경로: ').strip()
-        if not answer:
-            parser.error('애플리케이션 폴더를 지정하세요.')
-        target = Path(answer.strip("\"'")).expanduser().resolve()
+    cache = Path(os.environ.get('SPEC_THREAD_CACHE', Path.home() / '.cache/spec-thread')).expanduser()
+    target = select_project(args.command,args.project,source,cache,interactive)
     if not target.is_dir() or target == source:
         parser.error('존재하는 애플리케이션 폴더를 지정하세요. 새 프로젝트라면 빈 폴더를 먼저 준비하세요.')
     marker = target / '.specify/spec-thread.json'
@@ -221,6 +265,7 @@ def main():
     if monitor_only:
         install_monitor(source, target, cache, digest.hexdigest(), ssl_trust,
                         interactive=interactive, timeout=args.hook_timeout)
+        remember_project(cache,target)
         return 0
     environment = cache / ('runtime-' + digest.hexdigest()[:20])
     python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
@@ -246,6 +291,7 @@ def main():
     if result == 0 and (args.monitor or update_monitor) and marker.is_file():
         install_monitor(source, target, cache, digest.hexdigest(), ssl_trust,
                         interactive=interactive, timeout=args.hook_timeout)
+    if result==0:remember_project(cache,target)
     return result
 
 

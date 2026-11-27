@@ -19,6 +19,9 @@
 
 입력은 action, 대상 앱 폴더, 선택 또는 기존 기록의 에이전트, 로컬 Core 소스와 필요한 기존 프로젝트 검사다. 기본 질문으로 입력하며 자동화는 --project/--agent/--check/--yes를 사용할 수 있다. 여러 에이전트를 같은 프로젝트에 자동 설치·전환하지 않는다. 새 대화형 설치는 앱 경로, 에이전트, Monitor 설치 여부를 순서대로 묻는다. `--monitor`와 `--no-monitor`로 선택을 명시할 수 있다.
 
+대화형 update에서 --project를 생략하면 현재 폴더의 설치된 앱을 우선하고, 없으면 마지막으로 기억한 앱 경로를 표시해 `기존 앱 경로가 맞나요? [경로] [Y/n]`으로 확인한다. Enter/y는 그대로 사용하고 n은 기존 경로 입력으로 전환한다. 기억한 폴더가 없거나 삭제·설치 기록 유실·캐시 손상 상태이면 경로를 직접 입력한다. --project는 확인 없이 명시한 대상을 사용하고 비대화형은 저장 경로를 자동 선택하지 않는다. 설치·업데이트 종료 코드가 성공이고 설치 표식이 있는 대상만 UTF-8 원자적 파일 교체로 기억한다. 앱 선택용 환경설정이며 Baseline·승인·실행 상태를 대체하지 않는다. 새 배포 폴더에서도 같은 캐시를 사용하면 재사용하며 여러 앱은 명시한 경로/현재 앱 폴더가 우선한다. 구버전에서 기억한 경로가 없으면 한 번 입력해야 한다.
+
+
 pip의 SSL 오류 이후 사용자가 동의하면 기본 PyPI 호스트인 pypi.org와 files.pythonhosted.org의 인증서 검사를 건너뛰고 다운로드를 한 번 다시 시도한다. `--ssl-trust`로 처음부터 지정하거나 비대화형으로 다시 실행할 수 있다. 해당 설정은 이 설치의 pip 프로세스에만 적용한다.
 
 출력은 공식 Spec Kit 프로젝트 연동, Harness 네이티브 Skill, 기존 Project·Skill 버전 표식, Baseline 일곱 파일과 프로젝트 실행 파일·설치 설정이다. 새 설치는 아직 분석되지 않은 빈 Baseline을 만들며 UUID·READY·PASS를 추정하지 않는다. 업데이트는 기존 기록을 유지한다.
@@ -26,6 +29,7 @@ pip의 SSL 오류 이후 사용자가 동의하면 기본 PyPI 호스트인 pypi
 | 위치 | 소유와 목적 |
 | --- | --- |
 | `~/.cache/spec-thread/runtime-<배포 내용 해시>/` | 전용 Python·로컬 Core·고정 Spec Kit. 사용자 전역 Python·specify를 교체하지 않는다. SPEC_THREAD_CACHE로 위치 지정 가능 |
+| `~/.cache/spec-thread/last-project.json` | 마지막 확인된 설치 대상의 경로 환경설정. SPEC_THREAD_CACHE를 변경하면 그 캐시의 기억을 사용하며, 저장 실패는 경고하고 앱 설치 성공을 취소하지 않음 |
 | `.specify/sdd-core` | Core가 생성한 프로젝트 실행 파일. 선택한 Python과 패키지 경로로 실행해 PATH·가상환경 활성화에 의존하지 않음 |
 | `.specify/spec-thread.json`의 runner_hash | 실행 파일의 관리 해시. 기존 버전·품질 필드와 함께 확인 |
 | `.specify/spec-thread-install.json` | agent/core_version/spec_kit_version/check 기록. 프로젝트의 기존 검사 argv를 재사용하며 실행 상태 DB가 아님 |
